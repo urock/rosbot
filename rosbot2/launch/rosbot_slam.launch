@@ -1,0 +1,6 @@
+<launch>
+  <include file="$(find rosbot2)/launch/rosbot_bringup.launch"></include>
+
+  <include file="$(find rosbot2)/launch/gmapping.launch"></include>
+  <include file="$(find rosbot2)/launch/move_base.launch"></include>
+</launch>

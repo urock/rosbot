@@ -1,0 +1,7 @@
+<launch>
+  <include file="$(find rosbot2)/launch/rosbot_bringup.launch"/>
+
+  <include file="$(find rosbot2)/launch/move_base.launch"/>
+  <include file="$(find rosbot2)/launch/map_server.launch"/>
+  <include file="$(find rosbot2)/launch/amcl_only.launch"/>
+</launch>
