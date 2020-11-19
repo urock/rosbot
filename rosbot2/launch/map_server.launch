@@ -1,4 +1,4 @@
 <launch>
-    <arg name="map_file" default="$(find rosbot2)/maps/maze_map.yaml"/>       <!-- path of map file -->
+    <arg name="map_file" default="$(find rosbot2)/maps/maze_map_2.yaml"/>       <!-- path of map file -->
     <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" respawn="true" />
 </launch>
