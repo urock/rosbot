@@ -2,5 +2,5 @@
   <include file="$(find rosbot2)/launch/rosbot_bringup.launch"></include>
   <include file="$(find rosbot2)/launch/gmapping.launch"></include>
 
-  <include file="$(find rosbot2)/launch/teb_move_base.launch"></include>
+  <include file="$(find rosbot2)/launch/dwa_move_base.launch"></include>
 </launch>
