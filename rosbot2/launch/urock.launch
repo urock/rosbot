@@ -1,0 +1,7 @@
+<launch>
+
+    <include file="$(find rosbot2)/launch/gazebo_bringup.launch"/>
+    
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rosbot2)/rviz/urock.rviz"/>
+
+</launch>
