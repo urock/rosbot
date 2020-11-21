@@ -22,6 +22,8 @@ ROSBot control mode development
 
             git commit -m "rosbot goes to /move_base_simple/goal from rviz in empty world"
         
-        3. Визуализировать base_link
+        3. Визуализировать base_link            DONE
+
+            git commit -m "path_viz added"
 
 

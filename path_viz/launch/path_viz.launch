@@ -1,0 +1,13 @@
+<launch>
+
+  <arg name="origin_frame" default="odom"/>
+  <arg name="base_link_frame" default="base_link"/>
+  
+
+  <node  pkg="path_viz" name="path_viz" type="path_viz.py" output="screen">
+    <param name="origin_frame" 		value="$(arg origin_frame)" />
+    <param name="base_link_frame" 	value="$(arg base_link_frame)" />
+  </node>
+
+</launch>
+

@@ -93,8 +93,8 @@ class Bot():
 
 
     def calc_control(self):
-        rho = (self.goal[0] - self.state[0])**2 + (self.goal[1] - self.state[1])**2
-        alpha = self.goal[2] - self.state[2]
+        rho = (self.goal[0] - self.state[0])**2 + (self.goal[1] - self.state[1])**2 # (x_goal - x_cur)^2 + (y_goal - y_cur)^2
+        alpha = self.goal[2] - self.state[2]                                        # (goal_azimuth - current_yaw)
 
         if rho < self.xy_margin_2: 
             self.control = (0.0, 0.0)
