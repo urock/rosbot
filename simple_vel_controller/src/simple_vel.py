@@ -11,6 +11,7 @@ from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import Pose, PoseStamped, Twist
 from geometry_msgs.msg import Quaternion
 import math
+import numpy as np
 from tf.transformations import quaternion_from_euler
 
 from std_msgs.msg import Float64
@@ -32,7 +33,7 @@ class Bot():
         self.v_max = 0.4
         self.w_max = 0.4
 
-        self.xy_margin_2 = 0.01
+        self.xy_margin_squared = 0.2
 
         self.tf_listener = tf.TransformListener()
 
@@ -41,6 +42,8 @@ class Bot():
         self.state = (0, 0, 0, 0, 0, 0)     # x, y, yaw, vx, vy,  w
         self.goal = (0, 0, 0)               # x, y, yaw 
         self.control = (0, 0)               # v, w
+
+        self.goal_queue = []
 
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
@@ -71,10 +74,9 @@ class Bot():
                         self.state[0], self.state[1], self.state[2], self.state[3], self.state[4], self.state[5]))
 
     def goal_callback(self, msg):
-        x, y = msg.pose.position.x, msg.pose.position.y
-        azim_goal = math.atan2((y - self.state[1]),(x - self.state[0]))
-        self.goal = (x, y, azim_goal)
-        rospy.logwarn("goal_callback: x_goal -> {:.2f}, goal_y -> {:.2f}".format(self.goal[0], self.goal[1]))
+        x, y = msg.pose.position.x, msg.pose.position.y            
+        self.goal_queue.append((x, y))
+        rospy.logwarn("added goal to queue: x -> {:.2f}, y -> {:.2f}".format(x, y))
         
     
     def publish_twist(self, v, w):
@@ -91,14 +93,32 @@ class Bot():
         twist_cmd.angular.z = w
         self.cmd_pub.publish(twist_cmd)
 
+    # (x_goal - x_cur)^2 + (y_goal - y_cur)^2
+    def dist_to_goal(self):
+        return  (self.goal[0] - self.state[0])**2 + (self.goal[1] - self.state[1])**2 
+
+    def get_current_goal(self):
+        rho = self.dist_to_goal()
+        
+        if rho < self.xy_margin_squared:
+            if self.goal_queue:
+                self.goal = self.goal_queue.pop(0)
+                rospy.logerr("new current_goal: x -> {:.2f}, y -> {:.2f}".format(self.goal[0], self.goal[1]))
+
 
     def calc_control(self):
-        rho = (self.goal[0] - self.state[0])**2 + (self.goal[1] - self.state[1])**2 # (x_goal - x_cur)^2 + (y_goal - y_cur)^2
-        alpha = self.goal[2] - self.state[2]                                        # (goal_azimuth - current_yaw)
+        rho = self.dist_to_goal()
 
-        if rho < self.xy_margin_2: 
-            self.control = (0.0, 0.0)
-            return
+        if rho < self.xy_margin_squared:
+            if not self.goal_queue:
+                self.control = (0.0, 0.0)
+                return
+
+        azim_goal = math.atan2((self.goal[1] - self.state[1]),(self.goal[0] - self.state[0]))
+        alpha = azim_goal - self.state[2]                                        
+
+        if (abs(alpha) > math.pi): 
+            alpha -= np.sign(alpha) * 2 * math.pi
 
         v = self.v_max * math.tanh(rho) * math.cos(alpha)
         w = self.w_max * alpha + math.tanh(rho)*math.sin(alpha)*math.cos(alpha)/rho
@@ -110,9 +130,10 @@ class Bot():
     def run(self):
         while not rospy.is_shutdown():
             self.get_current_state()
+            self.get_current_goal()
             self.calc_control()
             self.publish_twist(self.control[0], self.control[1])
-            self.print_state()
+            # self.print_state()
             self.rate.sleep()
 
 
