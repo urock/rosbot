@@ -14,8 +14,7 @@ import math
 import numpy as np
 from tf.transformations import quaternion_from_euler
 
-from std_msgs.msg import Float64
-from std_msgs.msg import String
+from nav_msgs.msg import Path
 
 # from visualization_msgs.msg import Marker
 
@@ -46,6 +45,7 @@ class Bot():
         self.goal_queue = []
 
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
+        self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
         
         self.rate = rospy.Rate(self.cmd_freq)
@@ -78,6 +78,9 @@ class Bot():
         self.goal_queue.append((x, y))
         rospy.logwarn("added goal to queue: x -> {:.2f}, y -> {:.2f}".format(x, y))
         
+    def path_callback(self, msg):
+        for p in msg.poses:
+            self.goal_queue.append((p.pose.position.x, p.pose.position.y))
     
     def publish_twist(self, v, w):
         """

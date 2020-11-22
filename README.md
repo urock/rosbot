@@ -6,7 +6,7 @@ ROSBot control mode development
     cd ~/work/rosbot/catkin_ws
     source devel/setup.zsh
     roslaunch rosbot2 urock.launch
-    rosrun simple_vel_controller simple_vel.py
+    roslaunch simple_vel_controller vel_control.launch
     ```
 
     Tasks
@@ -26,8 +26,13 @@ ROSBot control mode development
 
             git commit -m "path_viz added"
 
-        4. Организовать очередь команд в simple_vel.py  
+        4. Организовать очередь команд в simple_vel.py  DONE  
 
             Нашел багу - если ехать налево, то движение оказывается неусточивым
                 - бага была в том, что я направление на цель вычислял один раз в момент получения цель, а надо на каждой итерации 
 
+            git commit -m "goal queue added to simple vel controller"
+
+        5. Добавить pub and sub nav_msg Path        DONE
+
+            git commit -m "simple xy path topic added"
