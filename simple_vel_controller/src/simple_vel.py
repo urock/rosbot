@@ -37,6 +37,7 @@ class TrajKeeper():
         self.robot = Rosbot()
 
         self.tf_listener = tf.TransformListener()
+        self.tf_br = tf.TransformBroadcaster()
 
         self.cmd_freq = 10 # Hz        
 
@@ -74,6 +75,15 @@ class TrajKeeper():
         self.robot.set_odom_state(self.odom_state)
 
         return True
+
+    def send_tf(self, state):
+        pose = (state.x, state.y, 0.0)
+        orient = tf.transformations.quaternion_from_euler(0, 0, state.yaw)
+        
+        self.tf_br.sendTransform(pose, orient,
+                     rospy.Time.now(),
+                     "model_link",
+                     "odom")
 
     def print_state(self, st):
         rospy.loginfo(" x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}, vx -> {:.2f}, vy -> {:.2f}, w -> {:.2f}".format(
@@ -118,10 +128,15 @@ class TrajKeeper():
                 else:
                     # end of trajectory
                     self.publish_twist(0, 0)    
+                    self.rate.sleep()
                     continue
 
             v, w = self.robot.calculate_contol(self.current_goal)
             self.publish_twist(v, w)
+
+            model_state = self.robot.update_model_state(v, w, self.cmd_freq)
+            self.send_tf(model_state)
+
             self.rate.sleep()
 
 def main():

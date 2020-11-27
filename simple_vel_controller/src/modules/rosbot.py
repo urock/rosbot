@@ -25,9 +25,9 @@ class Goal():
 class Params():
 
     def __init__(self):
-        self.v_max = 2.4
+        self.v_max = 2.5
         self.w_max = 0.4
-        self.xy_margin_squared = 0.2
+        self.xy_margin_squared = 0.05
 
 
 
@@ -35,19 +35,20 @@ class Rosbot():
 
 
     def __init__(self):
-        self.state = RobotState()
+        self.odom_state = RobotState()
+        self.model_state = RobotState()
         self.params = Params()
 
 
     def set_odom_state(self, odom_state):
-        self.state = odom_state
+        self.odom_state = odom_state
 
 
     def dist_to_goal_L2(self, goal):             
         """
         param goal - Goal Class object
         """
-        return  (goal.x - self.state.x)**2 + (goal.y - self.state.y)**2 
+        return  (goal.x - self.odom_state.x)**2 + (goal.y - self.odom_state.y)**2
             
 
     def goal_reached(self, goal):
@@ -60,8 +61,8 @@ class Rosbot():
         rho = self.dist_to_goal_L2(goal)
 
         
-        azim_goal = math.atan2((goal.y - self.state.y),(goal.x - self.state.x))
-        alpha = azim_goal - self.state.yaw                                        
+        azim_goal = math.atan2((goal.y - self.odom_state.y),(goal.x - self.odom_state.x))
+        alpha = azim_goal - self.odom_state.yaw                                        
 
         if (abs(alpha) > math.pi): 
             alpha -= np.sign(alpha) * 2 * math.pi
@@ -70,5 +71,29 @@ class Rosbot():
         w = self.params.w_max * alpha + math.tanh(rho)*math.sin(alpha)*math.cos(alpha)/rho
 
         return v, w
+
+    def update_model_state(self, v, w, freq):
+
+        rho = v / w
+        
+        # step 1. Calc new robot position relative to its previous pose
+        
+        dt = 1.0 / freq
+
+        x_r = rho * math.sin(w*dt)
+        y_r = rho * (1 - math.cos(w*dt))
+
+        # rospy.logwarn("v -> {:.4f}, w -> {:.4f}, dt -> {:.4f}".format(v, w, dt))
+        # rospy.logwarn("x_r -> {:.4f}, y_r -> {:.4f}".format(x_r, y_r))
+
+        # step 2. Transfrom this point to map fixed coordinate system taking into account current robot pose
+
+        self.model_state.x += x_r * math.cos(self.model_state.yaw) - y_r * math.sin(self.model_state.yaw) 
+   
+        self.model_state.y += x_r * math.sin(self.model_state.yaw) + y_r * math.cos(self.model_state.yaw)
+
+        self.model_state.yaw +=  w * dt
+
+        return self.model_state
 
 
