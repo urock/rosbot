@@ -1,44 +1,68 @@
 ROSBot control mode development 
 
-Неделя 2 - научиться нормально ездить по траектории с оценкой качества проезда
+Инструкция по работе
+
+```
+1. install ROS Melodic (ros-melodic-desktop-full)
+    http://wiki.ros.org/melodic/Installation/Ubuntu
 
 
-Неделя 1  - Отправить робота по траектории, управляя топиком cmd_vel
+2.  Create catkin ws
 
-    ```
+    cd path_to_ws
+    mkdir -p catkin_ws/src
+    cd catkin_ws
+    wstool init ./src
+    cd src
+    git clone git@github.com:urock/rosbot.git 
+    cd ..
+    sudo apt update
+    rosdep install --from-paths src --ignore-src -r -y 
+    catkin build
+
+
+3. Run smth
+
     cd ~/work/rosbot/catkin_ws
     source devel/setup.zsh
     roslaunch rosbot2 urock.launch
     roslaunch simple_vel_controller vel_control.launch
-    ```
 
-    Tasks
+```
+
+Неделя 2 - научиться нормально ездить по траектории с оценкой качества проезда
+
+    1. 
+
+
+Неделя 1  - Отправить робота по траектории, управляя топиком cmd_vel
+
+
+    1. Запустить rosbot2 в пустом мире      DONE
     
-        1. Запустить rosbot2 в пустом мире      DONE
-        
-            с путым миром real time factor упал в 10 раз
+        с путым миром real time factor упал в 10 раз
 
-            сдела компю maze.world (в нем был параметр real_time_factor = 1) без стен - empty.world
-        
-        2. Подготовить нормальеый rviz          DONE 
-        
+        сдела компю maze.world (в нем был параметр real_time_factor = 1) без стен - empty.world
+    
+    2. Подготовить нормальеый rviz          DONE 
+    
 
-            git commit -m "rosbot goes to /move_base_simple/goal from rviz in empty world"
-        
-        3. Визуализировать base_link            DONE
+        git commit -m "rosbot goes to /move_base_simple/goal from rviz in empty world"
+    
+    3. Визуализировать base_link            DONE
 
-            git commit -m "path_viz added"
+        git commit -m "path_viz added"
 
-        4. Организовать очередь команд в simple_vel.py  DONE  
+    4. Организовать очередь команд в simple_vel.py  DONE  
 
-            Нашел багу - если ехать налево, то движение оказывается неусточивым
-                - бага была в том, что я направление на цель вычислял один раз в момент получения цель, а надо на каждой итерации 
+        Нашел багу - если ехать налево, то движение оказывается неусточивым
+            - бага была в том, что я направление на цель вычислял один раз в момент получения цель, а надо на каждой итерации 
 
-            git commit -m "goal queue added to simple vel controller"
+        git commit -m "goal queue added to simple vel controller"
 
-        5. Добавить pub and sub nav_msg Path        DONE
+    5. Добавить pub and sub nav_msg Path        DONE
 
-            git commit -m "simple xy path topic added"
+        git commit -m "simple xy path topic added"
 
 
     Результаты тезисно:
@@ -51,6 +75,5 @@ ROSBot control mode development
 
         2. Робот может крутиться на месте, тогда он сможет проехать по квадрату
 
-            Надо давать промежуточную цель в виде точки с ориентацией
+            Надо давать промежуточную цель в виде точки с ориентацией ?
 
-        3. 
