@@ -28,15 +28,22 @@ def main():
     cnt += 1
     msg.poses = []
 
-    path = [(2.0, 0), (2.0, 2.0), (0, 2.0), (0, 0)]
+    x_ar = np.arange(0,2*np.pi,0.1)   # start,stop,step
+    y_ar = np.sin(x_ar)
 
-    for point in path:
+    # path = [(x_ar[i], y_ar[i]) for ]
+    # path = [(2.0, 0), (2.0, 2.0), (0, 2.0), (0, 0)]
+
+    # plt.plot(x,y)
+    # plt.show()
+
+    for i in range(len(x_ar)):
         ps = PoseStamped()
         ps.header = msg.header
         ps.header.seq = cnt
         cnt += 1
-        ps.pose.position.x = point[0]
-        ps.pose.position.y = point[1]
+        ps.pose.position.x = x_ar[i]
+        ps.pose.position.y = y_ar[i]
         ps.pose.position.z = 0 
         msg.poses.append(ps)        
 

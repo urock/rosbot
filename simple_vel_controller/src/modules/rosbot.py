@@ -56,7 +56,7 @@ class Rosbot():
 
     def calculate_contol(self, goal):
         #rospy.logwarn("calc control: state -> ({:.2f}, {:.2f}) goal -> ({:.2f}, {:.2f})".
-                        format(self.state.x, self.state.y, goal.x, goal.y))
+                        # format(self.state.x, self.state.y, goal.x, goal.y))
         rho = self.dist_to_goal_L2(goal)
 
         
