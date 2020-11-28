@@ -43,12 +43,15 @@ class TrajFollower():
         self.current_goal = Goal()               # x, y 
 
         self.goal_queue = []
+        self.path = []
 
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
         
         self.rate = rospy.Rate(self.cmd_freq)
+        self.path_index = 0
+        self.got_path = False
 
 
     def set_robot_odom_state(self):
@@ -95,6 +98,30 @@ class TrajFollower():
         for p in msg.poses:
             x, y = p.pose.position.x, p.pose.position.y
             self.goal_queue.append(Goal(x, y))
+            self.path.append(Goal(x, y))
+        self.got_path = True
+
+    def wait_for_path(self):
+        while not rospy.is_shutdown():
+            if self.got_path:
+                break
+            self.rate.sleep()
+
+
+    def get_min_dist_to_path(self):
+
+        lookback_index_dist = 10
+        if self.path_index >= lookback_index_dist:
+            path_slice = self.path[self.path_index - lookback_index_dist: self.path_index]
+        else:
+            path_slice = self.path[0: self.path_index]
+        
+        min_dist = 100
+        for p in path_slice:
+            dist = self.robot.dist_to_goal_L2(p)
+            if dist < min_dist: 
+                min_dist = dist
+        return min_dist 
     
     def publish_twist(self, v, w):
         """
@@ -113,20 +140,33 @@ class TrajFollower():
       
 
     def run(self):
+
+        first_iteration = True
+        path_deviation = 0.0
+        
         while not rospy.is_shutdown():
             if not self.set_robot_odom_state():
                 continue
+            
+            if first_iteration:
+                t0 = rospy.Time.now().to_sec()
+                first_iteration = False
+
             # check if new goal should be selected and calc control
             if self.robot.goal_reached(self.current_goal):
                 if self.goal_queue:
                     self.current_goal = self.goal_queue.pop(0)
-                    rospy.logerr("new current_goal: x -> {:.2f}, y -> {:.2f}".
+                    self.path_index += 1
+                    rospy.logwarn("new current_goal: x -> {:.2f}, y -> {:.2f}".
                     format(self.current_goal.x, self.current_goal.y))
                 else:
                     # end of trajectory
                     self.publish_twist(0, 0)    
                     self.rate.sleep()
-                    continue
+                    break
+
+            path_deviation += self.get_min_dist_to_path()
+            rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
 
             v, w = self.robot.calculate_contol(self.current_goal)
             self.publish_twist(v, w)
@@ -136,8 +176,14 @@ class TrajFollower():
 
             self.rate.sleep()
 
+        t1 = rospy.Time.now().to_sec()
+
+        rospy.logwarn("Trajectory finished. Error -> {:.2f}, T -> {:.2f}".
+                        format(path_deviation, t1-t0))
+
 def main():
     trajectory_follower = TrajFollower('trajectory_follower')
+    trajectory_follower.wait_for_path()
     trajectory_follower.run()
 
 if __name__ == '__main__':

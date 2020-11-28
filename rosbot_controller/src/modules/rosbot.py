@@ -25,8 +25,8 @@ class Goal():
 class Params():
 
     def __init__(self):
-        self.v_max = 2.5
-        self.w_max = 0.4
+        self.v_max = 5.0
+        self.w_max = 1.5
         self.xy_margin_squared = 0.05
 
 
@@ -85,11 +85,13 @@ class Rosbot():
 
         # step 2. Transfrom this point to map fixed coordinate system taking into account current robot pose
 
-        self.model_state.x += x_r * math.cos(self.model_state.yaw) - y_r * math.sin(self.model_state.yaw) 
-   
+        self.model_state.x += x_r * math.cos(self.model_state.yaw) - y_r * math.sin(self.model_state.yaw)
         self.model_state.y += x_r * math.sin(self.model_state.yaw) + y_r * math.cos(self.model_state.yaw)
-
         self.model_state.yaw +=  w * dt
+
+        # self.model_state.x += x_r * math.cos(self.odom_state.yaw) - y_r * math.sin(self.odom_state.yaw)
+        # self.model_state.y += x_r * math.sin(self.odom_state.yaw) + y_r * math.cos(self.odom_state.yaw)
+        # self.model_state.yaw =  self.odom_state.yaw + w * dt
 
         return self.model_state
 
