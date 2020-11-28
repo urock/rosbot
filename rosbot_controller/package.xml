@@ -1,11 +1,16 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>simple_vel_controller</name>
-  <version>0.0.0</version>
-  <description>The simple_vel_controller package</description>
+  <name>rosbot_controller</name>
+  <version>0.0.1</version>
+  <description>The rosbot_controller package
+
+    Includes nodes: path_follower and path_publisher
+  
+  
+  </description>
 
 
-  <maintainer email="urock@todo.todo">urock</maintainer>
+  <maintainer email="urock@fastsense.tech">urock</maintainer>
 
 
   <license>TODO</license>

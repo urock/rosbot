@@ -21,7 +21,7 @@ from modules.rosbot import Rosbot, RobotState, Goal
 # from visualization_msgs.msg import Marker
 
 
-class TrajKeeper():
+class TrajFollower():
     """
     Gived Robot and Controll module this modules tries to follow given path 
     Trajectory should be defined as array of (x, y, yaw ?) points
@@ -32,8 +32,6 @@ class TrajKeeper():
         self.node_name = node_name
         rospy.init_node(self.node_name, anonymous=True)
 
-        rospy.loginfo("trajectory_keeper")
-
         self.robot = Rosbot()
 
         self.tf_listener = tf.TransformListener()
@@ -43,7 +41,6 @@ class TrajKeeper():
 
         self.odom_state = RobotState()     # x, y, yaw, vx, vy,  w
         self.current_goal = Goal()               # x, y 
-        self.control = (0, 0)               # v, w
 
         self.goal_queue = []
 
@@ -76,7 +73,7 @@ class TrajKeeper():
 
         return True
 
-    def send_tf(self, state):
+    def broadcast_model_tf(self, state):
         pose = (state.x, state.y, 0.0)
         orient = tf.transformations.quaternion_from_euler(0, 0, state.yaw)
         
@@ -135,13 +132,13 @@ class TrajKeeper():
             self.publish_twist(v, w)
 
             model_state = self.robot.update_model_state(v, w, self.cmd_freq)
-            self.send_tf(model_state)
+            self.broadcast_model_tf(model_state)
 
             self.rate.sleep()
 
 def main():
-    trajectory_keeper = TrajKeeper('trajectory_keeper')
-    trajectory_keeper.run()
+    trajectory_follower = TrajFollower('trajectory_follower')
+    trajectory_follower.run()
 
 if __name__ == '__main__':
     main()

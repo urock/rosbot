@@ -1,7 +1,0 @@
-<launch>
-    
-    <node pkg="simple_vel_controller" type="simple_vel.py" name="simple_vel"/>
-
-    <node pkg="simple_vel_controller" type="path_pub.py" name="path_pub"/>
-
-</launch>

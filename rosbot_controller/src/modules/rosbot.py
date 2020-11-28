@@ -83,9 +83,6 @@ class Rosbot():
         x_r = rho * math.sin(w*dt)
         y_r = rho * (1 - math.cos(w*dt))
 
-        # rospy.logwarn("v -> {:.4f}, w -> {:.4f}, dt -> {:.4f}".format(v, w, dt))
-        # rospy.logwarn("x_r -> {:.4f}, y_r -> {:.4f}".format(x_r, y_r))
-
         # step 2. Transfrom this point to map fixed coordinate system taking into account current robot pose
 
         self.model_state.x += x_r * math.cos(self.model_state.yaw) - y_r * math.sin(self.model_state.yaw) 

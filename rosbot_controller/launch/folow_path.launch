@@ -1,0 +1,7 @@
+<launch>
+    
+    <node pkg="rosbot_controller" type="path_follower.py" name="path_follower"/>
+
+    <node pkg="rosbot_controller" type="path_publisher.py" name="path_pub"/>
+
+</launch>
