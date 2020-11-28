@@ -27,7 +27,7 @@ ROSBot control mode development
     cd ~/work/rosbot/catkin_ws
     source devel/setup.zsh
     roslaunch rosbot2 urock_system.launch
-    roslaunch rosbot_controller folow_path.launch 
+    roslaunch rosbot_controller folow_path.launch traj_type:={sin,polygon}
 
 ```
 

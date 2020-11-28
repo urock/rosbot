@@ -29,7 +29,53 @@ def SinTrajGenerator(msg, step):
         ps.pose.position.z = 0 
         msg.poses.append(ps)  
 
-    return msg  
+    return msg 
+
+def PolygonTrajGenerator(msg, step):
+
+    p1 = (0.0, 0.0)
+    p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)]
+    
+    points = []
+    
+    for edge in p_edges:
+        p2 = edge
+        k = (p2[1] - p1[1]) / (p2[0] - p1[0])
+        b = (p1[1]*p2[0] - p2[1]*p1[0] ) / (p2[0] - p1[0])
+        x = p1[0]
+        y = k*x + b
+        points.append((x,y))
+        step = abs(p2[0] - p1[0])/10
+        if p2[0] > p1[0]:
+            while (x < p2[0]):
+                x += step
+                if (x > p2[0]):
+                    break
+                y = k*x + b
+                points.append((x,y))
+        else:
+             while (x > p2[0]):
+                x -= step
+                if (x < p2[0]):
+                    break
+                y = k*x + b
+                points.append((x,y))
+        p1 = p2
+
+    cnt = 0
+    for p in points:
+        ps = PoseStamped()
+        ps.header = msg.header
+        ps.header.seq = cnt
+        cnt += 1
+        ps.pose.position.x = p[0]
+        ps.pose.position.y = p[1]
+        ps.pose.position.z = 0 
+        msg.poses.append(ps)  
+
+    return msg     
+
+     
 
 
 def main():
@@ -54,7 +100,9 @@ def main():
     step = 0.1
 
     if traj_type == 'sin':
-        msg = SinTrajGenerator(msg, step)    
+        msg = SinTrajGenerator(msg, step)
+    elif traj_type == 'polygon':
+        msg = PolygonTrajGenerator(msg, step)
 
     while not rospy.is_shutdown():
         if path_pub.get_num_connections() > 1:

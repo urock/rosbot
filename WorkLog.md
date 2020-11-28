@@ -37,6 +37,10 @@ rosservice call /gazebo/set_model_state '{model_state: { model_name: rosbot, pos
 
         git commit -m "path cost implemeted"
 
+    7. Все теперь можно отправлять бота кататься по sin и квадрату
+
+        roslaunch rosbot_controller folow_path.launch traj_type:=polygon
+
 
 
 Неделя 1  - Отправить робота по траектории, управляя топиком cmd_vel
