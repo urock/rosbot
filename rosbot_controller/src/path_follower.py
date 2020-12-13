@@ -40,6 +40,7 @@ class TrajFollower():
         self.cmd_freq = 10 # Hz        
 
         self.odom_state = RobotState()     # x, y, yaw, vx, vy,  w
+        self.model_state = RobotState()
         self.current_goal = Goal()               # x, y 
 
         self.goal_queue = []
@@ -54,14 +55,14 @@ class TrajFollower():
         self.got_path = False
 
 
-    def set_robot_odom_state(self):
+    def get_robot_odom_state(self):
         src_frame = 'odom'
         dst_frame = 'base_link'
         try:
             (coord,orient) = self.tf_listener.lookupTransform(src_frame, dst_frame, rospy.Time())
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             rospy.logerr("Error in lookup transform from {} to {}".format(src_frame, dst_frame))    
-            return False
+            return None
 
         x, y = coord[0], coord[1]
         yaw = tf.transformations.euler_from_quaternion(orient)[2]
@@ -70,11 +71,8 @@ class TrajFollower():
         vy = (y   - self.odom_state.y) * self.cmd_freq
         w  = (yaw - self.odom_state.yaw) * self.cmd_freq
 
-        self.odom_state = RobotState(x, y, yaw, vx, vy, w)
+        return RobotState(x, y, yaw, vx, vy, w)
 
-        self.robot.set_odom_state(self.odom_state)
-
-        return True
 
     def broadcast_model_tf(self, state):
         pose = (state.x, state.y, 0.0)
@@ -145,8 +143,11 @@ class TrajFollower():
         path_deviation = 0.0
         
         while not rospy.is_shutdown():
-            if not self.set_robot_odom_state():
+            self.odom_state = self.get_robot_odom_state()
+            if self.odom_state is None:
                 continue
+            self.robot.set_odom_state(self.odom_state)
+
             
             if first_iteration:
                 t0 = rospy.Time.now().to_sec()
@@ -165,14 +166,15 @@ class TrajFollower():
                     self.rate.sleep()
                     break
 
-            path_deviation += self.get_min_dist_to_path()
+            path_deviation = path_deviation + self.get_min_dist_to_path()
             rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
 
-            v, w = self.robot.calculate_contol(self.current_goal)
+            v, w = self.robot.calculate_contol(self.odom_state, self.current_goal)
             self.publish_twist(v, w)
 
-            model_state = self.robot.update_model_state(v, w, self.cmd_freq)
-            self.broadcast_model_tf(model_state)
+            v, w = self.robot.calculate_contol(self.model_state, self.current_goal)
+            self.model_state = self.robot.update_model_state(v, w, self.cmd_freq)
+            self.broadcast_model_tf(self.model_state)
 
             self.rate.sleep()
 
