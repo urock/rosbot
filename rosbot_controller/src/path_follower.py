@@ -33,9 +33,11 @@ class TrajFollower():
         rospy.init_node(self.node_name, anonymous=True)
 
         self.robot = Rosbot()
-
+        self.test = 0.0
         self.tf_listener = tf.TransformListener()
         self.tf_br = tf.TransformBroadcaster()
+
+        self.prev_path_deviation = 0.0
 
         self.cmd_freq = 10 # Hz        
 
@@ -52,6 +54,10 @@ class TrajFollower():
         self.rate = rospy.Rate(self.cmd_freq)
         self.path_index = 0
         self.got_path = False
+
+        self.w_prev = 0
+        self.ang_error_prev = 0
+        self.estimated_time = 0
 
 
     def set_robot_odom_state(self):
@@ -151,6 +157,7 @@ class TrajFollower():
             if first_iteration:
                 t0 = rospy.Time.now().to_sec()
                 first_iteration = False
+                
 
             # check if new goal should be selected and calc control
             if self.robot.goal_reached(self.current_goal):
@@ -164,20 +171,41 @@ class TrajFollower():
                     self.publish_twist(0, 0)    
                     self.rate.sleep()
                     break
+            
+            current_error = self.get_min_dist_to_path()
+            path_deviation += current_error
+            
+            dist, angle_error = self.robot.control_AS(self.current_goal)          
 
-            path_deviation += self.get_min_dist_to_path()
+            v, w = self.robot.PID(self.w_prev,self.ang_error_prev, dist, angle_error)
+
+            
+
             rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
-
-            v, w = self.robot.calculate_contol(self.current_goal)
+            rospy.logwarn("current error -> {:.5f}".format(current_error))
+            rospy.logwarn("current X -> {:.5f}".format(self.robot.odom_state.x))
+            rospy.logwarn("current Y -> {:.5f}".format(self.robot.odom_state.y))
+            rospy.logwarn("current ANGLE -> {:.5f}".format(self.robot.odom_state.yaw))
+            rospy.logwarn("current Goal X -> {:.5f}".format(self.current_goal.x))
+            rospy.logwarn("current Goal Y -> {:.5f}".format(self.current_goal.y))
+            rospy.logwarn("current ANGLEt -> {:.5f}".format(angle_error))
+            rospy.logwarn("current DIST -> {:.5f}".format(dist))
+            rospy.logwarn("V -> {:.5f}".format(v))
+            rospy.logwarn("W -> {:.5f}".format(w))
+            
+            self.ang_error_prev = angle_error
+            self.w_prev = w
             self.publish_twist(v, w)
 
-            model_state = self.robot.update_model_state(v, w, self.cmd_freq)
-            self.broadcast_model_tf(model_state)
+            #model_state = self.robot.update_model_state(v, w, self.cmd_freq)
+            #self.broadcast_model_tf(model_state)
 
+            #Ubei zhuka
+            a = 1
             self.rate.sleep()
 
         t1 = rospy.Time.now().to_sec()
-
+        
         rospy.logwarn("Trajectory finished. Error -> {:.2f}, T -> {:.2f}".
                         format(path_deviation, t1-t0))
 

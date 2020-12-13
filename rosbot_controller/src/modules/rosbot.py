@@ -38,6 +38,7 @@ class Rosbot():
         self.odom_state = RobotState()
         self.model_state = RobotState()
         self.params = Params()
+        self.estimated_time = 0.0
 
 
     def set_odom_state(self, odom_state):
@@ -68,13 +69,82 @@ class Rosbot():
             alpha -= np.sign(alpha) * 2 * math.pi
 
         v = self.params.v_max * math.tanh(rho) * math.cos(alpha)
-        w = self.params.w_max * alpha + math.tanh(rho)*math.sin(alpha)*math.cos(alpha)/rho
+        if rho == 0:
+            w = 0.0
+        else:
+            w = self.params.w_max * alpha + math.tanh(rho)*math.sin(alpha)*math.cos(alpha)/rho
+        
+        return v, w
+
+    def control_AS (self, CurrentGoal):
+        X1 = CurrentGoal.x - self.odom_state.x
+        Y1 = CurrentGoal.y - self.odom_state.y
+        X2 = X1*math.cos(self.odom_state.yaw) + Y1*math.sin(self.odom_state.yaw)
+        Y2 = -X1*math.sin(self.odom_state.yaw)+Y1*math.cos(self.odom_state.yaw)
+        
+        if X2 == 0:
+            Angle = 0
+        else:
+            Angle = math.atan2(Y2,X2)
+
+        dist = np.sqrt(Y2*Y2 + X2*X2)
+
+        return dist, Angle
+
+    def PID(self, w_prev, ang_error_prev, dist, angle_error):
+        
+        Ki = 0.1
+        Kp = 2.8          
+
+        if abs(angle_error)>1.57:
+            komp = -1.0
+        else:
+            komp = 0.5*(1 - angle_error/1.57)
+                    
+        v = (1.0+komp)* math.tanh(dist)
+
+        w = w_prev+Kp*angle_error+(Ki*0.1-Kp)*ang_error_prev 
+
+        Wmax = 7.33 
+
+        if w>Wmax:
+            w = Wmax
+        elif w < -Wmax:
+            w = -Wmax
+        else:
+            pass
+        
+        t1 = rospy.Time.now().to_sec()
+
+        if angle_error>1.0: 
+            self.estimated_time = 1.5+t1
+
+        if t1<self.estimated_time and abs(angle_error)>0.05:
+            Vmax = 0.1
+        elif t1<self.estimated_time: 
+            Vmax = 0.25
+        else:
+            Vmax = 1.0
+        
+
+        if v>Vmax:
+            v = Vmax
+        elif v < -Vmax:
+            v = -Vmax
+        else:
+            pass
 
         return v, w
 
-    def update_model_state(self, v, w, freq):
+        
 
-        rho = v / w
+    def update_model_state(self, v, w, freq):
+       
+        if w == 0.0:
+            rho = 0
+        else:
+            rho = v/w
+     
         
         # step 1. Calc new robot position relative to its previous pose
         

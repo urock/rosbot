@@ -1,0 +1,9 @@
+<launch>
+
+    <include file="$(find rosbot2)/launch/gazebo_bringup1.launch"/>
+    
+    <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rosbot2)/rviz/urock1.rviz"/>
+
+    <include file="$(find path_viz)/launch/path_viz.launch"/>
+
+</launch>
