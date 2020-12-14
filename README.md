@@ -19,6 +19,7 @@ ROSBot control mode development
     cd ..
     sudo apt update
     rosdep install --from-paths src --ignore-src -r -y 
+    git submodule update --init --recursive 
     catkin build
 
 
