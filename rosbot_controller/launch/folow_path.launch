@@ -1,11 +1,25 @@
 <launch>
 
     <arg name="traj_type"       default="sin"/>
-    
-    <node pkg="rosbot_controller" type="path_follower.py" name="path_follower"/>
 
     <node pkg="rosbot_controller" type="path_publisher.py" name="path_pub">
         <param name="traj_type"     value="$(arg traj_type)" />
     </node>
+
+
+    <node pkg="rosbot_controller" type="path_follower.py" name="gazebo_follower">
+        <param name="robot_frame"       value="base_link" />
+        <param name="cmd_topic"         value="/cmd_vel" />
+    </node>
+
+    <node pkg="rosbot_controller" type="path_follower.py" name="model_follower">
+        <param name="robot_frame"       value="model_link" />
+        <param name="cmd_topic"         value="/cmd_vel_model" />
+    </node>
+
+    <node pkg="rosbot_controller" type="model_runner.py" name="model_runner">
+        <param name="robot_frame"       value="model_link" />
+        <param name="cmd_topic"         value="/cmd_vel_model" />
+    </node>    
 
 </launch>
