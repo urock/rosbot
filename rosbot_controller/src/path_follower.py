@@ -134,15 +134,15 @@ class TrajFollower():
                 continue
             self.robot.set_state(self.robot_state)
         
-            rospy.logwarn(self.robot_frame + ": " + self.robot_state.to_str())
+            # if self.robot_frame == "model_link":
+            #     rospy.logwarn(self.robot_frame + ": " + self.robot_state.to_str())
 
             # check if new goal should be selected and calc control
             if self.robot.goal_reached(self.current_goal):
                 if self.goal_queue:
                     self.current_goal = self.goal_queue.pop(0)
                     self.path_index += 1
-                    rospy.logerr(self.robot_frame + ": new current_goal: x -> {:.2f}, y -> {:.2f}".
-                    format(self.current_goal.x, self.current_goal.y))
+                    rospy.logerr(self.robot_frame + ": new current_goal = " + self.current_goal.to_str())
                 else:
                     # end of trajectory
                     self.publish_control(RobotControl())    
@@ -153,7 +153,7 @@ class TrajFollower():
             # rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
 
             control = self.robot.calculate_contol(self.current_goal)
-            rospy.logwarn(self.robot_frame + ": " + control.to_str())
+
             self.publish_control(control)
 
             self.rate.sleep()

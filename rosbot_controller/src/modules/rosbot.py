@@ -33,11 +33,14 @@ class Goal():
         self.x = x
         self.y = y
 
+    def to_str(self):
+        return "x -> {:.2f}, y -> {:.2f}".format(self.x, self.y)        
+
 class Params():
 
     def __init__(self):
-        self.v_max = 1.0
-        self.w_max = 1.0
+        self.v_max = 10.0
+        self.w_max = 5.0
         self.xy_margin_squared = 0.05
 
 

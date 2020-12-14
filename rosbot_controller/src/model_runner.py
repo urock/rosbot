@@ -50,6 +50,7 @@ class ModelRunner():
 
     def command_callback(self, msg):      
         self.control_vector = RobotControl(msg.linear.x, msg.angular.z)
+        # rospy.logerr(self.robot_frame + ": " + self.control_vector.to_str())
 
 
     def print_state(self, state):
@@ -59,9 +60,10 @@ class ModelRunner():
        
         while not rospy.is_shutdown():    
             current_timestamp = rospy.Time.now().to_sec()
-            dt = self.last_timestamp - current_timestamp
+            dt = current_timestamp - self.last_timestamp 
 
             self.model_state = self.robot.update_state_by_model(self.control_vector, dt)
+            # rospy.logerr(self.robot_frame + ": " + self.model_state.to_str())
             self.broadcast_model_tf(self.model_state)
 
             self.last_timestamp = current_timestamp
