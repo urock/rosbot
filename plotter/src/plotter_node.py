@@ -11,6 +11,7 @@ from tf2_msgs.msg import TFMessage
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Pose, PoseStamped, Twist, Quaternion
 from datetime import datetime
+import pathlib
 
 
 class Plotter:
@@ -25,16 +26,21 @@ class Plotter:
         rospy.init_node("plotter", anonymous=True)
 
         # if true -> show plots on shutdown
-        self.show_plots = rospy.get_param("~show_plots", True)
+        self.show_plots = rospy.get_param("~show_plots", False)
         # if true -> save data with the start time in the name
         self.track_time = rospy.get_param("~track_time", False)
+        # path to the output data folder
+        self.module_path = rospy.get_param("~output_file")
+
+        rospy.logwarn("Show plots - {}".format(self.show_plots))
+        rospy.logwarn("Track time - {}".format(self.show_plots))
+        rospy.logwarn("Output data folder - {}".format(self.module_path))
 
         # declare tf buffer and listener for working with TF transformations
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
-        self.module_path = "./src/rosbot/plotter"
-        # container for /path (trajectory) fron path_publisher node
+        # container for trajectory (/path) fron path_publisher node
         self.trajectory = {'x': [], 'y': []}
         # container for /cmd_vel (input control) from path_follower node
         self.control = {'x': [], 'y': []}
@@ -92,11 +98,14 @@ class Plotter:
         """Saves data to the output file"""
 
         pwd = os.getcwd()
-        path = self.module_path + '/data'
+        # os.chdir(os.path.expanduser('~'))
+        path = self.module_path + '/data/'
+        print(path)
+        os.chdir(os.path.expanduser('~'))
         if not os.path.exists(path):
-            os.mkdir(path)
-        os.chdir(path)
-        output_file = open(file_name + '.txt', 'w')
+            os.makedirs(path)
+
+        output_file = open(path + file_name + '.txt', 'w')
 
         for i in range(0, len(data.values()[0])):
             item = str()
@@ -127,8 +136,10 @@ class Plotter:
 
         pwd = os.getcwd()
         path = self.module_path + '/pictures'
+        print(path)
+        os.chdir(os.path.expanduser('~'))
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
         os.chdir(path)
         plt.savefig('{}.{}'.format(name, fmt), fmt='png')
         os.chdir(pwd)
