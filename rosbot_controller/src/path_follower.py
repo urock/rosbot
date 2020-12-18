@@ -4,90 +4,74 @@ import rospy
 import os
 import roslib
 import tf
-import time
-from time import gmtime, strftime
-from pathlib import Path
-from tf2_msgs.msg import TFMessage
-from geometry_msgs.msg import Pose, PoseStamped, Twist
-from geometry_msgs.msg import Quaternion
 import math
 import numpy as np
-from tf.transformations import quaternion_from_euler
+from geometry_msgs.msg import PoseStamped, Twist
 
 from nav_msgs.msg import Path
 
-from modules.rosbot import Rosbot, RobotState, Goal
+from modules.rosbot import Rosbot, RobotState, RobotControl, Goal
 
 # from visualization_msgs.msg import Marker
 
 
 class TrajFollower():
     """
-    Gived Robot and Controll module this modules tries to follow given path 
+    TrajFollower tries to follow given path 
     Trajectory should be defined as array of (x, y, yaw ?) points
+
+    It listens to robot_frame tf and computes control to follow the path
     """
     
 
     def __init__(self, node_name): 
         self.node_name = node_name
         rospy.init_node(self.node_name, anonymous=True)
+        self.robot_frame = rospy.get_param('~robot_frame')
+        self.cmd_topic = rospy.get_param('~cmd_topic')
+        self.odom_frame = 'odom'
 
         self.robot = Rosbot()
 
         self.tf_listener = tf.TransformListener()
         self.tf_br = tf.TransformBroadcaster()
 
-        self.cmd_freq = 10 # Hz        
+        self.cmd_freq = 10.0 # Hz       
+        self.dt = 1.0 / self.cmd_freq  
 
-        self.odom_state = RobotState()     # x, y, yaw, vx, vy,  w
-        self.current_goal = Goal()               # x, y 
+        self.robot_state = RobotState()     
+        self.current_goal = Goal()               
 
         self.goal_queue = []
         self.path = []
 
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
+        self.cmd_pub = rospy.Publisher(self.cmd_topic, Twist, queue_size=5)
         
         self.rate = rospy.Rate(self.cmd_freq)
         self.path_index = 0
         self.got_path = False
 
 
-    def set_robot_odom_state(self):
-        src_frame = 'odom'
-        dst_frame = 'base_link'
+    def get_robot_state_from_tf(self):
         try:
-            (coord,orient) = self.tf_listener.lookupTransform(src_frame, dst_frame, rospy.Time())
+            (coord,orient) = self.tf_listener.lookupTransform(self.odom_frame, self.robot_frame, rospy.Time())
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-            rospy.logerr("Error in lookup transform from {} to {}".format(src_frame, dst_frame))    
-            return False
+            # rospy.logerr("Error in lookup transform from {} to {}".format(self.odom_frame, self.robot_frame))    
+            return None
 
         x, y = coord[0], coord[1]
         yaw = tf.transformations.euler_from_quaternion(orient)[2]
 
-        vx = (x   - self.odom_state.x) * self.cmd_freq
-        vy = (y   - self.odom_state.y) * self.cmd_freq
-        w  = (yaw - self.odom_state.yaw) * self.cmd_freq
+        # vx = (x   - self.robot_state.x) * self.cmd_freq
+        # vy = (y   - self.robot_state.y) * self.cmd_freq
+        # w  = (yaw - self.robot_state.yaw) * self.cmd_freq
 
-        self.odom_state = RobotState(x, y, yaw, vx, vy, w)
+        return RobotState(x, y, yaw)
 
-        self.robot.set_odom_state(self.odom_state)
-
-        return True
-
-    def broadcast_model_tf(self, state):
-        pose = (state.x, state.y, 0.0)
-        orient = tf.transformations.quaternion_from_euler(0, 0, state.yaw)
-        
-        self.tf_br.sendTransform(pose, orient,
-                     rospy.Time.now(),
-                     "model_link",
-                     "odom")
-
-    def print_state(self, st):
-        rospy.loginfo(" x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}, vx -> {:.2f}, vy -> {:.2f}, w -> {:.2f}".format(
-                        st.x, st.y, st.yaw, st.vx, st.vy, st.w))
+    def print_state(self, state):
+        rospy.loginfo(state.to_str())
 
     def goal_callback(self, msg):
         x, y = msg.pose.position.x, msg.pose.position.y            
@@ -123,56 +107,54 @@ class TrajFollower():
                 min_dist = dist
         return min_dist 
     
-    def publish_twist(self, v, w):
+    def publish_control(self, control):
         """
-        :param v: linear velocity, ``float``
-        :param w: angular velocity, ``float``
+        :param c: control vector of RobotControl type
         """
         twist_cmd = Twist()
-        twist_cmd.linear.x = v
+        twist_cmd.linear.x = control.v
         twist_cmd.linear.y = 0
         twist_cmd.linear.z = 0
         twist_cmd.angular.x = 0
         twist_cmd.angular.y = 0
-        twist_cmd.angular.z = w
+        twist_cmd.angular.z = control.w
         self.cmd_pub.publish(twist_cmd)
 
       
 
     def run(self):
 
-        first_iteration = True
         path_deviation = 0.0
+
+        t0 = rospy.Time.now().to_sec()
         
         while not rospy.is_shutdown():
-            if not self.set_robot_odom_state():
+            self.robot_state = self.get_robot_state_from_tf()
+            if self.robot_state is None:
                 continue
-            
-            if first_iteration:
-                t0 = rospy.Time.now().to_sec()
-                first_iteration = False
+            self.robot.set_state(self.robot_state)
+        
+            # if self.robot_frame == "model_link":
+            #     rospy.logwarn(self.robot_frame + ": " + self.robot_state.to_str())
 
             # check if new goal should be selected and calc control
             if self.robot.goal_reached(self.current_goal):
                 if self.goal_queue:
                     self.current_goal = self.goal_queue.pop(0)
                     self.path_index += 1
-                    rospy.logwarn("new current_goal: x -> {:.2f}, y -> {:.2f}".
-                    format(self.current_goal.x, self.current_goal.y))
+                    rospy.logerr(self.robot_frame + ": new current_goal = " + self.current_goal.to_str())
                 else:
                     # end of trajectory
-                    self.publish_twist(0, 0)    
+                    self.publish_control(RobotControl())    
                     self.rate.sleep()
                     break
 
-            path_deviation += self.get_min_dist_to_path()
-            rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
+            path_deviation = path_deviation + self.get_min_dist_to_path()
+            # rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
 
-            v, w = self.robot.calculate_contol(self.current_goal)
-            self.publish_twist(v, w)
+            control = self.robot.calculate_contol(self.current_goal)
 
-            model_state = self.robot.update_model_state(v, w, self.cmd_freq)
-            self.broadcast_model_tf(model_state)
+            self.publish_control(control)
 
             self.rate.sleep()
 
