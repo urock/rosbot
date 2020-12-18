@@ -10,13 +10,24 @@ from nav_msgs.msg import Path
 from tf2_msgs.msg import TFMessage
 import matplotlib.pyplot as plt
 from geometry_msgs.msg import Pose, PoseStamped, Twist, Quaternion
+from datetime import datetime
 
 
 class Plotter:
-    """ """
+    """Class for visualization in the form of graphs (also saves to text file)
+     the state of the robot 
+     the state of the model 
+     the specified trajectory (path)
+     Control action (cmd_vel)
+     """
 
     def __init__(self):
         rospy.init_node("plotter", anonymous=True)
+
+        # if true -> show plots on shutdown
+        self.show_plots = rospy.get_param("~show_plots", True)
+        # if true -> save data with the start time in the name
+        self.track_time = rospy.get_param("~track_time", False)
 
         # declare tf buffer and listener for working with TF transformations
         self.tf_buffer = tf2_ros.Buffer()
@@ -24,7 +35,7 @@ class Plotter:
 
         self.module_path = "./src/rosbot/plotter"
         # container for /path (trajectory) fron path_publisher node
-        self.trajectory = {'x': [], 'y': []}  # dict {'x':[x0,x1,x2,...xn], 'y':[y0,y1,y2,...yn]}
+        self.trajectory = {'x': [], 'y': []}
         # container for /cmd_vel (input control) from path_follower node
         self.control = {'x': [], 'y': []}
         # container for robot state
@@ -41,7 +52,7 @@ class Plotter:
         rospy.on_shutdown(self.on_shutdown)
 
     def path_callback(self, msg):
-        """ """
+        """stores path messages in a separate container"""
 
         for p in msg.poses:
             x, y = p.pose.position.x, p.pose.position.y
@@ -49,19 +60,20 @@ class Plotter:
             self.trajectory['y'].append(y)
 
     def cmd_vel_callback(self, msg):
-        """ """
+        """stores control messages in a separate container"""
 
         self.control['x'].append(msg.linear.x)
         self.control['y'].append(msg.linear.y)
 
     def tf_callback(self, msg):
-        """ """
+        """stores msg data about robot state
+         and model state in separate containers"""
 
         self.fill_state(dst_frame='base_link', state=self.robot_state)
         self.fill_state(dst_frame='model_link', state=self.model_state)
 
     def fill_state(self, dst_frame, state={}, src_frame='odom'):
-        """ """
+        """Receives the state of the model or robot via TF transformation"""
 
         try:
             tf_transform = self.tf_buffer.lookup_transform(src_frame, dst_frame, rospy.Time(),
@@ -77,7 +89,7 @@ class Plotter:
             return tf.LookupException
 
     def write_to_file(self, data, file_name):
-        """ """
+        """Saves data to the output file"""
 
         pwd = os.getcwd()
         path = self.module_path + '/data'
@@ -97,15 +109,21 @@ class Plotter:
         os.chdir(pwd)
 
     def plot_xy_data(self, data):
-        """   """
+        """Build a graph from x and y"""
 
         x = np.array(data['x'])
         y = np.array(data['y'])
         plt.plot(x, y)
         plt.grid(True)
 
+    def plot_data(self, data):
+        """Build a graph from x or y """
+
+        plt.plot(data)
+        plt.grid(True)
+
     def save_plot(self, name='', fmt='png'):
-        """ """
+        """Saves graph to the output pkg"""
 
         pwd = os.getcwd()
         path = self.module_path + '/pictures'
@@ -124,26 +142,41 @@ class Plotter:
         except:
             pass
 
-    def process_collected_data(self, name, data):
-        """ """
+    def process_collected_data(self, data, name='', plot_type='xy'):
+        """Builds and saves a graph from data,
+          saves data to an output file """
+
+        if self.track_time:
+            name = name + "_" + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         plt.figure(name)
-        self.plot_xy_data(data)
+        if plot_type == 'xy':
+            self.plot_xy_data(data)
+        elif plot_type == 'x':
+            self.plot_data(data['x'])
+        elif plot_type == 'y':
+            self.plot_data(data['y'])
         self.write_to_file(data, file_name=name)
         self.save_plot(name=name)
-        self.show_graph()
+        # self.show_graph()
 
     def on_shutdown(self):
         """ """
 
+        # unsubscribe
         self.trajectory_sub.unregister()
         self.control_sub.unregister()
         self.tf_sub.unregister()
 
+        # Process and save collected data 
         self.process_collected_data(name='trajectory', data=self.trajectory)
-        self.process_collected_data(name='control', data=self.control)
+        self.process_collected_data(name='control', data=self.control, plot_type='x')
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='model_state', data=self.model_state)
+
+        if self.show_plots:
+            # show all graphs
+            plt.show()
 
 
 def main():
