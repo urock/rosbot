@@ -100,7 +100,7 @@ class Plotter:
         pwd = os.getcwd()
         # os.chdir(os.path.expanduser('~'))
         path = self.module_path + '/data/'
-        print(path)
+        # print(path)
         os.chdir(os.path.expanduser('~'))
         if not os.path.exists(path):
             os.makedirs(path)
@@ -136,7 +136,7 @@ class Plotter:
 
         pwd = os.getcwd()
         path = self.module_path + '/pictures'
-        print(path)
+        # print(path)
         os.chdir(os.path.expanduser('~'))
         if not os.path.exists(path):
             os.makedirs(path)
