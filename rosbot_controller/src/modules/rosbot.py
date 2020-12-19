@@ -40,7 +40,7 @@ class Params():
 
     def __init__(self):
         self.v_max = 10.0
-        self.w_max = 5.0
+        self.w_max = 2.5
         self.xy_margin_squared = 0.05
 
 
@@ -99,6 +99,11 @@ class Rosbot():
         """
         v = control_vector.v
         w = control_vector.w
+
+        # straigh line approximation model
+        # self.state.x += v * math.cos(self.state.yaw) * dt
+        # self.state.y += v * math.sin(self.state.yaw) * dt
+        # self.state.yaw +=  w * dt
 
         if abs(w) > self.eps_w:
             rho = v / w
