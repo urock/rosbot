@@ -40,14 +40,17 @@ class Plotter:
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
+        # 
+        self.init_time = rospy.Time.now().secs
+        self.first_tick = True
         # container for trajectory (/path) fron path_publisher node
         self.trajectory = {'x': [], 'y': []}
         # container for /cmd_vel (input control) from path_follower node
-        self.control = {'x': [], 'y': []}
+        self.control = {'t' : [], 'x': [], 'y': []}
         # container for robot state
-        self.robot_state = {'x': [], 'y': [], 'yaw': []}
+        self.robot_state = {'t' : [], 'x': [], 'y': [], 'yaw': []}
         # container for model state
-        self.model_state = {'x': [], 'y': [], 'yaw': []}
+        self.model_state = {'t' : [], 'x': [], 'y': [], 'yaw': []}
 
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
@@ -68,12 +71,18 @@ class Plotter:
     def cmd_vel_callback(self, msg):
         """stores control messages in a separate container"""
 
+        time = rospy.Time.now().secs - self.init_time
+        self.control['t'].append(time)
         self.control['x'].append(msg.linear.x)
         self.control['y'].append(msg.linear.y)
 
     def tf_callback(self, msg):
         """stores msg data about robot state
          and model state in separate containers"""
+
+        if self.first_tick:
+            self.first_tick = False
+            self.init_time = rospy.Time.now().secs
 
         self.fill_state(dst_frame='base_link', state=self.robot_state)
         self.fill_state(dst_frame='model_link', state=self.model_state)
@@ -88,6 +97,8 @@ class Plotter:
             trans_vec = tf_transform.translation
             rot_quat = tf_transform.rotation
             yaw = euler_from_quaternion([rot_quat.x, rot_quat.y, rot_quat.z, rot_quat.w])[2]
+            time = rospy.Time.now().secs - self.init_time
+            state['t'].append(time)
             state['x'].append(trans_vec.x)
             state['y'].append(trans_vec.y)
             state['yaw'].append(yaw)
@@ -109,7 +120,7 @@ class Plotter:
 
         for i in range(0, len(data.values()[0])):
             item = str()
-            for key in ('x', 'y', 'yaw'):
+            for key in ('t', 'x', 'y', 'yaw'):
                 if key in data.keys():
                     item = item + str(round(data[key][i], 2)) + ' '
             output_file.write(str(item) + '\n')
@@ -191,6 +202,7 @@ class Plotter:
 
 
 def main():
+    """ """
     plotter = Plotter()
     try:
         rospy.spin()
