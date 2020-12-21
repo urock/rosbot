@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 # license removed for brevity
 import rospy
-import os
 import tf2_ros
 import tf
-import numpy as np
 from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Path
 from tf2_msgs.msg import TFMessage
-import matplotlib.pyplot as plt
 from geometry_msgs.msg import Pose, PoseStamped, Twist, Quaternion
 from datetime import datetime
-import pathlib
+import matplotlib.pyplot as plt
+from plotter.plotter_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
 
 
 class Plotter:
@@ -40,17 +38,18 @@ class Plotter:
         self.tf_buffer = tf2_ros.Buffer()
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
-        # 
+        # node init time
         self.init_time = rospy.Time.now().secs
+        # flag for the first callback (used in Tf callback)
         self.first_tick = True
         # container for trajectory (/path) fron path_publisher node
         self.trajectory = {'x': [], 'y': []}
         # container for /cmd_vel (input control) from path_follower node
-        self.control = {'t' : [], 'x': [], 'y': []}
+        self.control = {'t': [], 'x': [], 'y': []}
         # container for robot state
-        self.robot_state = {'t' : [], 'x': [], 'y': [], 'yaw': []}
+        self.robot_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
         # container for model state
-        self.model_state = {'t' : [], 'x': [], 'y': [], 'yaw': []}
+        self.model_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
 
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
@@ -80,6 +79,7 @@ class Plotter:
         """stores msg data about robot state
          and model state in separate containers"""
 
+        # if it is the first callback set init time
         if self.first_tick:
             self.first_tick = False
             self.init_time = rospy.Time.now().secs
@@ -105,65 +105,6 @@ class Plotter:
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             return tf.LookupException
 
-    def write_to_file(self, data, file_name):
-        """Saves data to the output file"""
-
-        pwd = os.getcwd()
-        # os.chdir(os.path.expanduser('~'))
-        path = self.module_path + '/data/'
-        # print(path)
-        os.chdir(os.path.expanduser('~'))
-        if not os.path.exists(path):
-            os.makedirs(path)
-
-        output_file = open(path + file_name + '.txt', 'w')
-
-        for i in range(0, len(data.values()[0])):
-            item = str()
-            for key in ('t', 'x', 'y', 'yaw'):
-                if key in data.keys():
-                    item = item + str(round(data[key][i], 2)) + ' '
-            output_file.write(str(item) + '\n')
-
-        output_file.close()
-        os.chdir(pwd)
-
-    def plot_xy_data(self, data):
-        """Build a graph from x and y"""
-
-        x = np.array(data['x'])
-        y = np.array(data['y'])
-        plt.plot(x, y)
-        plt.grid(True)
-
-    def plot_data(self, data):
-        """Build a graph from x or y """
-
-        plt.plot(data)
-        plt.grid(True)
-
-    def save_plot(self, name='', fmt='png'):
-        """Saves graph to the output pkg"""
-
-        pwd = os.getcwd()
-        path = self.module_path + '/pictures'
-        # print(path)
-        os.chdir(os.path.expanduser('~'))
-        if not os.path.exists(path):
-            os.makedirs(path)
-        os.chdir(path)
-        plt.savefig('{}.{}'.format(name, fmt), fmt='png')
-        os.chdir(pwd)
-
-    def show_graph(self):
-        """ """
-
-        try:
-            plt.show()
-            plt.close()
-        except:
-            pass
-
     def process_collected_data(self, data, name='', plot_type='xy'):
         """Builds and saves a graph from data,
           saves data to an output file """
@@ -173,14 +114,17 @@ class Plotter:
 
         plt.figure(name)
         if plot_type == 'xy':
-            self.plot_xy_data(data)
+            plot_xy_data(x=data['x'], y=data['y'])
+        elif plot_type == 'xt':
+            plot_xy_data(x=data['t'], y=data['x'])
         elif plot_type == 'x':
-            self.plot_data(data['x'])
+            plot_data(data['x'])
         elif plot_type == 'y':
-            self.plot_data(data['y'])
-        self.write_to_file(data, file_name=name)
-        self.save_plot(name=name)
-        # self.show_graph()
+            plot_data(data['y'])
+        path = self.module_path + '/data/'
+        write_to_file(path=path, data=data, file_name=name)
+        path = self.module_path + '/pictures'
+        save_plot(path=path, name=name)
 
     def on_shutdown(self):
         """ """
@@ -192,13 +136,12 @@ class Plotter:
 
         # Process and save collected data 
         self.process_collected_data(name='trajectory', data=self.trajectory)
-        self.process_collected_data(name='control', data=self.control, plot_type='x')
+        self.process_collected_data(name='control', data=self.control, plot_type='xt')
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='model_state', data=self.model_state)
 
         if self.show_plots:
-            # show all graphs
-            plt.show()
+            show_graph()
 
 
 def main():
