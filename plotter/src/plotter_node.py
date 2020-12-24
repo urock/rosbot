@@ -30,6 +30,9 @@ class Plotter:
         # path to the output data folder
         self.module_path = rospy.get_param("~output_file")
 
+        if self.track_time:
+            self.module_path += '/' + str(datetime.now().strftime('%Y-%m-%d-%H:%M:%S'))
+
         rospy.logwarn("Show plots - {}".format(self.show_plots))
         rospy.logwarn("Track time - {}".format(self.show_plots))
         rospy.logwarn("Output data folder - {}".format(self.module_path))
@@ -108,9 +111,6 @@ class Plotter:
     def process_collected_data(self, data, name='', plot_type='xy'):
         """Builds and saves a graph from data,
           saves data to an output file """
-
-        if self.track_time:
-            name = name + "_" + datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
         plt.figure(name)
         if plot_type == 'xy':
