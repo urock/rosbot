@@ -59,7 +59,7 @@ def build_graph(data, folder_path):
     plt.plot(x3, y3, color='g', label='trajectory' , linewidth=3)
     
     plt.xlabel('X')
-    plt.xlabel('Y')
+    plt.ylabel('Y')
     plt.legend(loc='best') # or loc=1
     plt.grid(True)
     save_plot(folder_path, name='graph', fmt='png')
