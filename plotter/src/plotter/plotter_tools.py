@@ -50,12 +50,20 @@ def write_to_file(path, data, file_name):
 
     output_file = open(path + file_name + '.txt', 'w')
 
+    # write title
+    title = ''
+    for key in ('t', 'x', 'y', 'yaw'):
+        if key in data.keys():
+            title += key + ' '
+    output_file.write(title + '\n')
+
     for i in range(0, len(data.values()[0])):
         item = str()
         for key in ('t', 'x', 'y', 'yaw'):
             if key in data.keys():
                 item = item + str(round(data[key][i], 2)) + ' '
         output_file.write(str(item) + '\n')
+
 
     output_file.close()
     os.chdir(pwd)
