@@ -42,7 +42,7 @@ class Plotter:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         # node init time
-        self.init_time = rospy.Time.now().secs
+        self.init_time = round(rospy.get_time(), 2)
         # flag for the first callback (used in Tf callback)
         self.first_tick = True
         # container for trajectory (/path) fron path_publisher node
@@ -73,7 +73,7 @@ class Plotter:
     def cmd_vel_callback(self, msg):
         """stores control messages in a separate container"""
 
-        time = rospy.Time.now().secs - self.init_time
+        time = round(rospy.get_time() - self.init_time, 2) 
         self.control['t'].append(time)
         self.control['x'].append(msg.linear.x)
         self.control['y'].append(msg.linear.y)
@@ -85,7 +85,7 @@ class Plotter:
         # if it is the first callback set init time
         if self.first_tick:
             self.first_tick = False
-            self.init_time = rospy.Time.now().secs
+            self.init_time = round(rospy.get_time(), 2) 
 
         self.fill_state(dst_frame='base_link', state=self.robot_state)
         self.fill_state(dst_frame='model_link', state=self.model_state)
@@ -100,7 +100,7 @@ class Plotter:
             trans_vec = tf_transform.translation
             rot_quat = tf_transform.rotation
             yaw = euler_from_quaternion([rot_quat.x, rot_quat.y, rot_quat.z, rot_quat.w])[2]
-            time = rospy.Time.now().secs - self.init_time
+            time = round(rospy.get_time() - self.init_time, 2)
             state['t'].append(time)
             state['x'].append(trans_vec.x)
             state['y'].append(trans_vec.y)
