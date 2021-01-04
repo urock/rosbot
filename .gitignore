@@ -4,5 +4,6 @@ cmake-build*
 *.pyc
 venv
 .vscode/*
+*/.vscode/*
 tests/report.txt
 .ipynb_checkpoints
