@@ -5,8 +5,7 @@ import tf2_ros
 import tf
 from tf.transformations import euler_from_quaternion
 from nav_msgs.msg import Path
-from tf2_msgs.msg import TFMessage
-from geometry_msgs.msg import Pose, PoseStamped, Twist, Quaternion
+from geometry_msgs.msg import Twist
 from datetime import datetime
 import matplotlib.pyplot as plt
 from plotter.plotter_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
@@ -57,7 +56,7 @@ class Plotter:
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.control_sub = rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
-        self.tf_sub = rospy.Subscriber('/tf', TFMessage, self.tf_callback)
+        rospy.Timer(rospy.Duration(0.1), self.timer_callback)
 
         # set the function that will be executed when shutdown
         rospy.on_shutdown(self.on_shutdown)
@@ -73,12 +72,12 @@ class Plotter:
     def cmd_vel_callback(self, msg):
         """stores control messages in a separate container"""
 
-        time = round(rospy.get_time() - self.init_time, 2) 
+        time = round(rospy.get_time() - self.init_time, 2)
         self.control['t'].append(time)
         self.control['x'].append(msg.linear.x)
         self.control['y'].append(msg.linear.y)
 
-    def tf_callback(self, msg):
+    def timer_callback(self, timer_event):
         """stores msg data about robot state
          and model state in separate containers"""
 
@@ -86,7 +85,6 @@ class Plotter:
         if self.first_tick:
             self.first_tick = False
             self.init_time = round(rospy.get_time(), 2) 
-
         self.fill_state(dst_frame='base_link', state=self.robot_state)
         self.fill_state(dst_frame='model_link', state=self.model_state)
 
@@ -132,9 +130,7 @@ class Plotter:
         # unsubscribe
         self.trajectory_sub.unregister()
         self.control_sub.unregister()
-        self.tf_sub.unregister()
-
-        # Process and save collected data 
+        # Process and save collected data
         self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
         self.process_collected_data(name='robot_state', data=self.robot_state)
