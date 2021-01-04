@@ -6,39 +6,31 @@ import roslib
 import time
 import math
 import numpy as np
-
+import pathlib
 from nav_msgs.msg import Path
 from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped
 
 def IsValidTrajType(traj_type):
-    return traj_type in ('sin', 'polygon')
+    return traj_type in ('sin', 'polygon', 'from_file')
 
-def SinTrajGenerator(msg, step):
-    x_ar = np.arange(0,2*np.pi, step)   # start,stop,step
-    y_ar = np.sin(x_ar)
+def parse_plan(file_name):
+    edges = list()
 
-    cnt = 0
-    for i in range(len(x_ar)):
-        ps = PoseStamped()
-        ps.header = msg.header
-        ps.header.seq = cnt
-        cnt += 1
-        ps.pose.position.x = x_ar[i]
-        ps.pose.position.y = y_ar[i]
-        ps.pose.position.z = 0 
-        msg.poses.append(ps)  
+    with (pathlib.Path(file_name)).open() as f:
+        for line in f:
+            p = line.replace('\n', '')
+            if p:
+                p = p.split(" ")
+                edges.append((float(p[0]), float(p[1])))
 
-    return msg 
+    return edges
 
-def PolygonTrajGenerator(msg, step):
-
+def edges_to_points(edges):
+    points = list()
     p1 = (0.0, 0.0)
-    p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)]
-    
-    points = []
-    
-    for edge in p_edges:
+
+    for edge in edges:
         p2 = edge
         k = (p2[1] - p1[1]) / (p2[0] - p1[0])
         b = (p1[1]*p2[0] - p2[1]*p1[0] ) / (p2[0] - p1[0])
@@ -62,6 +54,32 @@ def PolygonTrajGenerator(msg, step):
                 points.append((x,y))
         p1 = p2
 
+    return points
+
+
+def SinTrajGenerator(msg, step):
+    x_ar = np.arange(0,2*np.pi, step)   # start,stop,step
+    y_ar = np.sin(x_ar)
+
+    cnt = 0
+    for i in range(len(x_ar)):
+        ps = PoseStamped()
+        ps.header = msg.header
+        ps.header.seq = cnt
+        cnt += 1
+        ps.pose.position.x = x_ar[i]
+        ps.pose.position.y = y_ar[i]
+        ps.pose.position.z = 0 
+        msg.poses.append(ps)  
+
+    return msg 
+
+def PolygonTrajGenerator(msg, step):
+
+    p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)]
+    
+    points = edges_to_points(p_edges)
+    
     cnt = 0
     for p in points:
         ps = PoseStamped()
@@ -75,13 +93,35 @@ def PolygonTrajGenerator(msg, step):
 
     return msg     
 
-     
+
+def FromFileTrajGenerator(msg, move_plan):
+    if move_plan is None:
+        rospy.logerr("Move plan was not specified")
+        return 1
+    
+    edges = parse_plan(move_plan)
+
+    points = edges_to_points(edges)
+
+    cnt = 0
+    for p in points:
+        ps = PoseStamped()
+        ps.header = msg.header
+        ps.header.seq = cnt
+        cnt += 1
+        ps.pose.position.x = p[0]
+        ps.pose.position.y = p[1]
+        ps.pose.position.z = 0 
+        msg.poses.append(ps)   
+    
+    return msg
 
 
 def main():
     rospy.init_node("path_pub", anonymous=True)
     rospy.loginfo("path_pub init")
     traj_type = rospy.get_param('~traj_type')
+    move_plan = rospy.get_param('~move_plan')
 
     if not IsValidTrajType(traj_type):
         rospy.logerr("Not valid traj type")
@@ -103,6 +143,8 @@ def main():
         msg = SinTrajGenerator(msg, step)
     elif traj_type == 'polygon':
         msg = PolygonTrajGenerator(msg, step)
+    elif traj_type == 'from_file':
+        msg = FromFileTrajGenerator(msg, move_plan)
 
     while not rospy.is_shutdown():
         if path_pub.get_num_connections() > 1:
