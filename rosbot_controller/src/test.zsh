@@ -10,4 +10,4 @@ done
 
 echo source $path_/devel/setup.zsh
 source $path_/devel/setup.zsh
-roslaunch rosbot2 urock_system.launch traj_type:=sin
+roslaunch rosbot2 test_rosbot.launch traj_type:=sin rviz:=true
