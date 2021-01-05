@@ -152,6 +152,7 @@ def main():
         rospy.sleep(0.3)
 
     path_pub.publish(msg)
+    return
 
 if __name__ == '__main__':
     main()

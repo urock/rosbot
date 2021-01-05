@@ -39,7 +39,7 @@ class Goal():
 class Params():
 
     def __init__(self):
-        self.v_max = 10.0
+        self.v_max = 5.0
         self.w_max = 2.5
         self.xy_margin_squared = 0.05
 

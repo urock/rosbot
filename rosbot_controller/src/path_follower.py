@@ -162,6 +162,9 @@ class TrajFollower():
 
         rospy.logwarn("Trajectory finished. Error -> {:.2f}, T -> {:.2f}".
                         format(path_deviation, t1-t0))
+        rospy.signal_shutdown("path ended")
+        os.popen("rosnode kill /model_runner")
+        return
 
 def main():
     trajectory_follower = TrajFollower('trajectory_follower')
