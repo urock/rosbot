@@ -164,6 +164,7 @@ class TrajFollower():
                         format(path_deviation, t1-t0))
         rospy.signal_shutdown("path ended")
         os.popen("rosnode kill /model_runner")
+        os.popen("rosnode kill /plotter")
         return
 
 def main():

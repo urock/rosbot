@@ -25,8 +25,10 @@ done
 echo source $path_/devel/setup.zsh
 source $path_/devel/setup.zsh
 roslaunch rosbot2 urock_system.launch &
+roslaunch plotter plotter.launch track_time:=true &
 roslaunch rosbot_controller folow_path.launch traj_type:=sin
 ResetPose
-roslaunch rosbot_controller folow_path.launch traj_type:=sin
+roslaunch plotter plotter.launch track_time:=true &
+roslaunch rosbot_controller folow_path.launch traj_type:=polygon
 #ResetPose
 #roslaunch rosbot_controller folow_path.launch traj_type:=sin
