@@ -8,6 +8,7 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import Twist
 from datetime import datetime
 import matplotlib.pyplot as plt
+import numpy as np
 from plotter.plotter_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
 
 
@@ -123,6 +124,31 @@ class Plotter:
         write_to_file(path=path, data=data, file_name=name)
         path = self.module_path + '/pictures'
         save_plot(path=path, name=name)
+        all_data = [self.robot_state, self.model_state, self.trajectory]
+        self.build_general_graph(all_data, self.module_path + '/pictures')
+
+    def build_general_graph(self, data, folder_path):
+        """ """
+
+        # TODO make a universal function
+        x1, y1 = np.array(data[0]['x']), np.array(data[0]['y'])
+        x2, y2 = np.array(data[1]['x']), np.array(data[1]['y'])
+        x3, y3 = np.array(data[2]['x']), np.array(data[2]['y'])
+
+        plt.rcParams.update({'font.size': 14})  # font size
+        plt.rcParams['figure.figsize'] = (11.0, 8.0)
+        plt.figure("trajectory and states")
+
+        plt.plot(x1, y1, color='b', label='robot state', linewidth=3)
+        plt.plot(x2, y2, color='r', label='model state', linewidth=3)
+        plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
+
+        plt.xlabel('X')
+        plt.ylabel('Y')
+        plt.legend(loc='best')  # or loc=1
+        plt.grid(True)
+        save_plot(folder_path, name='general_graph', fmt='png')
+        # plt.show()
 
     def on_shutdown(self):
         """ """
@@ -135,6 +161,10 @@ class Plotter:
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='model_state', data=self.model_state)
+
+        all_data = [self.robot_state, self.model_state, self.trajectory]
+        path = self.module_path + '/pictures'
+        self.build_general_graph(all_data, path)
 
         if self.show_plots:
             show_graph()
