@@ -29,7 +29,10 @@ class Plotter:
         self.track_time = rospy.get_param("~track_time", False)
         # path to the output data folder
         self.module_path = rospy.get_param("~output_file")
+        # output folder name
+        self.output_folder = rospy.get_param("~output_folder")
 
+        self.module_path = self.module_path + self.output_folder
         if self.track_time:
             self.module_path += '/' + str(datetime.now().strftime('%Y-%m-%d-%H:%M:%S'))
 
@@ -65,6 +68,7 @@ class Plotter:
     def path_callback(self, msg):
         """stores path messages in a separate container"""
 
+        rospy.logwarn("GET NEW TRAJECTORY!!!!!!!")
         for p in msg.poses:
             x, y = p.pose.position.x, p.pose.position.y
             self.trajectory['x'].append(x)
