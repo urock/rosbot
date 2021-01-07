@@ -12,7 +12,7 @@ from std_msgs.msg import Header
 from geometry_msgs.msg import PoseStamped
 
 def IsValidTrajType(traj_type):
-    return traj_type in ('sin', 'polygon', 'from_file')
+    return 'sin' in traj_type or traj_type in ('polygon', 'from_file', 'complex')
 
 def parse_plan(file_name):
     edges = list()
@@ -57,9 +57,9 @@ def edges_to_points(edges):
     return points
 
 
-def SinTrajGenerator(msg, step):
+def SinTrajGenerator(msg, step, a=1, f=1):
     x_ar = np.arange(0,2*np.pi, step)   # start,stop,step
-    y_ar = np.sin(x_ar)
+    y_ar = int(a) * np.sin(int(f) * x_ar)
 
     cnt = 0
     for i in range(len(x_ar)):
@@ -117,6 +117,12 @@ def FromFileTrajGenerator(msg, move_plan):
     return msg
 
 
+def parse_sin_traj(traj_type):
+    coef = traj_type.split('sin')
+    a = coef[0] if coef[0] != '' else 1
+    f = coef[1] if coef[1] != '' else 1
+    return a, f
+
 def main():
     rospy.init_node("path_pub", anonymous=True)
     rospy.loginfo("path_pub init")
@@ -126,6 +132,7 @@ def main():
     if not IsValidTrajType(traj_type):
         rospy.logerr("Not valid traj type")
         return
+    
 
     path_topic_name = "/path"
 
@@ -139,8 +146,10 @@ def main():
 
     step = 0.1
 
-    if traj_type == 'sin':
-        msg = SinTrajGenerator(msg, step)
+    if 'sin' in traj_type:
+        print("TRY PARSE", traj_type )
+        amplitude, freq = parse_sin_traj(traj_type)
+        msg = SinTrajGenerator(msg, step, amplitude, freq)
     elif traj_type == 'polygon':
         msg = PolygonTrajGenerator(msg, step)
     elif traj_type == 'from_file':
@@ -151,6 +160,7 @@ def main():
             break
         rospy.sleep(0.3)
 
+    rospy.sleep(2.0) # sometimes plotter_node can't get this message, and so we need some delay
     path_pub.publish(msg)
     return
 
