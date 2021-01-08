@@ -1,21 +1,7 @@
 <launch>
 
-    <arg name="plotter"         default="false" />
     <arg name="traj_type"       default="sin" />
     <arg name="move_plan"       default="$(find rosbot_controller)/plans/plan.txt" />
-
-    <!-- For plotter node -->
-    <arg name="show_plots"      default="false"/>
-    <arg name="track_time"      default="true"/>
-    <arg name="output_file"     default="$(find plotter)/output_data"/>
-
-    <group if="$(arg plotter)">
-        <include file="$(find plotter)/launch/plotter.launch">
-            <arg name="show_plots"          value="$(arg show_plots)"/>     
-            <arg name="track_time"          value="$(arg track_time)"/> 
-            <arg name="output_file"         value="$(arg output_file)"/>
-        </include>
-    </group>
 
     <include file="$(find rosbot_controller)/launch/folow_path.launch">
         <arg name="traj_type"               value="$(arg traj_type)"/>     
