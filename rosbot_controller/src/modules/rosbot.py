@@ -39,8 +39,8 @@ class Goal():
 class Params():
 
     def __init__(self):
-        self.v_max = 5.0
-        self.w_max = 2.5
+        self.v_max = rospy.get_param("/max_lin_vel", 5.0)
+        self.w_max = rospy.get_param("/max_cir_vel", 2.5)
         self.xy_margin_squared = 0.05
 
 
