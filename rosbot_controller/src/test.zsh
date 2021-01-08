@@ -24,11 +24,19 @@ done
 
 echo source $path_/devel/setup.zsh
 source $path_/devel/setup.zsh
-roslaunch rosbot2 urock_system.launch &
-roslaunch plotter plotter.launch track_time:=true &
-roslaunch rosbot_controller folow_path.launch traj_type:=sin
-ResetPose
-roslaunch plotter plotter.launch track_time:=true &
-roslaunch rosbot_controller folow_path.launch traj_type:=polygon
-#ResetPose
-#roslaunch rosbot_controller folow_path.launch traj_type:=sin
+roslaunch rosbot2 urock_system.launch rviz:=true gui:=false &
+for traj in 2.5sin -1sin 3sin1.5 sin0.1 polygon
+  do
+    for lin_vel in 0.5 2.5 5.0 7.0 10.0 15.0
+      do
+        for cir_vel in 0.5 2.5 5.0 7.0 10.0 15.0
+          do
+            rosparam set /max_lin_vel $lin_vel
+            rosparam set /max_cir_vel $cir_vel
+            roslaunch plotter plotter.launch output_folder:=/$traj/$lin_vel-$cir_vel &
+            roslaunch rosbot2 test_rosbot.launch traj_type:=$traj
+            ResetPose
+          done      
+      done
+  done
+rosnode kill --all
