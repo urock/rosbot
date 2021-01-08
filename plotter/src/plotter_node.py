@@ -160,15 +160,20 @@ class Plotter:
         # unsubscribe
         self.trajectory_sub.unregister()
         self.control_sub.unregister()
+
+
+        all_data = [self.robot_state, self.model_state, self.trajectory]
+        path = self.module_path + '/pictures'
+        self.build_general_graph(all_data, path)
         # Process and save collected data
         self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='model_state', data=self.model_state)
 
-        all_data = [self.robot_state, self.model_state, self.trajectory]
-        path = self.module_path + '/pictures'
-        self.build_general_graph(all_data, path)
+        # all_data = [self.robot_state, self.model_state, self.trajectory]
+        # path = self.module_path + '/pictures'
+        # self.build_general_graph(all_data, path)
 
         if self.show_plots:
             show_graph()
