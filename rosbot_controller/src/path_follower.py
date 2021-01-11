@@ -162,11 +162,16 @@ class TrajFollower():
 
         rospy.logwarn("Trajectory finished. Error -> {:.2f}, T -> {:.2f}".
                         format(path_deviation, t1-t0))
-        # rospy.signal_shutdown("path ended")
-        rospy.sleep(30.0)
-        os.popen("rosnode kill /model_runner")
-        # os.popen("rosnode kill /model_follower")
-        os.popen("rosnode kill /plotter")
+
+        if self.robot_frame == 'base_link':
+            rospy.set_param("/base_link_deviation", path_deviation)
+            os.popen("rosnode kill /model_runner")
+            os.popen("rosnode kill /model_follower")
+            os.popen("rosnode kill /plotter")
+
+        if self.robot_frame == 'model_link':
+            rospy.set_param("/model_deviation", path_deviation)
+
         return
 
 def main():

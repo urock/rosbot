@@ -128,13 +128,17 @@ class Plotter:
         write_to_file(path=path, data=data, file_name=name)
         path = self.module_path + '/pictures'
         save_plot(path=path, name=name)
-        all_data = [self.robot_state, self.model_state, self.trajectory]
-        self.build_general_graph(all_data, self.module_path + '/pictures')
+        # all_data = [self.robot_state, self.model_state, self.trajectory]
+        # self.build_general_graph(all_data, self.module_path + '/pictures')
 
-    def build_general_graph(self, data, folder_path):
-        """ """
+    def build_general_graph(self, data, folder):
+        """Build a graph containing information about what the trajectory was,
+         how the robot (robot state) passed it and how the model (model state) passed it """
 
         # TODO make a universal function
+
+        folder_path = self.module_path + folder
+
         x1, y1 = np.array(data[0]['x']), np.array(data[0]['y'])
         x2, y2 = np.array(data[1]['x']), np.array(data[1]['y'])
         x3, y3 = np.array(data[2]['x']), np.array(data[2]['y'])
@@ -154,6 +158,20 @@ class Plotter:
         save_plot(folder_path, name='general_graph', fmt='png')
         # plt.show()
 
+    def process_path_deviation(self, folder='/data'):
+        """Get the deviation of the base_link and model_link path 
+        from the parameter server and store it in a separate file """
+
+        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 2))
+        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 2))
+        path = self.module_path + folder + '/deviation.txt'
+        with open(path, 'w+') as file:
+            file.write('base_link deviation: {}\n'.format(base_link_deviation))
+            file.write('model_link deviation: {}\n'.format(model_deviation))
+        
+        rospy.set_param("/base_link_deviation", 0.0)
+        rospy.set_param("/model_deviation", 0.0)
+
     def on_shutdown(self):
         """ """
 
@@ -161,19 +179,16 @@ class Plotter:
         self.trajectory_sub.unregister()
         self.control_sub.unregister()
 
-
-        all_data = [self.robot_state, self.model_state, self.trajectory]
-        path = self.module_path + '/pictures'
-        self.build_general_graph(all_data, path)
         # Process and save collected data
+        data = [self.robot_state, self.model_state, self.trajectory]
+        self.build_general_graph(data, '/pictures')
+
         self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='model_state', data=self.model_state)
 
-        # all_data = [self.robot_state, self.model_state, self.trajectory]
-        # path = self.module_path + '/pictures'
-        # self.build_general_graph(all_data, path)
+        self.process_path_deviation(folder='/data')
 
         if self.show_plots:
             show_graph()
