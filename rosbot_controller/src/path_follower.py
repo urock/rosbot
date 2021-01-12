@@ -38,6 +38,7 @@ class TrajFollower():
 
         self.cmd_freq = 10.0 # Hz       
         self.dt = 1.0 / self.cmd_freq  
+        self.time_spent = 0
 
         self.robot_state = RobotState()     
         self.current_goal = Goal()               
@@ -45,13 +46,17 @@ class TrajFollower():
         self.goal_queue = []
         self.path = []
 
+        self.path_deviation = 0.0
+
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.cmd_pub = rospy.Publisher(self.cmd_topic, Twist, queue_size=5)
-        
+
         self.rate = rospy.Rate(self.cmd_freq)
         self.path_index = 0
         self.got_path = False
+
+        rospy.on_shutdown(self.on_shutdown)
 
 
     def get_robot_state_from_tf(self):
@@ -120,11 +125,7 @@ class TrajFollower():
         twist_cmd.angular.z = control.w
         self.cmd_pub.publish(twist_cmd)
 
-      
-
     def run(self):
-
-        path_deviation = 0.0
 
         t0 = rospy.Time.now().to_sec()
         
@@ -149,8 +150,8 @@ class TrajFollower():
                     self.rate.sleep()
                     break
 
-            path_deviation = path_deviation + self.get_min_dist_to_path()
-            # rospy.logwarn("path_deviation -> {:.2f}".format(path_deviation))
+            self.path_deviation = self.path_deviation + self.get_min_dist_to_path()
+            # rospy.logwarn("path_deviation -> {:.2f}".format(self.path_deviation))
 
             control = self.robot.calculate_contol(self.current_goal)
 
@@ -161,18 +162,19 @@ class TrajFollower():
         t1 = rospy.Time.now().to_sec()
 
         rospy.logwarn("Trajectory finished. Error -> {:.2f}, T -> {:.2f}".
-                        format(path_deviation, t1-t0))
+                        format(self.path_deviation, t1-t0))
 
+        return
+
+    def on_shutdown(self):
         if self.robot_frame == 'base_link':
-            rospy.set_param("/base_link_deviation", path_deviation)
+            rospy.set_param("/base_link_deviation", self.path_deviation)
             os.popen("rosnode kill /model_runner")
             os.popen("rosnode kill /model_follower")
             os.popen("rosnode kill /plotter")
 
         if self.robot_frame == 'model_link':
-            rospy.set_param("/model_deviation", path_deviation)
-
-        return
+            rospy.set_param("/model_deviation", self.path_deviation)
 
 def main():
     trajectory_follower = TrajFollower('trajectory_follower')
