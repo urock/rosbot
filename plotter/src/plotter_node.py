@@ -9,8 +9,8 @@ from geometry_msgs.msg import Twist
 from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 from plotter.plotter_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
-
 
 class Plotter:
     """Class for visualization in the form of graphs (also saves to text file)
@@ -31,14 +31,12 @@ class Plotter:
         self.module_path = rospy.get_param("~output_file")
         # output folder name
         self.output_folder = rospy.get_param("~output_folder")
+        #
+        self.timeout = int(rospy.get_param("~timeout", 0 ))
 
         self.module_path = self.module_path + self.output_folder
         if self.track_time:
             self.module_path += '/' + str(datetime.now().strftime('%Y-%m-%d-%H:%M:%S'))
-
-        rospy.logwarn("Show plots - {}".format(self.show_plots))
-        rospy.logwarn("Track time - {}".format(self.show_plots))
-        rospy.logwarn("Output data folder - {}".format(self.module_path))
 
         # declare tf buffer and listener for working with TF transformations
         self.tf_buffer = tf2_ros.Buffer()
@@ -56,19 +54,32 @@ class Plotter:
         self.robot_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
         # container for model state
         self.model_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
+        # time spent running the simulator (for automated tests)
+        self.time_spent = 0
 
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.control_sub = rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
         rospy.Timer(rospy.Duration(0.1), self.timer_callback)
 
+        if self.timeout > 0:
+            rospy.Timer(rospy.Duration(1), self.timeout_callback)
+
         # set the function that will be executed when shutdown
         rospy.on_shutdown(self.on_shutdown)
+
+    def timeout_callback(self, time_event):
+        """called every second, calculates the time spent on simulation,
+        if it is more than the timeout, turns off the path follower nodes for the rosbot"""
+
+        self.time_spent += 1
+        if self.time_spent > self.timeout:
+            os.popen("rosnode kill /model_runner")
+            os.popen("rosnode kill /model_follower")
 
     def path_callback(self, msg):
         """stores path messages in a separate container"""
 
-        rospy.logwarn("GET NEW TRAJECTORY!!!!!!!")
         for p in msg.poses:
             x, y = p.pose.position.x, p.pose.position.y
             self.trajectory['x'].append(x)
@@ -151,26 +162,23 @@ class Plotter:
         plt.plot(x2, y2, color='r', label='model state', linewidth=3)
         plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
 
+        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 2))
+        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 2))
+        plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation, model_deviation), fontsize=14)
+
         plt.xlabel('X')
         plt.ylabel('Y')
         plt.legend(loc='best')  # or loc=1
         plt.grid(True)
         save_plot(folder_path, name='general_graph', fmt='png')
+
+        os.makedirs(self.module_path + '/data')
+        with open(self.module_path + '/data/deviation.txt', 'w+') as file:
+            file.writelines('Base link dev = {}\n'.format(base_link_deviation))
+            file.writelines('Model link dev = {}\n'.format(model_deviation))
+
+
         # plt.show()
-
-    def process_path_deviation(self, folder='/data'):
-        """Get the deviation of the base_link and model_link path 
-        from the parameter server and store it in a separate file """
-
-        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 2))
-        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 2))
-        path = self.module_path + folder + '/deviation.txt'
-        with open(path, 'w+') as file:
-            file.write('base_link deviation: {}\n'.format(base_link_deviation))
-            file.write('model_link deviation: {}\n'.format(model_deviation))
-        
-        rospy.set_param("/base_link_deviation", 0.0)
-        rospy.set_param("/model_deviation", 0.0)
 
     def on_shutdown(self):
         """ """
@@ -188,7 +196,7 @@ class Plotter:
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='model_state', data=self.model_state)
 
-        self.process_path_deviation(folder='/data')
+        rospy.logwarn("Plotter: output data folder - {}".format(self.module_path))
 
         if self.show_plots:
             show_graph()
