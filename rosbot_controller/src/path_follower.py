@@ -38,7 +38,6 @@ class TrajFollower():
 
         self.cmd_freq = 10.0 # Hz       
         self.dt = 1.0 / self.cmd_freq  
-        self.time_spent = 0
 
         self.robot_state = RobotState()     
         self.current_goal = Goal()               
