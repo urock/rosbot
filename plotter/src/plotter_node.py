@@ -164,7 +164,7 @@ class Plotter:
 
         base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 2))
         model_deviation = str(round(rospy.get_param("/model_deviation", 0), 2))
-        plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation, model_deviation), fontsize=14)
+        plt.text(x=0, y=3, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation, model_deviation), fontsize=14)
 
         plt.xlabel('X')
         plt.ylabel('Y')
