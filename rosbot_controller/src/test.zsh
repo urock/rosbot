@@ -27,7 +27,7 @@ source $path_/devel/setup.zsh
 
 roslaunch rosbot2 urock_system.launch rviz:=true gui:=false &
 # for traj in 2.5sin -1sin 3sin1.5 sin0.5 polygon
-for traj in 2.5sin polygon
+for traj in 2.5sin1.5
   do
     # for lin_vel in 0.5 2.5 5.0 7.0 10.0
     for lin_vel in 4.0
@@ -37,7 +37,7 @@ for traj in 2.5sin polygon
           do
             rosparam set /max_lin_vel $lin_vel
             rosparam set /max_cir_vel $cir_vel
-            rosparam set /cmd_freq 10
+            # rosparam set /cmd_freq 10
             roslaunch plotter plotter.launch output_folder:=/traj=$traj-lin_vel=$lin_vel-cir_vel=$cir_vel-cmd_freq=10 timeout:=300 &
             roslaunch rosbot2 test_rosbot.launch traj_type:=$traj
             ResetPose
