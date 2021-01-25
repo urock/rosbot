@@ -8,8 +8,6 @@ import math
 import numpy as np
 from geometry_msgs.msg import PoseStamped, Twist
 from tf.transformations import quaternion_from_euler
-
-
 from modules.rosbot import Rosbot, RobotState, RobotControl
 
 
