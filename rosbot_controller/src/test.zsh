@@ -46,13 +46,10 @@ source $(catkin locate)/devel/setup.zsh
 roslaunch rosbot2 urock_system.launch rviz:=true gui:=false &
 for traj in $(echo $TRAJECTORIES | tr " " " ")
   do
-    echo $traj
     for v in $(echo $MAX_V_LIST | tr " " " ")
       do
-        echo $v
         for w in $(echo $MAX_W_LIST | tr " " " ")
           do
-            echo $w
             rosparam set /max_v $v
             rosparam set /max_w $w
             roslaunch plotter plotter.launch output_folder:=/traj=$traj-max_v=$v-max_w=$w timeout:=300 &
