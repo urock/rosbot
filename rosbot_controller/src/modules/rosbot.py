@@ -39,8 +39,8 @@ class Goal():
 class Params():
 
     def __init__(self):
-        self.v_max = rospy.get_param("/max_lin_vel", 5.0)
-        self.w_max = rospy.get_param("/max_cir_vel", 2.5)
+        self.v_max = rospy.get_param("/max_v", 5.0)
+        self.w_max = rospy.get_param("/max_w", 2.5)
         self.xy_margin_squared = 0.05
 
 
@@ -82,7 +82,8 @@ class Rosbot():
 
         if (abs(alpha) > math.pi): 
             alpha -= np.sign(alpha) * 2 * math.pi
-
+        # print(self.params.v_max)
+        # print(self.params.w_max)
         v = self.params.v_max * math.tanh(r) * math.cos(alpha)
         if r > self.eps_r:
             w = self.params.w_max * alpha + math.tanh(r)*math.sin(alpha)*math.cos(alpha)/r

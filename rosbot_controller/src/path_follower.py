@@ -37,7 +37,6 @@ class TrajFollower():
         self.tf_br = tf.TransformBroadcaster()
 
         self.cmd_freq = 30.0  # Hz
-        # self.cmd_freq = rospy.get_param('/cmd_freq')
         self.dt = 1.0 / self.cmd_freq
 
         self.robot_state = RobotState()
