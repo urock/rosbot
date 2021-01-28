@@ -61,7 +61,7 @@ def write_to_file(path, data, file_name):
         item = str()
         for key in ('t', 'x', 'y', 'yaw'):
             if key in data.keys():
-                item = item + str(round(data[key][i], 2)) + ' '
+                item = item + str(round(data[key][i], 5)) + ' '
         output_file.write(str(item) + '\n')
 
 
