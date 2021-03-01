@@ -78,7 +78,7 @@ class Rosbot():
         r = self.dist_to_goal_L2(goal)
 
         azim_goal = math.atan2((goal.y - self.state.y),(goal.x - self.state.x))
-        alpha = azim_goal - self.state.yaw                                        
+        alpha = azim_goal - self.state.yaw                                
 
         if (abs(alpha) > math.pi): 
             alpha -= np.sign(alpha) * 2 * math.pi

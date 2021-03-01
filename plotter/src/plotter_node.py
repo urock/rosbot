@@ -10,6 +10,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import time as time_
 from plotter.plotter_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
 
 
@@ -44,7 +45,8 @@ class Plotter:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         # node init time
-        self.init_time = round(rospy.get_time(), 5)
+        # self.init_time = round(rospy.get_time(), 5)
+        self.init_time = time_.time()
         # flag for the first callback (used in Tf callback)
         self.first_tick = True
         # container for trajectory (/path) fron path_publisher node
@@ -57,17 +59,25 @@ class Plotter:
         self.model_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
         # time spent running the simulator (for automated tests)
         self.time_spent = 0
-
+        self.current_control = list()
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.control_sub = rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
-        # rospy.Timer(rospy.Duration(0.1), self.timer_callback)
+        rospy.Timer(rospy.Duration(0.033), self.timer_callback)
 
         if self.timeout > 0:
             rospy.Timer(rospy.Duration(1), self.timeout_callback)
 
         # set the function that will be executed when shutdown
         rospy.on_shutdown(self.on_shutdown)
+
+    def timer_callback(self, timer_event):
+        if len(self.current_control) > 0:
+            self.time = time_.time() - self.init_time
+            self.control['t'].append(self.time)
+            self.control['x'].append(self.current_control[0])
+            self.control['yaw'].append(self.current_control[1])
+            self.get_states()
 
     def timeout_callback(self, time_event):
         """called every second, calculates the time spent on simulation,
@@ -91,14 +101,15 @@ class Plotter:
 
         if self.first_tick:
             self.first_tick = False
-            self.init_time = round(rospy.get_time(), 5)
+            self.init_time = time_.time()        
 
-        time = round(rospy.get_time() - self.init_time, 5)
-        self.control['t'].append(time)
-        self.control['x'].append(msg.linear.x)
-        self.control['yaw'].append(msg.angular.z)
-        self.get_states()
-        # print(msg.angular.z)
+        # self.time = round(rospy.get_time() - self.init_time, 5)
+        # self.time = time_.time() - self.init_time
+        # self.control['t'].append(self.time)
+        # self.control['x'].append(msg.linear.x)
+        # self.control['yaw'].append(msg.angular.z)
+        self.current_control = list([msg.linear.x, msg.angular.z])
+        # self.get_states()
 
 
     def get_states(self, timer_event=None):
@@ -107,7 +118,7 @@ class Plotter:
 
         # if it is the first callback set init time
         self.fill_state(dst_frame='base_link', state=self.robot_state)
-        self.fill_state(dst_frame='model_link', state=self.model_state)
+        # self.fill_state(dst_frame='model_link', state=self.model_state)
 
     def fill_state(self, dst_frame, state={}, src_frame='odom'):
         """Receives the state of the model or robot via TF transformation"""
@@ -119,8 +130,8 @@ class Plotter:
             trans_vec = tf_transform.translation
             rot_quat = tf_transform.rotation
             yaw = euler_from_quaternion([rot_quat.x, rot_quat.y, rot_quat.z, rot_quat.w])[2]
-            time = round(rospy.get_time() - self.init_time, 5)
-            state['t'].append(time)
+            # self.time = round(rospy.get_time() - self.init_time, 5)
+            state['t'].append(self.time)
             state['x'].append(trans_vec.x)
             state['y'].append(trans_vec.y)
             state['yaw'].append(yaw)
@@ -164,11 +175,11 @@ class Plotter:
         plt.figure("trajectory and states")
 
         plt.plot(x1, y1, color='b', label='robot state', linewidth=3)
-        plt.plot(x2, y2, color='r', label='model state', linewidth=3)
+        # plt.plot(x2, y2, color='r', label='model state', linewidth=3)
         plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
 
-        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 2))
-        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 2))
+        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
+        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
         plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation,
                                                                          model_deviation),
                                                                          fontsize=14)
@@ -201,7 +212,7 @@ class Plotter:
         self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
         self.process_collected_data(name='robot_state', data=self.robot_state)
-        self.process_collected_data(name='model_state', data=self.model_state)
+        # self.process_collected_data(name='model_state', data=self.model_state)
 
         rospy.logwarn("Plotter: output data folder - {}".format(self.module_path))
 
