@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 # license removed for brevity
 import rospy
-import os
-import roslib
 import tf
-import math
-import numpy as np
-from geometry_msgs.msg import PoseStamped, Twist
-from tf.transformations import quaternion_from_euler
+from geometry_msgs.msg import Twist
+
 from modules.rosbot import Rosbot, RobotState, RobotControl
 
 
-class ModelRunner():
+class ModelRunner:
     """
 
     """
