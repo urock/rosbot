@@ -63,64 +63,61 @@ class NNModelRunner:
     #                              self.robot_frame,
     #                              self.odom_frame)
 
-    def publish_arrow(self, points):
-        for point in points:
-            pMarker = Marker()
-            pMarker.header.frame_id = 'odom'
-            pMarker.header.stamp = rospy.Time.now()
-            pMarker.id = 0
-            pMarker.type = Marker.ARROW
-            pMarker.action = Marker.ADD  # ADD
-            pMarker.pose.position.x = point.x
-            pMarker.pose.position.y = point.y
-            pMarker.pose.position.z = 0.1
-            orinet = euler_to_quaternion(point.yaw, 0, 0)
-            # [qx, qy, qz, qw]
-            pMarker.pose.orientation.x = orinet[0]
-            pMarker.pose.orientation.y = orinet[1]
-            pMarker.pose.orientation.z = orinet[2]
-            pMarker.pose.orientation.w = orinet[3]
-            pMarker.scale.x = 0.3
-            pMarker.scale.y = 0.05
-            pMarker.scale.z = 0.1
+    def publish_arrow(self, point):
+        pMarker = Marker()
+        pMarker.header.frame_id = 'odom'
+        pMarker.header.stamp = rospy.Time.now()
+        pMarker.id = 0
+        pMarker.type = Marker.ARROW
+        pMarker.action = Marker.ADD  # ADD
+        pMarker.pose.position.x = point.x
+        pMarker.pose.position.y = point.y
+        pMarker.pose.position.z = 0.1
+        orinet = euler_to_quaternion(point.yaw, 0, 0)
+        # [qx, qy, qz, qw]
+        pMarker.pose.orientation.x = orinet[0]
+        pMarker.pose.orientation.y = orinet[1]
+        pMarker.pose.orientation.z = orinet[2]
+        pMarker.pose.orientation.w = orinet[3]
+        pMarker.scale.x = 0.3
+        pMarker.scale.y = 0.05
+        pMarker.scale.z = 0.1
 
-            pMarker.color.r = 1.0
-            pMarker.color.g = 1.0
-            pMarker.color.b = 0.0
-            pMarker.color.a = 1.0
-            self.path_pub.publish(pMarker)
+        pMarker.color.r = 1.0
+        pMarker.color.g = 1.0
+        pMarker.color.b = 0.0
+        pMarker.color.a = 1.0
+        self.path_pub.publish(pMarker)
 
-    def publish_sphere(self, points):
-        global j
-        for point in points:
-            print(j)
-            pMarker = Marker()
-            pMarker.header.frame_id = 'odom'
-            pMarker.header.stamp = rospy.Time.now()
-            pMarker.id = j
-            pMarker.type = Marker.SPHERE
-            pMarker.action = Marker.ADD  # ADD
-            pMarker.pose.position.x = point.x
-            pMarker.pose.position.y = point.y
-            pMarker.pose.position.z = 0.1
-            orinet = euler_to_quaternion(point.yaw, 0, 0)
-            # [qx, qy, qz, qw]
-            pMarker.pose.orientation.x = orinet[0]
-            pMarker.pose.orientation.y = orinet[1]
-            pMarker.pose.orientation.z = orinet[2]
-            pMarker.pose.orientation.w = orinet[3]
-            pMarker.scale.x = 0.02
-            pMarker.scale.y = 0.02
-            pMarker.scale.z = 0.02
+    def publish_sphere(self, point, i):
+        print(i)
+        pMarker = Marker()
+        pMarker.header.frame_id = 'odom'
+        pMarker.header.stamp = rospy.Time.now()
+        pMarker.id = i
+        pMarker.lifetime = rospy.Duration(0)
+        pMarker.type = Marker.SPHERE
+        pMarker.action = Marker.ADD  # ADD
+        pMarker.pose.position.x = point.x
+        pMarker.pose.position.y = point.y
+        pMarker.pose.position.z = 0.1
+        orinet = euler_to_quaternion(point.yaw, 0, 0)
+        # [qx, qy, qz, qw]
+        pMarker.pose.orientation.x = orinet[0]
+        pMarker.pose.orientation.y = orinet[1]
+        pMarker.pose.orientation.z = orinet[2]
+        pMarker.pose.orientation.w = orinet[3]
+        pMarker.scale.x = 0.02
+        pMarker.scale.y = 0.02
+        pMarker.scale.z = 0.02
 
-            pMarker.color.r = 1.0
-            pMarker.color.g = 1.0
-            pMarker.color.b = 0.0
-            pMarker.color.a = 1.0
-            pMarker.lifetime = rospy.Duration(0)
-            # pMarker.points.append(pMarker.pose.position)
-            self.path_pub.publish(pMarker)
-            j += 1
+        pMarker.color.r = 1.0
+        pMarker.color.g = 1.0
+        pMarker.color.b = 0.0
+        pMarker.color.a = 1.0
+        pMarker.lifetime = rospy.Duration(0)
+        # pMarker.points.append(pMarker.pose.position)
+        self.path_pub.publish(pMarker)
 
 
 
@@ -148,8 +145,8 @@ class NNModelRunner:
             rospy.logerr("NN_MODEL: " + self.model_state.to_str())
             self.model_states.append(self.model_state)
             self.model_state_set.add(self.model_state)
-            self.publish_arrow([self.model_state])
-            self.publish_sphere(list(self.model_state_set)[::30])
+            self.publish_arrow(self.model_state)
+            self.publish_sphere(self.model_state, i=len(self.model_states))
             # print(self.model_states[0])
             self.last_timestamp = current_timestamp
 
