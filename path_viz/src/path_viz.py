@@ -50,6 +50,11 @@ class path_viz:
 			self.pMarker.color.g = 0.0
 			self.pMarker.color.b = 1.0
 			self.pMarker.color.a = 1.0
+		elif color == 'yellow':
+			self.pMarker.color.r = 1.0
+			self.pMarker.color.g = 1.0
+			self.pMarker.color.b = 0.0
+			self.pMarker.color.a = 1.0
 
 
 	def publish_pose_marker(self):
@@ -124,6 +129,7 @@ def main():
 
 	path_viz("base_link", 'blue', tf_listener)
 	path_viz("model_link", 'red', tf_listener) 
+	path_viz("nn_model_link", 'yellow', tf_listener) 
 
 	try:
 		rospy.spin()

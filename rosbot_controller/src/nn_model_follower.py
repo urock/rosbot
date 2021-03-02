@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 # license removed for brevity
 import rospy
-# import tf
+import sys
 import numpy as np
-from visualization_msgs.msg import Marker
 from geometry_msgs.msg import Twist
+from geometry_msgs.msg import TransformStamped
+from tf2_msgs.msg import TFMessage
 import nnio
 from modules.rosbot import Rosbot, RobotState, RobotControl
 
-j = 1
 
 def euler_to_quaternion(yaw, pitch, roll):
     qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(
@@ -25,136 +25,96 @@ def euler_to_quaternion(yaw, pitch, roll):
 
 class NNModelRunner:
     """
-
+    
     """
 
-    def __init__(self, node_name):
+    def __init__(self, node_name, model_path):
         self.node_name = node_name
         rospy.init_node(self.node_name, anonymous=True)
-        self.robot_frame = rospy.get_param('~robot_frame', "NNMODEL")
+        self.parent_frame = rospy.get_param('~parent_frame', "odom")
+        self.model_frame = rospy.get_param('~robot_frame', "nn_model_link")
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
-        self.model_path = rospy.get_param('~model_path',
-                                          "/home/vytautas/MS/catkin_ws/src/rosbot/rosbot_controller/src/model.onnx")
+        # self.model_path = rospy.get_param('~model_path',
+        #                                   "/home/vytautas/MS/catkin_ws/src/rosbot/rosbot_controller/src/model.onnx")
+        self.model_path = model_path
         self.odom_frame = 'odom'
 
         self.robot = Rosbot()
         self.model_state = RobotState()
-
-        # self.tf_br = tf.TransformBroadcaster()
 
         self.cmd_freq = 30.0  # Hz
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
         self.control_vector = RobotControl(0.0, 0.0)
-        self.cmd_sub = rospy.Subscriber(self.cmd_topic, Twist, self.command_callback)
-        self.path_pub = rospy.Publisher('/NN_MODEL', Marker, queue_size=1)
         self.last_timestamp = rospy.Time.now().to_sec()
         self.model = None
-        self.model_states = list()
-        self.model_state_set = set()
+        self.cmd_sub = rospy.Subscriber(self.cmd_topic, Twist, self.command_callback)
+        self.tf_pub = rospy.Publisher('/tf', TFMessage, queue_size=1)
 
-    # def broadcast_model_tf(self, state):
-    #     pose = (state.x, state.y, 0.0)
-    #     orient = tf.transformations.quaternion_from_euler(0, 0, state.yaw)
-    #
-    #     self.tf_br.sendTransform(pose, orient,
-    #                              rospy.Time.now(),
-    #                              self.robot_frame,
-    #                              self.odom_frame)
+    def broadcast_model_tf(self, state):
+        """
+        Send TF transform from odom to nn_model_link
+        Args:
+            state: current nn model state
+        Return:
+            _
+        """
+        q = euler_to_quaternion(state.yaw, 0, 0)
+        msg = TransformStamped()
+        msg.header.seq = 0
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = "odom"
+        msg.child_frame_id = self.model_frame
+        msg.transform.translation.x = state.x
+        msg.transform.translation.y = state.y
+        msg.transform.translation.z = 0.1
+        msg.transform.rotation.x = q[0]
+        msg.transform.rotation.y = q[1]
+        msg.transform.rotation.z = q[2]
+        msg.transform.rotation.w = q[3]
 
-    def publish_arrow(self, point):
-        pMarker = Marker()
-        pMarker.header.frame_id = 'odom'
-        pMarker.header.stamp = rospy.Time.now()
-        pMarker.id = 0
-        pMarker.type = Marker.ARROW
-        pMarker.action = Marker.ADD  # ADD
-        pMarker.pose.position.x = point.x
-        pMarker.pose.position.y = point.y
-        pMarker.pose.position.z = 0.1
-        orinet = euler_to_quaternion(point.yaw, 0, 0)
-        # [qx, qy, qz, qw]
-        pMarker.pose.orientation.x = orinet[0]
-        pMarker.pose.orientation.y = orinet[1]
-        pMarker.pose.orientation.z = orinet[2]
-        pMarker.pose.orientation.w = orinet[3]
-        pMarker.scale.x = 0.3
-        pMarker.scale.y = 0.05
-        pMarker.scale.z = 0.1
-
-        pMarker.color.r = 1.0
-        pMarker.color.g = 1.0
-        pMarker.color.b = 0.0
-        pMarker.color.a = 1.0
-        self.path_pub.publish(pMarker)
-
-    def publish_sphere(self, point, i):
-        print(i)
-        pMarker = Marker()
-        pMarker.header.frame_id = 'odom'
-        pMarker.header.stamp = rospy.Time.now()
-        pMarker.id = i
-        pMarker.lifetime = rospy.Duration(0)
-        pMarker.type = Marker.SPHERE
-        pMarker.action = Marker.ADD  # ADD
-        pMarker.pose.position.x = point.x
-        pMarker.pose.position.y = point.y
-        pMarker.pose.position.z = 0.1
-        orinet = euler_to_quaternion(point.yaw, 0, 0)
-        # [qx, qy, qz, qw]
-        pMarker.pose.orientation.x = orinet[0]
-        pMarker.pose.orientation.y = orinet[1]
-        pMarker.pose.orientation.z = orinet[2]
-        pMarker.pose.orientation.w = orinet[3]
-        pMarker.scale.x = 0.02
-        pMarker.scale.y = 0.02
-        pMarker.scale.z = 0.02
-
-        pMarker.color.r = 1.0
-        pMarker.color.g = 1.0
-        pMarker.color.b = 0.0
-        pMarker.color.a = 1.0
-        pMarker.lifetime = rospy.Duration(0)
-        # pMarker.points.append(pMarker.pose.position)
-        self.path_pub.publish(pMarker)
-
-
+        self.tf_pub.publish(TFMessage([msg]))
 
     def command_callback(self, msg):
+        """
+        save msg to contro_vector (new current control)
+        """
         self.control_vector = RobotControl(msg.linear.x, msg.angular.z)
         # rospy.logerr(self.robot_frame + ": " + self.control_vector.to_str())
 
     def print_state(self, state):
+        """
+        print current state
+        """
         rospy.loginfo(state.to_str())
 
     def load_nn_model(self):
-        self.model = nnio.ONNXModel("model.onnx")
-        # x = np.array([[2.1497, 0.0225, 0.0735, -1.3472, -2.2071]], dtype=np.float32)
-        # onnx_out = self.model(x)
-        # print("onnx out {}".format(onnx_out))
+        """
+        load NN model (.onnx) from given path, using nnio module
+        """
+        self.model = nnio.ONNXModel(self.model_path)
 
     def run(self):
         self.load_nn_model()
         while not rospy.is_shutdown():
             current_timestamp = rospy.Time.now().to_sec()
             dt = current_timestamp - self.last_timestamp
-            # rospy.logerr("CONTROL" + self.control_vector.to_str())
-            self.model_state = self.robot.update_state_by_nn_model(self.model, self.control_vector,
-                                                                   dt)
+            self.model_state = self.robot.update_state_by_nn_model(
+                self.model,
+                self.control_vector,
+                dt
+            )
             rospy.logerr("NN_MODEL: " + self.model_state.to_str())
-            self.model_states.append(self.model_state)
-            self.model_state_set.add(self.model_state)
-            self.publish_arrow(self.model_state)
-            self.publish_sphere(self.model_state, i=len(self.model_states))
-            # print(self.model_states[0])
+            self.broadcast_model_tf(self.model_state)
             self.last_timestamp = current_timestamp
 
             self.rate.sleep()
 
 
 def main():
-    robot_model = NNModelRunner('robot_model')
+    model_path = sys.argv[1]
+    robot_model = NNModelRunner('robot_model', model_path)
     robot_model.run()
 
 

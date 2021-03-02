@@ -1,0 +1,27 @@
+<launch>
+
+    <arg name="gui"             default="true" />
+    <arg name="rviz"            default="true" />
+
+    <include file="$(find rosbot2)/launch/gazebo_bringup.launch">
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+    
+    <group if="$(arg rviz)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rosbot2)/rviz/urock.rviz"/>
+    </group>
+
+    <include file="$(find path_viz)/launch/path_viz.launch"/>
+
+<!--     <node pkg="rosbot_controller" type="nn_model_follower.py" name="nn_model_runner" output="screen">
+        <param name="robot_frame"       value="nn_model_link" />
+        <param name="cmd_topic"         value="/cmd_vel" />
+        <param name="model_path"         value="$(find rosbot_controller)/src/model.onnx" />
+    </node>     -->
+
+    <node pkg="rosbot_controller" type="model_runner.py" name="model_runner" output="screen">
+        <param name="robot_frame"       value="model_link" />
+        <param name="cmd_topic"         value="/cmd_vel" />
+    </node>    
+
+</launch>
