@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 # license removed for brevity
 import os
-import time as time_
 
 import rospy
 import tf
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Path
-
 from modules.rosbot import Rosbot, RobotState, RobotControl, Goal
 
 
@@ -52,9 +50,6 @@ class TrajFollower():
         self.rate = rospy.Rate(self.cmd_freq)
         self.path_index = 0
         self.got_path = False
-        self.init_time = time_.time()
-        self.current_time = time_.time()
-        self.first_time = True
         rospy.on_shutdown(self.on_shutdown)
 
     def get_robot_state_from_tf(self):
@@ -68,10 +63,6 @@ class TrajFollower():
 
         x, y = coord[0], coord[1]
         yaw = tf.transformations.euler_from_quaternion(orient)[2]
-
-        # vx = (x   - self.robot_state.x) * self.cmd_freq
-        # vy = (y   - self.robot_state.y) * self.cmd_freq
-        # w  = (yaw - self.robot_state.yaw) * self.cmd_freq
 
         return RobotState(x, y, yaw)
 
