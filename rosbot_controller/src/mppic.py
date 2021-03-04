@@ -40,13 +40,14 @@ class MPPIController:
         self.path = []
         self.path_index = 0
         self.got_path = False
+        self.current_goal = [1, 1]
+        self.stop_mppi = False
 
         # declare subscribers, publishers and timer
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
-        self.cmd_pub = rospy.Publisher(self.cmd_topic, Twist, queue_size=5)
-        # rospy.Timer(rospy.Duration(self.dt), self.update_state)
+        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
 
     def update_state(self, msg):
         ## TODO from tf transform
@@ -56,11 +57,9 @@ class MPPIController:
 
                 x, y = item.transform.translation.x, item.transform.translation.y
                 yaw = quaternion_to_euler(item.transform.rotation)[0]
-                print(x,y,yaw)
-                return RobotState(x, y, yaw)
-
-    def print_state(self, state):
-        rospy.loginfo(state.to_str())
+                # self.robot.set_state(RobotState(x, y, yaw))
+                self.robot_state = RobotState(x, y, yaw)
+                self.check_is_goal_reached()
 
     def goal_callback(self, msg):
         x, y = msg.pose.position.x, msg.pose.position.y
@@ -93,43 +92,113 @@ class MPPIController:
         twist_cmd.angular.z = control.w
         self.cmd_pub.publish(twist_cmd)
 
-    def loss_for_goal(self):
-        pass
+  
+    def loss_for_traj(self, trajectories, goal):
+        traj_x, traj_y = trajectories[:,:,0], trajectories[:,:,1]
+        goal_x = goal[0]
+        goal_y = goal[1]
+        loss_x = traj_x - goal_x
+        loss_y = traj_y - goal_y
+        loss = np.sqrt(loss_x ** 2 + loss_y**2)
+        loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
+        loss = loss.sum(1)
+        return loss
+    
 
-    def predict_multi_step(self, control):
-        traj = []
-        return traj
+    def predict_trajectories(self, velocities):
+        '''
+        inputs:
+        velocities
+        outputs:
+        '''
+        v, w = velocities[:,:,0], velocities[:,:,1] 
+        current_yaw = self.robot_state.yaw
+        yaw = current_yaw + np.cumsum(w * self.dt, axis=1)       
+        vx = v * np.cos(yaw)
+        vy = v * np.sin(yaw)
+        x = np.cumsum(vx * self.dt, axis=1)
+        y = np.cumsum(vy * self.dt, axis=1)
+        result_xya= np.concatenate([
+            x[:, :, None],
+            y[:, :, None],
+            yaw[:, :, None],
+        ], axis=2)
+        return result_xya 
 
-    def loss_for_traj(self, traj):
-        return 0
 
-    def loss_for_control(self, control):
-        traj = self.predict_multi_step(control)
-        loss = self.loss_for_traj(traj)
+    # TODO ASK first element (0 0) ? am I dummy? 
+    def predict_multi_step(self, batch_x):
+        '''
+        inputs:
+        outputs:
+        '''
+        
+        state = batch_x[:, 0] 
+        batch_y = [batch_x[:, :1, :2]]          # v and w
+        for t in range(1, batch_x.shape[1] + 1):
+            state = np.array(state, dtype=np.float32)
+            # print(state.shape)
+            pred_vw = self.model(state)
+            if t != batch_x.shape[1]:
+                state = np.concatenate([pred_vw, batch_x[:, t, 2:]], axis=1)
+            batch_y.append(pred_vw[:, None])    # add axis for time
+        
+        #concatenate along time axis
+        batch_y = np.concatenate(batch_y, axis=1)
+        return batch_y
+        
 
+    def loss_for_control(self, control_seqs, goal):
+        """
+        Calcuate loss for given control seqence
+        """
+        # rospy.logwarn(control_seqs.shape)
+        shape = control_seqs.shape
+        init_state = np.zeros((shape[0], shape[1], 5))
+        init_state[:,0,0] = self.robot.v
+        init_state[:,0,1] = self.robot.w
+        init_state[:,:,2:4] = control_seqs
+        init_state[:,:,4] = self.dt
+        # chims
+        # predicted_velocities = np.array([chims_predimct_multi_stemp(ctrl) for ctrl in control_seqs])
+        # doge
+        predicted_velocities = self.predict_multi_step(init_state)
+        trajectories = self.predict_trajectories(predicted_velocities)
+        loss_for_control = self.loss_for_traj(trajectories, goal)
+        return loss_for_control
+        
+    def check_is_goal_reached(self):
+        # print(self.robot_state.x, self.robot_state.y)
+        if (abs(self.robot_state.x - self.current_goal[0]) < 0.1 and 
+        abs(self.robot_state.y - self.current_goal[1]) < 0.1):
+            self.publish_control(RobotControl(0, 0))
+            self.stop_mppi = True
 
     def run(self):
         # export model with bath_size = 100
-        rollout_num = 100 # K
-        timesteps_num = 10  # T
-        control = np.zeros([1, timesteps_num, 2])  
-        std = 0.5 # standart deviation
-        while not rospy.is_shutdown():
-            # update current model state
-            self.robot.set_state(self.robot_state)
+        rollout_num = 1000      # K 100
+        timesteps_num = 2      # T 10
+        control = np.zeros([timesteps_num, 2])  
+        std = 0.005 # standart deviation
+        while not rospy.is_shutdown() and not self.stop_mppi:
+            # TODO if we have reached the goal, select the next goal
+            time_start = time.time()
             for i in range(10):
                 # generate some control
-                control_seqs = control + np.random.normal(0, std, (rollout_num, timesteps_num, 2))
-                # 
-                control_seqs_loss = self.loss_for_control(control_seqs)
-                
+                control_seqs = control[None] + np.random.normal(0, std, size=(rollout_num, timesteps_num, 2))
+                control_seqs = np.clip(control_seqs, -1, 1)
+                control_seqs_loss = self.loss_for_control(control_seqs, self.current_goal)
                 opt_ind = np.argmin(control_seqs_loss, axis=0) # TODO change argmin
-
                 control = control_seqs[opt_ind]
+                
 
             # publish control[0]
+            print(self.robot_state.to_str())
+            print(control)
+            self.control_vector = RobotControl(control[0][0], control[0][1])
+            self.publish_control(self.control_vector)
             control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
-            # 
+            rospy.logwarn( "Execution time is = {} sec".format(time.time() - time_start)) # 0.01
             self.rate.sleep()
 
 
