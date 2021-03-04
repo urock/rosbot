@@ -3,29 +3,15 @@
 import rospy
 import sys
 import numpy as np
-from geometry_msgs.msg import Twist
-from geometry_msgs.msg import TransformStamped
-from tf2_msgs.msg import TFMessage
 import nnio
-from modules.rosbot import Rosbot, RobotState, RobotControl
-
-
-def euler_to_quaternion(yaw, pitch, roll):
-    qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(
-        pitch / 2) * np.sin(yaw / 2)
-    qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(
-        pitch / 2) * np.sin(yaw / 2)
-    qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(
-        pitch / 2) * np.cos(yaw / 2)
-    qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(
-        pitch / 2) * np.sin(yaw / 2)
-
-    return [qx, qy, qz, qw]
+from tf2_msgs.msg import TFMessage
+from geometry_msgs.msg import Twist, TransformStamped
+from modules.rosbot import Rosbot, RobotState, RobotControl, euler_to_quaternion
 
 
 class NNModelRunner:
     """
-    
+
     """
 
     def __init__(self, node_name, model_path):
@@ -34,10 +20,7 @@ class NNModelRunner:
         self.parent_frame = rospy.get_param('~parent_frame', "odom")
         self.model_frame = rospy.get_param('~robot_frame', "nn_model_link")
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
-        # self.model_path = rospy.get_param('~model_path',
-        #                                   "/home/vytautas/MS/catkin_ws/src/rosbot/rosbot_controller/src/model.onnx")
         self.model_path = model_path
-        self.odom_frame = 'odom'
 
         self.robot = Rosbot()
         self.model_state = RobotState()
@@ -98,17 +81,16 @@ class NNModelRunner:
     def run(self):
         self.load_nn_model()
         while not rospy.is_shutdown():
-            current_timestamp = rospy.Time.now().to_sec()
-            dt = current_timestamp - self.last_timestamp
+            # current_timestamp = rospy.Time.now().to_sec()
+            # dt = current_timestamp - self.last_timestamp
             self.model_state = self.robot.update_state_by_nn_model(
                 self.model,
                 self.control_vector,
-                dt
+                self.dt
             )
-            rospy.logerr("NN_MODEL: " + self.model_state.to_str())
+            # rospy.logerr("NN_MODEL: " + self.model_state.to_str())
             self.broadcast_model_tf(self.model_state)
-            self.last_timestamp = current_timestamp
-
+            # self.last_timestamp = current_timestamp
             self.rate.sleep()
 
 
