@@ -5,7 +5,6 @@ import math
 import numpy as np
 import rospy
 
-
 class RobotState():
 
     def __init__(self, x=0.0, y=0.0, yaw=0.0, vx=0.0, vy=0.0, w=0.0):
@@ -124,12 +123,54 @@ class Rosbot:
         control_vector.v
         control_vector.w
 
-        #print(self.v, self.w)
         model_input = np.array([[self.v, self.w, control_vector.v, control_vector.w, dt]], dtype=np.float32)
-        # print(model_input)
         model_output = model(model_input)
-        # print(model_output)
         self.v, self.w = float(model_output[0][0]), float(model_output[0][1])
         vel_vector = RobotControl(self.v, self.w)
         new_state = self.update_state_by_model(vel_vector, dt)
         return new_state
+
+
+def euler_to_quaternion(yaw, pitch, roll):
+    """
+    Args:
+        yaw: yaw angle
+        pitch: pitch angle
+        roll: roll angle
+    Return:
+        quaternion [qx, qy, qz, qw]
+    """
+    qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(
+        pitch / 2) * np.sin(yaw / 2)
+    qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(
+        pitch / 2) * np.sin(yaw / 2)
+    qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(
+        pitch / 2) * np.cos(yaw / 2)
+    qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(
+        pitch / 2) * np.sin(yaw / 2)
+
+    return [qx, qy, qz, qw]
+from typing import overload
+
+
+def quaternion_to_euler(quaternion):
+    """
+    Args:
+        x, y, z, w
+    Return:
+        Angles [yaw, pitch, roll]
+    """
+    x,  y,  z,  w = quaternion.x, quaternion.y, quaternion.z, quaternion.w
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll = math.atan2(t0, t1)
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch = math.asin(t2)
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw = math.atan2(t3, t4)
+    return [yaw, pitch, roll]
+
+
