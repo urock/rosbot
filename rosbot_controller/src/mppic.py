@@ -121,7 +121,8 @@ class MPPIController:
         loss_y = traj_y - goal.y
         loss = np.sqrt(loss_x ** 2 + loss_y**2)
         loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
-        loss = loss.sum(1)
+        # loss = loss.sum(1)
+        loss = loss[:,-1]
         return loss
     
 
@@ -191,10 +192,12 @@ class MPPIController:
         
         """
         # export model with bath_size = 100
-        rollout_num = 5              # K 100  (batch size)
-        timesteps_num = 10           # T 10
+        rollout_num = 100              # K 100  (batch size)
+        timesteps_num = 10             # T 10
         control = np.zeros([timesteps_num, 2])  
-        std = 0.1 # standart deviation
+        std = 0.02 # standart deviation
+        self.current_goal.x = 2 # TEST
+        self.current_goal.y = 2 # TEST
         while not rospy.is_shutdown():
             # TODO if we have reached the goal, select the next goal
             rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
@@ -229,7 +232,7 @@ class MPPIController:
 def main():
     model_path = sys.argv[1]
     mppic = MPPIController('mppic', model_path)
-    mppic.wait_for_path()
+    # mppic.wait_for_path()
     mppic.run()
     try:
         rospy.spin()
