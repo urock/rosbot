@@ -58,7 +58,7 @@ def edges_to_points(edges):
 
 
 def SinTrajGenerator(msg, step, a=1.0, f=1.0):
-    x_ar = np.arange(0,2*np.pi, step, dtype=float) * (-1)   # start,stop,step
+    x_ar = np.arange(0,2*np.pi, step, dtype=float)   # start,stop,step
     y_ar = float(a) * np.sin(float(f) * x_ar)
 
     cnt = 0
