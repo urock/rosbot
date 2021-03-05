@@ -30,7 +30,7 @@ class MPPIController:
         self.model = self.load_nn_model(model_path)
         self.robot = Rosbot()
         self.robot_state = RobotState()
-        self.current_goal = Goal(2, 0)
+        self.current_goal = Goal()
         self.control_vector = RobotControl(0.0, 0.0)
 
         self.cmd_freq = 30.0  # Hz
@@ -191,11 +191,11 @@ class MPPIController:
         
         """
         # export model with bath_size = 100
-        rollout_num = 100            # K 100
+        rollout_num = 5              # K 100  (batch size)
         timesteps_num = 10           # T 10
         control = np.zeros([timesteps_num, 2])  
         std = 0.1 # standart deviation
-        while not rospy.is_shutdown() and not self.stop_mppi:
+        while not rospy.is_shutdown():
             # TODO if we have reached the goal, select the next goal
             rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
             rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
@@ -217,7 +217,7 @@ class MPPIController:
             control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
             rospy.logwarn( "Execution time is = {} sec".format(time.time() - time_start)) # 0.01
             self.rate.sleep()
-        rospy.logerr("STOP MPPIC")
+        # rospy.logerr("STOP MPPIC")
 
     def load_nn_model(self, model_path):
         """
@@ -229,7 +229,7 @@ class MPPIController:
 def main():
     model_path = sys.argv[1]
     mppic = MPPIController('mppic', model_path)
-    # mppic.wait_for_path()
+    mppic.wait_for_path()
     mppic.run()
     try:
         rospy.spin()
