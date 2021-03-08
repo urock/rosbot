@@ -9,7 +9,8 @@ import numpy as np
 import pathlib
 from nav_msgs.msg import Path
 from std_msgs.msg import Header
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Quaternion
+
 
 def IsValidTrajType(traj_type):
     return 'sin' in traj_type or traj_type in ('-line', 'from_file', 'complex') or 'spiral' in traj_type
@@ -60,6 +61,7 @@ def edges_to_points(edges):
 def SinTrajGenerator(msg, step, a=1.0, f=1.0):
     x_ar = np.arange(0,2*np.pi, step, dtype=float)   # start,stop,step
     y_ar = float(a) * np.sin(float(f) * x_ar)
+    yaw_arr = float(a) * float(f) * np.cos(float(f) * x_ar)
 
     cnt = 0
     for i in range(len(x_ar)):
@@ -70,6 +72,7 @@ def SinTrajGenerator(msg, step, a=1.0, f=1.0):
         ps.pose.position.x = x_ar[i]
         ps.pose.position.y = y_ar[i]
         ps.pose.position.z = 0 
+        ps.pose.orientation = euler_to_quaternion(yaw=math.atan(yaw_arr[i]), roll=0, pitch=0)
         msg.poses.append(ps)  
 
     return msg 
@@ -210,6 +213,28 @@ def main():
     rospy.sleep(2.0) # sometimes plotter_node can't get this message, and so we need some delay
     path_pub.publish(msg)
     return
+
+
+def euler_to_quaternion(yaw, pitch, roll):
+    """
+    Args:
+        yaw: yaw angle
+        pitch: pitch angle
+        roll: roll angle
+    Return:
+        quaternion [qx, qy, qz, qw]
+    """
+    qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(
+        pitch / 2) * np.sin(yaw / 2)
+    qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(
+        pitch / 2) * np.sin(yaw / 2)
+    qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(
+        pitch / 2) * np.cos(yaw / 2)
+    qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(
+        pitch / 2) * np.sin(yaw / 2)
+
+    return Quaternion(x=qx, y=qy, z=qz, w=qw)
+
 
 if __name__ == '__main__':
     main()

@@ -5,13 +5,13 @@ import sys
 import os
 import numpy as np
 import rospy
-from geometry_msgs.msg import PoseStamped, Twist, TransformStamped
+from geometry_msgs.msg import PoseStamped, Twist, TransformStamped, Pose, Point, Quaternion
 from nav_msgs.msg import Path
 import nnio
 from tf2_msgs.msg import TFMessage
 from modules.rosbot import Rosbot, RobotState, RobotControl
 from modules.rosbot import Goal, quaternion_to_euler
-
+import matplotlib.pyplot as plt
 
 class MPPIController:
     """
@@ -30,7 +30,7 @@ class MPPIController:
         self.model = self.load_nn_model(model_path)
         self.robot = Rosbot()
         self.robot_state = RobotState()
-        self.current_goal = Goal()
+        self.current_goal = Goal(0, 0)
         self.control_vector = RobotControl(0.0, 0.0)
 
         self.cmd_freq = 30.0  # Hz
@@ -48,6 +48,7 @@ class MPPIController:
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+        self.curr_path_pub = rospy.Publisher("/curr_path", Path, queue_size=5)
 
     def update_state(self, msg):
         ## TODO from tf transform
@@ -76,7 +77,8 @@ class MPPIController:
 
         """
         x, y = msg.pose.position.x, msg.pose.position.y
-        self.goal_queue.append(Goal(x, y))
+        yaw = quaternion_to_euler(msg.pose.orientation)[0]
+        self.goal_queue.append(Goal(x, y, yaw))
         rospy.logwarn("added goal to queue: x -> {:.2f}, y -> {:.2f}".format(x, y))
 
     def path_callback(self, msg):
@@ -85,8 +87,9 @@ class MPPIController:
         """
         for p in msg.poses:
             x, y = p.pose.position.x, p.pose.position.y
-            self.goal_queue.append(Goal(x, y))
-            self.path.append(Goal(x, y))
+            yaw = quaternion_to_euler(p.pose.orientation)[0]
+            self.goal_queue.append(Goal(x, y, yaw))
+            self.path.append(Goal(x, y, yaw))
         self.got_path = True
 
     def wait_for_path(self):
@@ -116,14 +119,16 @@ class MPPIController:
         """
 
         """
-        traj_x, traj_y = trajectories[:,:,0], trajectories[:,:,1]
+        traj_x, traj_y, traj_yaw = trajectories[:,:, 0], trajectories[:,:, 1], trajectories[:,:, 2]
         loss_x = traj_x - goal.x
         loss_y = traj_y - goal.y
-        loss = np.sqrt(loss_x ** 2 + loss_y**2)
-        loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
+        loss_yaw = traj_yaw - goal.yaw
+        print(traj_yaw.shape, goal.yaw)
+        loss = np.sqrt(loss_x ** 2 + loss_y ** 2 + loss_yaw ** 2)
+        # loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
         # loss = loss.sum(1)
-        loss = loss[:,-1]
-        return loss
+        # loss = loss[:,-1]
+        return [min(l) for l in loss]
     
 
     def predict_trajectories(self, velocities):
@@ -139,6 +144,8 @@ class MPPIController:
         vy = v * np.sin(yaw)
         x = np.cumsum(vx * self.dt, axis=1)
         y = np.cumsum(vy * self.dt, axis=1)
+        x += self.robot_state.x
+        y += self.robot_state.y
         result_xya= np.concatenate([
             x[:, :, None],
             y[:, :, None],
@@ -176,6 +183,7 @@ class MPPIController:
 
         shape = control_seqs.shape
         init_state = np.zeros((shape[0], shape[1], 5))
+        # print(self.robot.v, self.robot.w)
         init_state[:,0,0] = self.robot.v
         init_state[:,0,1] = self.robot.w
         init_state[:,:,2:4] = control_seqs
@@ -184,8 +192,18 @@ class MPPIController:
         predicted_velocities = self.predict_multi_step(init_state)
         trajectories = self.predict_trajectories(predicted_velocities)
         loss_for_control = self.loss_for_traj(trajectories, goal)
-        return loss_for_control
+        return loss_for_control, trajectories
         
+    def show_curr_path(self, traj):
+        tx, ty = traj[:, 0], traj[:, 1]
+
+        path = Path()
+        path.header.frame_id = 'odom'
+
+        for i in range(len(tx)):
+            path.poses.append(PoseStamped(pose=Pose(position=Point(x=tx[i], y=ty[i], z=0))))
+
+        self.curr_path_pub.publish(path)
 
     def run(self):
         """
@@ -193,33 +211,49 @@ class MPPIController:
         """
         # export model with bath_size = 100
         rollout_num = 100              # K 100  (batch size)
-        timesteps_num = 10             # T 10
-        control = np.zeros([timesteps_num, 2])  
-        std = 0.02 # standart deviation
-        self.current_goal.x = 2 # TEST
-        self.current_goal.y = 2 # TEST
-        while not rospy.is_shutdown():
-            # TODO if we have reached the goal, select the next goal
-            rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
-            rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
-            rospy.loginfo("Stop sim")
-            os.system('rosservice call /gazebo/pause_physics') # stop sim
-            time_start = time.time()
-            for i in range(100):
-                # generate some control
-                control_seqs = control[None] + np.random.normal(0, std, size=(rollout_num, timesteps_num, 2))
-                control_seqs = np.clip(control_seqs, -1, 1)
-                control_seqs_loss = self.loss_for_control(control_seqs, self.current_goal)
-                opt_ind = np.argmin(control_seqs_loss, axis=0) # TODO change argmin
-                control = control_seqs[opt_ind]
+        timesteps_num = 50             # T 10
+        std = 0.05 # standart deviation
+        try:
+            while not rospy.is_shutdown():
+                # self.current_goal.x = 2 # TEST
+                # self.current_goal.y = 2 # TEST
+                # TODO if we have reached the goal, select the next goal
+                rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
+                rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
+                rospy.loginfo("Stop sim")
+                os.system('rosservice call /gazebo/pause_physics') # stop sim
+                time_start = time.time()
+                opt_loss = []
+
+                num_iterations = 0
+
+                while len(opt_loss) < 1 or opt_loss[-1] > 0.05:
+                    control = np.asarray([[0.2, 0]] * timesteps_num)
+                    for i in range(1000):
+                        num_iterations += 1
+                        control_seqs = control[None] + np.random.normal(0, std, size=(rollout_num, timesteps_num, 2))
+                        control_seqs = np.clip(control_seqs, -1, 1)
+                        control_seqs_loss, traj = self.loss_for_control(control_seqs, self.current_goal)
+                        opt_loss.append(np.min(control_seqs_loss))
+                        opt_ind = np.argmin(control_seqs_loss, axis=0) # TODO change argmin
+                        self.show_curr_path(traj[opt_ind])
+                        control = control_seqs[opt_ind]
+                        if opt_loss[-1] <= 0.05:
+                            break
                 
-            print(control)
-            self.publish_control(RobotControl(control[0][0], control[0][1]))
-            rospy.loginfo("Continue sim")
-            os.system('rosservice call /gazebo/unpause_physics') # start sim
-            control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
-            rospy.logwarn( "Execution time is = {} sec".format(time.time() - time_start)) # 0.01
-            self.rate.sleep()
+                #plt.plot(range(len(opt_loss)), opt_loss)
+                #plt.show()   
+                #print(opt_loss)
+                #print(control)
+                print(num_iterations)
+                self.publish_control(RobotControl(control[0][0], control[0][1]))
+                rospy.loginfo("Continue sim")
+                os.system('rosservice call /gazebo/unpause_physics') # start sim
+                control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
+                rospy.logwarn( "Execution time is = {} sec".format(time.time() - time_start)) # 0.01
+                self.rate.sleep()
+        except KeyboardInterrupt:
+            print('finish')
         # rospy.logerr("STOP MPPIC")
 
     def load_nn_model(self, model_path):
@@ -232,12 +266,8 @@ class MPPIController:
 def main():
     model_path = sys.argv[1]
     mppic = MPPIController('mppic', model_path)
-    # mppic.wait_for_path()
+    mppic.wait_for_path()
     mppic.run()
-    try:
-        rospy.spin()
-    except:
-        pass
 
 
 if __name__ == '__main__':
