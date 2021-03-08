@@ -11,7 +11,9 @@ import nnio
 from tf2_msgs.msg import TFMessage
 from modules.rosbot import Rosbot, RobotState, RobotControl
 from modules.rosbot import Goal, quaternion_to_euler
-
+from visualization_msgs.msg import Marker, MarkerArray
+import math
+from geometry_msgs.msg import Vector3, Point
 
 class MPPIController:
     """
@@ -30,6 +32,7 @@ class MPPIController:
         self.model = self.load_nn_model(model_path)
         self.robot = Rosbot()
         self.robot_state = RobotState()
+        self.prev_state = RobotState()
         self.current_goal = Goal()
         self.control_vector = RobotControl(0.0, 0.0)
 
@@ -48,6 +51,8 @@ class MPPIController:
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+        self.marker_pub = rospy.Publisher('/aLL_trajectories', MarkerArray, queue_size=10)
+        self.marker_array = MarkerArray()
 
     def update_state(self, msg):
         ## TODO from tf transform
@@ -55,20 +60,36 @@ class MPPIController:
             if (item.header.frame_id == self.parent_frame
                 and item.child_frame_id == self.robot_frame):
 
+                self.prev_state = self.robot_state
+
                 x, y = item.transform.translation.x, item.transform.translation.y
                 yaw = quaternion_to_euler(item.transform.rotation)[0]
                 self.robot_state = RobotState(x, y, yaw)
                 self.robot.set_state(self.robot_state)
 
+                vx = (self.robot_state.x - self.prev_state.x) / self.dt
+                vy = (self.robot_state.y - self.prev_state.x) / self.dt
+                v = math.sqrt(vx**2 + vy**2)
+                alpha = math.atan2(vy,vx)
+                v = v * math.cos(alpha - self.robot_state.yaw)
+
+                self.robot.v = v
+
+                d_yaw = (self.robot_state.yaw - self.prev_state.yaw)
+                d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
+                w = d_yaw / self.dt
+
+                self.robot.w = w
+
                 if self.robot.goal_reached(self.current_goal):
-                    if self.goal_queue:
+                    if len(self.goal_queue) > 0:
                         # next goal
                         self.current_goal = self.goal_queue.pop(0)
                         self.path_index += 1
                         rospy.logerr(self.robot_frame + ": new current_goal = " + self.current_goal.to_str())
                     else:
                         # end of trajectory
-                        self.publish_control(RobotControl())
+                        self.publish_control(RobotControl(0,0))
                         self.stop_mppi = True
 
     def goal_callback(self, msg):
@@ -137,8 +158,8 @@ class MPPIController:
         yaw = current_yaw + np.cumsum(w * self.dt, axis=1)       
         vx = v * np.cos(yaw)
         vy = v * np.sin(yaw)
-        x = np.cumsum(vx * self.dt, axis=1)
-        y = np.cumsum(vy * self.dt, axis=1)
+        x = self.robot_state.x + np.cumsum(vx * self.dt, axis=1)
+        y = self.robot_state.y + np.cumsum(vy * self.dt, axis=1)
         result_xya= np.concatenate([
             x[:, :, None],
             y[:, :, None],
@@ -176,6 +197,7 @@ class MPPIController:
 
         shape = control_seqs.shape
         init_state = np.zeros((shape[0], shape[1], 5))
+        # print(self.robot.v, self.robot.w)
         init_state[:,0,0] = self.robot.v
         init_state[:,0,1] = self.robot.w
         init_state[:,:,2:4] = control_seqs
@@ -183,21 +205,48 @@ class MPPIController:
 
         predicted_velocities = self.predict_multi_step(init_state)
         trajectories = self.predict_trajectories(predicted_velocities)
+        self.visualize_trajectories(trajectories)
         loss_for_control = self.loss_for_traj(trajectories, goal)
         return loss_for_control
         
+    def visualize_trajectories(self, trajectories):
+
+        self.marker_array = MarkerArray()
+        i = 0
+        for traj in trajectories:
+            step = int(len(traj) * 0.1)
+            for p in traj[::step]:
+                marker = Marker()
+                marker.id = i
+                marker.type = Marker.SPHERE
+                marker.action = Marker.ADD
+                marker.scale = Vector3(0.01, 0.01, 0.01)
+                marker.color.g = 1.0
+                marker.color.a = 1.0
+                marker.pose.position.x = p[0]
+                marker.pose.position.y = p[1]
+                marker.pose.position.z = 0.05
+                marker.pose.orientation.w = 0
+                marker.header.stamp = rospy.Time.now()
+                marker.header.frame_id = "odom"
+                # marker.lifetime = rospy.Duration(0)
+                i = i +1
+                self.marker_array.markers.append(marker)
+        self.marker_pub.publish(self.marker_array) 
+        # print(self.marker_array)  
+
 
     def run(self):
         """
         
         """
         # export model with bath_size = 100
-        rollout_num = 100              # K 100  (batch size)
-        timesteps_num = 10             # T 10
-        control = np.zeros([timesteps_num, 2])  
-        std = 0.02 # standart deviation
-        self.current_goal.x = 2 # TEST
-        self.current_goal.y = 2 # TEST
+        rollout_num = 100                               # K 100  (batch size)
+        timesteps_num = 100                             # T 10
+        control = np.zeros([timesteps_num, 2])          # initial control    
+        std = 0.02                                      # standart deviation
+        self.current_goal.x = 5 # TEST
+        self.current_goal.y = 5 # TEST
         while not rospy.is_shutdown():
             # TODO if we have reached the goal, select the next goal
             rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
@@ -213,14 +262,14 @@ class MPPIController:
                 opt_ind = np.argmin(control_seqs_loss, axis=0) # TODO change argmin
                 control = control_seqs[opt_ind]
                 
-            print(control)
+            # print(control)
             self.publish_control(RobotControl(control[0][0], control[0][1]))
             rospy.loginfo("Continue sim")
             os.system('rosservice call /gazebo/unpause_physics') # start sim
             control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
             rospy.logwarn( "Execution time is = {} sec".format(time.time() - time_start)) # 0.01
             self.rate.sleep()
-        # rospy.logerr("STOP MPPIC")
+        rospy.logerr("STOP MPPIC")
 
     def load_nn_model(self, model_path):
         """
