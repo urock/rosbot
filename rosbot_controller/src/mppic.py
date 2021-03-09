@@ -3,18 +3,18 @@
 import time
 import sys
 import os
+import math
 import numpy as np
-import rospy
-from geometry_msgs.msg import PoseStamped, Twist, TransformStamped, Pose, Point, Quaternion
-from nav_msgs.msg import Path
 import nnio
+import matplotlib.pyplot as plt
+import rospy
 from tf2_msgs.msg import TFMessage
+from geometry_msgs.msg import PoseStamped, Twist, Pose, Point
+from geometry_msgs.msg import Vector3, Point
+from nav_msgs.msg import Path
+from visualization_msgs.msg import Marker, MarkerArray
 from modules.rosbot import Rosbot, RobotState, RobotControl
 from modules.rosbot import Goal, quaternion_to_euler
-from visualization_msgs.msg import Marker, MarkerArray
-import math
-import matplotlib.pyplot as plt
-from geometry_msgs.msg import Vector3, Point
 
 class MPPIController:
     """
@@ -22,43 +22,42 @@ class MPPIController:
     """
 
     def __init__(self, node_name, model_path):
-        self.node_name = node_name
-        rospy.init_node(self.node_name, anonymous=True)
+        rospy.init_node(node_name, anonymous=True)
 
+        # get parameters
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
         self.parent_frame = rospy.get_param('~parent_frame', "odom")
         self.robot_frame = rospy.get_param('~robot_frame', "base_link")
+        self.cmd_freq = int(rospy.get_param('~cmd_freq', 30)) # Hz
 
         # load NN model 
         self.model = self.load_nn_model(model_path)
+        # declare robot and current and previous state
         self.robot = Rosbot()
         self.robot_state = RobotState()
         self.prev_state = RobotState()
         self.current_goal = Goal()
-        self.control_vector = RobotControl(0.0, 0.0)
 
-        self.cmd_freq = 30.0  # Hz
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
         self.goal_queue = []
-        self.path = []
-        self.path_index = 0
         self.got_path = False
-        self.stop_mppi = False
+        self.last_tf_callback_time = None
 
-        # declare subscribers, publishers and timer
+        # declare subscribers
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
+        # declare publishers
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
-        self.marker_pub = rospy.Publisher('/aLL_trajectories', MarkerArray, queue_size=10)
-        self.marker_array = MarkerArray()
+        self.marker_pub = rospy.Publisher('/all_trajectories', MarkerArray, queue_size=10)
         self.curr_path_pub = rospy.Publisher("/curr_path", Path, queue_size=5)
         
-        self.last_tf_callback_time = None
 
     def update_state(self, msg):
+        """
+        """
         ## TODO from tf transform
         for item in msg.transforms:
             if self.last_tf_callback_time is None:
@@ -66,48 +65,44 @@ class MPPIController:
                 break
             if (item.header.frame_id == self.parent_frame
                 and item.child_frame_id == self.robot_frame):
-                print("self.last_tf_callback_time = {}".format(self.last_tf_callback_time))
-                dt = time.time() - self.last_tf_callback_time # calc time delta
-                print("dt = {}".format(dt))
-                self.prev_state = self.robot_state
-                print("prev_state", self.prev_state.to_str())
+                # time delta calculation
+                dt = time.time() - self.last_tf_callback_time   
+                # update previous state
+                self.prev_state = self.robot_state              
+                # update robot state
                 x, y = item.transform.translation.x, item.transform.translation.y
                 yaw = quaternion_to_euler(item.transform.rotation)[0]
-                self.robot_state = RobotState(x, y, yaw)
-                self.robot.set_state(self.robot_state)
-                print("robot_state", self.robot_state.to_str())
+                self.robot_state = RobotState(x, y, yaw)    
+                # calculate robot lin velocity
                 vx = (self.robot_state.x - self.prev_state.x) / dt
                 vy = (self.robot_state.y - self.prev_state.y) / dt
                 v = math.sqrt(vx**2 + vy**2)
                 alpha = math.atan2(vy, vx)
-                # print("alpha = {}".format(alpha))
-                # print("math.cos(alpha - self.robot_state.yaw) = {}".format(math.cos(alpha - self.robot_state.yaw)))
-                print("V before = {}".format(v))
-                v = v * math.cos(alpha - yaw)
-                print("V after = {}".format(v))
-
-                self.robot.v = v
-
+                v = v * math.cos(alpha - self.robot_state.yaw)
+                # calculate robot ang velocity
                 d_yaw = (self.robot_state.yaw - self.prev_state.yaw)
                 d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
                 w = d_yaw / dt
-
+                # update robot velocities
+                self.robot.v = v
                 self.robot.w = w
-                self.last_tf_callback_time = time.time() # update last_tf_callback_times
+                # update last tf callback time
+                self.last_tf_callback_time = time.time()
+                # check if goal reached
                 if self.robot.goal_reached(self.current_goal):
                     if self.goal_queue:
                         # next goal
                         self.current_goal = self.goal_queue.pop(0)
-                        self.path_index += 1
                         rospy.logerr(self.robot_frame + ": new current_goal = " + self.current_goal.to_str())
                     else:
                         # end of trajectory
                         self.publish_control(RobotControl())
-                        self.stop_mppi = True
 
     def goal_callback(self, msg):
         """
-
+        Add msg to the goal queue
+        Args:
+            msg (PoseStamped): goal msg
         """
         x, y = msg.pose.position.x, msg.pose.position.y
         yaw = quaternion_to_euler(msg.pose.orientation)[0]
@@ -116,18 +111,19 @@ class MPPIController:
 
     def path_callback(self, msg):
         """
-        :msg : 
+        Add all point from path msg to the goal queue
+        Args:
+            msg (Path): path msg
         """
         for p in msg.poses:
             x, y = p.pose.position.x, p.pose.position.y
             yaw = quaternion_to_euler(p.pose.orientation)[0]
             self.goal_queue.append(Goal(x, y, yaw))
-            self.path.append(Goal(x, y, yaw))
         self.got_path = True
 
     def wait_for_path(self):
         """
-
+        Waits until a message with dtype = Path arrives
         """
         while not rospy.is_shutdown():
             if self.got_path:
@@ -136,7 +132,9 @@ class MPPIController:
 
     def publish_control(self, control):
         """
-        :param control: control vector of RobotControl type
+        Publishes controls for the rosbot
+        Args:
+            control: control vector of RobotControl type
         """
         twist_cmd = Twist()
         twist_cmd.linear.x = control.v
@@ -167,9 +165,12 @@ class MPPIController:
 
     def predict_trajectories(self, velocities):
         '''
-        inputs:
-        velocities
-        outputs:
+        Integrates velocities according to 
+        the robot model to obtain trajectories
+        Args:
+            velocities:
+        Return
+            result_xya:
         '''
         v, w = velocities[:,:,0], velocities[:,:,1] 
         current_yaw = self.robot_state.yaw
@@ -193,8 +194,11 @@ class MPPIController:
     # TODO ASK first element (0 0) ? am I dummy? 
     def predict_multi_step(self, batch_x):
         '''
-        inputs:
-        outputs:
+        Predicts next speed
+        Args:
+            batch_x: 
+        Return:
+            batch_y:
         '''
         
         state = batch_x[:, 0] 
@@ -215,6 +219,12 @@ class MPPIController:
     def loss_for_control(self, control_seqs, goal):
         """
         Calcuate loss for given control seqence
+        Args:
+            control_seqs:
+            goal:
+        Return:
+            loss_for_control
+            trajectories
         """
 
         shape = control_seqs.shape
@@ -227,42 +237,49 @@ class MPPIController:
 
         predicted_velocities = self.predict_multi_step(init_state)
         trajectories = self.predict_trajectories(predicted_velocities)
-        self.visualize_trajectories(trajectories)
         loss_for_control = self.loss_for_traj(trajectories, goal)
         return loss_for_control, trajectories
         
     def visualize_trajectories(self, trajectories):
-
-        self.marker_array = MarkerArray()
+        """
+        Publishes trajectories as arrays of marker points
+        for visualization in Rviz
+        Args:
+            trajectories
+        """
+        marker_array = MarkerArray()
         i = 0
         for traj in trajectories:
             step = int(len(traj) * 0.1)
             for p in traj[::step]:
                 marker = Marker()
                 marker.id = i
-                marker.type = Marker.SPHERE # 
+                marker.header.stamp = rospy.Time.now()
+                marker.header.frame_id = "odom"
+                marker.lifetime = rospy.Duration(0)
+                marker.type = Marker.SPHERE
                 marker.action = Marker.ADD
                 marker.scale = Vector3(0.01, 0.01, 0.01)
-                marker.color.g = 1.0
-                marker.color.a = 1.0
+                marker.color.r, marker.color.g, marker.color.a = (0.0, 1.0, 1.0)
                 marker.pose.position.x = p[0]
                 marker.pose.position.y = p[1]
                 marker.pose.position.z = 0.05
                 marker.pose.orientation.w = 0
-                marker.header.stamp = rospy.Time.now()
-                marker.header.frame_id = "odom"
-                # marker.lifetime = rospy.Duration(0)
                 i = i +1
-                self.marker_array.markers.append(marker)
-        self.marker_pub.publish(self.marker_array) 
-        # print(self.marker_array)  
+                marker_array.markers.append(marker)
+        self.marker_pub.publish(marker_array) 
 
 
     def show_curr_path(self, traj):
-        tx, ty = traj[:, 0], traj[:, 1]
-
+        """
+        Publishes a path as a message with
+        the 'Path' data type for visualization in Rviz
+        Args:
+             traj (np.array shape = [timesteps_num, 2]): trajectory
+        """
         path = Path()
-        path.header.frame_id = 'odom'
+        path.header.frame_id = self.parent_frame
+        tx, ty = traj[:, 0], traj[:, 1]
 
         for i in range(len(tx)):
             path.poses.append(PoseStamped(pose=Pose(position=Point(x=tx[i], y=ty[i], z=0))))
@@ -275,14 +292,11 @@ class MPPIController:
         """
         # export model with bath_size = 100
         rollout_num = 100              # K 100  (batch size)
-        timesteps_num = 50             # T 10
-        std = 0.05 # standart deviation
+        timesteps_num = 10             # T 10
+        std = 0.1 # standart deviation
         control = np.asarray([[0.0, 0.0]] * timesteps_num)
         try:
             while not rospy.is_shutdown():
-                # self.current_goal.x = 2 # TEST
-                # self.current_goal.y = 2 # TEST
-                # TODO if we have reached the goal, select the next goal
                 rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
                 rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
                 rospy.loginfo("Stop sim")
@@ -292,14 +306,15 @@ class MPPIController:
 
                 num_iterations = 0
 
-                for i in range(100):
+                for i in range(50):
                     num_iterations += 1
                     control_seqs = control[None] + np.random.normal(0, std, size=(rollout_num, timesteps_num, 2))
                     control_seqs = np.clip(control_seqs, -1, 1)
-                    control_seqs_loss, traj = self.loss_for_control(control_seqs, self.current_goal)
-                    opt_loss.append(np.min(control_seqs_loss))
-                    opt_ind = np.argmin(control_seqs_loss, axis=0) # TODO change argmin
-                    self.show_curr_path(traj[opt_ind])
+                    control_seqs_loss, trajectories = self.loss_for_control(control_seqs, self.current_goal)
+                    self.visualize_trajectories(trajectories)  # visualize all trajectories
+                    opt_loss.append(np.min(control_seqs_loss)) # 
+                    opt_ind = np.argmin(control_seqs_loss, axis=0)
+                    self.show_curr_path(trajectories[opt_ind]) # visualize optimal trajectory
                     control = control_seqs[opt_ind]
                     if opt_loss[-1] <= 0.07:
                         break
@@ -317,7 +332,6 @@ class MPPIController:
                 self.rate.sleep()
         except KeyboardInterrupt:
             print('finish')
-        # rospy.logerr("STOP MPPIC")
 
     def load_nn_model(self, model_path):
         """
