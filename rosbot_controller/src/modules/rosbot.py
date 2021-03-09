@@ -4,6 +4,7 @@
 import math
 import numpy as np
 import rospy
+import time
 
 class RobotState():
 
@@ -28,9 +29,10 @@ class RobotControl:
 
 class Goal:
 
-    def __init__(self, x=0.0, y=0.0):
+    def __init__(self, x=0.0, y=0.0, yaw=0.0):
         self.x = x
         self.y = y
+        self.yaw = yaw
 
     def to_str(self):
         return "x -> {:.2f}, y -> {:.2f}".format(self.x, self.y)
@@ -55,7 +57,19 @@ class Rosbot:
         self.w = 0.0
         self.t = 0.0  # current time in seconds
 
-    def set_state(self, new_state):
+    def set_state(self, new_state, last_time=[None]):
+        curr_time = time.time()
+
+        if last_time[0] is not None:
+            dt = curr_time - last_time[0]
+            vx = (new_state.x - self.state.x) / dt
+            vy = (new_state.y - self.state.y) / dt
+            v = math.sqrt(vx ** 2 + vy ** 2)
+            alpha = math.atan2(vy, vx)
+            self.v = v * math.cos(alpha - new_state.yaw)
+
+        last_time[0] = curr_time
+        
         self.state = new_state
 
     def dist_to_goal_L2(self, goal):
@@ -65,7 +79,11 @@ class Rosbot:
         return (goal.x - self.state.x) ** 2 + (goal.y - self.state.y) ** 2
 
     def goal_reached(self, goal):
-        return self.dist_to_goal_L2(goal) <= self.params.xy_margin_squared
+        dist = np.hypot(goal.x - self.state.x, goal.y - self.state.y)
+
+        print('>>> goal dist: %f -- %s' % (dist, 'REACHED' if dist < 0.2 else 'NOT REACHED'))
+
+        return dist < 0.2
 
     def calculate_contol(self, goal):
         """
