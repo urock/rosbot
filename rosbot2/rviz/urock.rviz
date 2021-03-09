@@ -261,8 +261,31 @@ Visualization Manager:
       Marker Topic: /aLL_trajectories
       Name: MarkerArray
       Namespaces:
-        {}
+        "": true
       Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.30000001192092896
+      Head Length: 0.20000000298023224
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.029999999329447746
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /curr_path
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -292,25 +315,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 4.519202709197998
+      Distance: 6.594895839691162
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.5231771469116211
-        Y: -0.2724980115890503
-        Z: 9.421891263627913e-6
+        X: 2.7794439792633057
+        Y: -2.253988027572632
+        Z: 1.1806077054643538e-5
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.9197972416877747
+      Pitch: 0.9897971749305725
       Target Frame: <Fixed Frame>
       Value: XYOrbit (rviz)
-      Yaw: 4.709866046905518
+      Yaw: 4.729866027832031
     Saved: ~
 Window Geometry:
   Displays:
