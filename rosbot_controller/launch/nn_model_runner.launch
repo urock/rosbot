@@ -2,6 +2,8 @@
 
     <arg name="gui"             default="true" />
     <arg name="rviz"            default="true" />
+    <arg name="traj_type"       default="sin"/>
+    <arg name="move_plan"       default="~"/>
 
     <include file="$(find rosbot2)/launch/gazebo_bringup.launch">
         <arg name="gui" value="$(arg gui)"/>
@@ -23,5 +25,11 @@
         <param name="robot_frame"       value="model_link" />
         <param name="cmd_topic"         value="/cmd_vel" />
     </node>    
+
+ 
+    <node pkg="rosbot_controller" type="path_publisher.py" name="path_pub" output="screen">
+        <param name="traj_type"     value="$(arg traj_type)" />
+        <param name="move_plan"     value="$(arg move_plan)" />
+    </node>
 
 </launch>
