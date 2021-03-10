@@ -13,7 +13,7 @@ from geometry_msgs.msg import PoseStamped, Quaternion
 
 
 def IsValidTrajType(traj_type):
-    return 'sin' in traj_type or traj_type in ('-line', 'from_file', 'complex') or 'spiral' in traj_type
+    return 'sin' in traj_type or traj_type in ('-line', 'from_file', 'polygon') or 'spiral' in traj_type
 
 def parse_plan(file_name):
     edges = list()
@@ -79,11 +79,12 @@ def SinTrajGenerator(msg, step, a=1.0, f=1.0):
 
 def PolygonTrajGenerator(msg, step):
 
-    # p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)] # square
+    p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)] # square
+    # p_edges = [(2.0, 0.1)] # square
     # p_edges = [(0.1, 2.1), (1.2, 0.0),  (1.3, 2.1), (2.5, 0.0), (2.7, 2.2), (3.7, 0.0), (3.9, 2.1), (4.1, 0.0)] # saw 
     # p_edges = [(0.1, -2.1), (-1.2, 0.0),  (-1.3, -2.1), (-2.5, 0.0), (-2.7, -2.2), (-3.7, 0.0), (-3.9, -2.1), (-4.1, 0.0)] # saw 
     # p_edges = [(-2.1, 0.1), (-2.2, 1.2),  (-2.6, 0.0), (-2.8, 1.8), (-2.9, 0.2), (-3.8, 2.5), (-3.9, 0.0), (-5.5, 3.0), (-6.0, 0.0)] # saw
-    p_edges = [(0.001, 0.005), (-0.001, -0.005), (0.001, 0.005), (-0.001, -0.005)] # saw 
+    # p_edges = [(0.001, 0.005), (-0.001, -0.005), (0.001, 0.005), (-0.001, -0.005)] # saw 
       
     
     points = edges_to_points(p_edges)
@@ -197,7 +198,7 @@ def main():
         print("TRY PARSE", traj_type )
         amplitude, freq = parse_sin_traj(traj_type)
         msg = SinTrajGenerator(msg, step, amplitude, freq)
-    elif traj_type == '-line':
+    elif traj_type == 'polygon':
         msg = PolygonTrajGenerator(msg, step)
     elif traj_type == 'from_file':
         msg = FromFileTrajGenerator(msg, move_plan)
