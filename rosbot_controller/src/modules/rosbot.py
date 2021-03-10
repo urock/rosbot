@@ -81,7 +81,7 @@ class Rosbot:
     def goal_reached(self, goal):
         dist = np.hypot(goal.x - self.state.x, goal.y - self.state.y)
 
-        print('>>> goal dist: %f -- %s' % (dist, 'REACHED' if dist < 0.2 else 'NOT REACHED'))
+        # print('>>> goal dist: %f -- %s' % (dist, 'REACHED' if dist < 0.2 else 'NOT REACHED'))
 
         return dist < 0.2
 

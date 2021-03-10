@@ -66,7 +66,7 @@ class MPPIController:
                         # next goal
                         self.current_goal = self.goal_queue.pop(0)
                         self.path_index += 1
-                        rospy.logerr(self.robot_frame + ": new current_goal = " + self.current_goal.to_str())
+                        # rospy.logerr(self.robot_frame + ": new current_goal = " + self.current_goal.to_str())
                     else:
                         # end of trajectory
                         self.publish_control(RobotControl())
@@ -79,7 +79,7 @@ class MPPIController:
         x, y = msg.pose.position.x, msg.pose.position.y
         yaw = quaternion_to_euler(msg.pose.orientation)[0]
         self.goal_queue.append(Goal(x, y, yaw))
-        rospy.logwarn("added goal to queue: x -> {:.2f}, y -> {:.2f}".format(x, y))
+        #rospy.logwarn("added goal to queue: x -> {:.2f}, y -> {:.2f}".format(x, y))
 
     def path_callback(self, msg):
         """
@@ -123,12 +123,12 @@ class MPPIController:
         loss_x = traj_x - goal.x
         loss_y = traj_y - goal.y
         loss_yaw = traj_yaw - goal.yaw
-        print(traj_yaw.shape, goal.yaw)
+        #print(traj_yaw.shape, goal.yaw)
         loss = np.sqrt(loss_x ** 2 + loss_y ** 2 + loss_yaw ** 2)
-        # loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
-        # loss = loss.sum(1)
+        loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
+        loss = loss.sum(1)
         # loss = loss[:,-1]
-        return [min(l) for l in loss]
+        return loss #[min(l) for l in loss]
     
 
     def predict_trajectories(self, velocities):
@@ -218,18 +218,18 @@ class MPPIController:
                 # self.current_goal.x = 2 # TEST
                 # self.current_goal.y = 2 # TEST
                 # TODO if we have reached the goal, select the next goal
-                rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
-                rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
-                rospy.loginfo("Stop sim")
-                os.system('rosservice call /gazebo/pause_physics') # stop sim
+                #rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
+                #rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
+                #rospy.loginfo("Stop sim")
+                #os.system('rosservice call /gazebo/pause_physics') # stop sim
                 time_start = time.time()
                 opt_loss = []
 
                 num_iterations = 0
 
-                while len(opt_loss) < 1 or opt_loss[-1] > 0.05:
-                    control = np.asarray([[0.2, 0]] * timesteps_num)
-                    for i in range(1000):
+                while len(opt_loss) == 0:
+                    control = np.asarray([[0.0, 0]] * timesteps_num)
+                    while time.time() - time_start < 1 / 30.0:
                         num_iterations += 1
                         control_seqs = control[None] + np.random.normal(0, std, size=(rollout_num, timesteps_num, 2))
                         control_seqs = np.clip(control_seqs, -1, 1)
@@ -238,19 +238,19 @@ class MPPIController:
                         opt_ind = np.argmin(control_seqs_loss, axis=0) # TODO change argmin
                         self.show_curr_path(traj[opt_ind])
                         control = control_seqs[opt_ind]
-                        if opt_loss[-1] <= 0.05:
-                            break
+                        # if opt_loss[-1] <= 0.05:
+                        #     break
                 
                 #plt.plot(range(len(opt_loss)), opt_loss)
                 #plt.show()   
                 #print(opt_loss)
                 #print(control)
-                print(num_iterations)
+                #print(num_iterations)
                 self.publish_control(RobotControl(control[0][0], control[0][1]))
-                rospy.loginfo("Continue sim")
-                os.system('rosservice call /gazebo/unpause_physics') # start sim
+                #rospy.loginfo("Continue sim")
+                #os.system('rosservice call /gazebo/unpause_physics') # start sim
                 control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
-                rospy.logwarn( "Execution time is = {} sec".format(time.time() - time_start)) # 0.01
+                rospy.loginfo("time: %.5f\tnum %2d" % (time.time() - time_start, num_iterations)) # 0.01
                 self.rate.sleep()
         except KeyboardInterrupt:
             print('finish')
