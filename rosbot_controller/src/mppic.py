@@ -6,7 +6,7 @@ import os
 import numpy as np
 import rospy
 from geometry_msgs.msg import PoseStamped, Twist, TransformStamped, Pose, Point, Quaternion
-from nav_msgs.msg import Path
+from nav_msgs.msg import Path, OccupancyGrid
 import nnio
 from tf2_msgs.msg import TFMessage
 from modules.rosbot import Rosbot, RobotState, RobotControl
@@ -49,6 +49,13 @@ class MPPIController:
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
         self.curr_path_pub = rospy.Publisher("/curr_path", Path, queue_size=5)
+        self.map_pub = rospy.Publisher("/map", OccupancyGrid, queue_size=5)
+
+        self.map = np.zeros((100, 100))
+
+        for y in range(2 * 20, 3 * 20):
+            for x in range(2 * 20, 3 * 20):
+                self.map[y, x] = 100
 
     def update_state(self, msg):
         ## TODO from tf transform
@@ -124,8 +131,8 @@ class MPPIController:
         loss_y = traj_y - goal.y
         loss_yaw = traj_yaw - goal.yaw
         #print(traj_yaw.shape, goal.yaw)
-        loss = np.sqrt(loss_x ** 2 + loss_y ** 2 + loss_yaw ** 2)
-        loss = loss * np.linspace(1, 1.1, loss.shape[1])[None]   # ??
+        loss = np.sqrt(loss_x ** 2 + loss_y ** 2 + 0 * loss_yaw ** 2)
+        loss = loss * np.linspace(1, 1, loss.shape[1])[None]   # ??
         loss = loss.sum(1)
         # loss = loss[:,-1]
         return loss #[min(l) for l in loss]
@@ -213,10 +220,19 @@ class MPPIController:
         rollout_num = 100              # K 100  (batch size)
         timesteps_num = 50             # T 10
         std = 0.05 # standart deviation
+
+        map_msg = OccupancyGrid()
+        map_msg.header.frame_id = "odom"
+        map_msg.info.resolution = 0.05
+        map_msg.info.width = 100
+        map_msg.info.height = 100
+        map_msg.data = self.map.astype('uint8').tobytes()
+        self.map_pub.publish(map_msg)
+
         try:
             while not rospy.is_shutdown():
-                # self.current_goal.x = 2 # TEST
-                # self.current_goal.y = 2 # TEST
+                self.current_goal.x = 2 # TEST
+                self.current_goal.y = 2 # TEST
                 # TODO if we have reached the goal, select the next goal
                 #rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
                 #rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
@@ -229,7 +245,7 @@ class MPPIController:
 
                 while len(opt_loss) == 0:
                     control = np.asarray([[0.0, 0]] * timesteps_num)
-                    while time.time() - time_start < 1 / 30.0:
+                    while time.time() - time_start < 3 / 30.0:
                         num_iterations += 1
                         control_seqs = control[None] + np.random.normal(0, std, size=(rollout_num, timesteps_num, 2))
                         control_seqs = np.clip(control_seqs, -1, 1)
@@ -250,7 +266,7 @@ class MPPIController:
                 #rospy.loginfo("Continue sim")
                 #os.system('rosservice call /gazebo/unpause_physics') # start sim
                 control = np.concatenate([control[:,1:], control[:,-1:]], axis=1)
-                rospy.loginfo("time: %.5f\tnum %2d" % (time.time() - time_start, num_iterations)) # 0.01
+                rospy.loginfo("time: %.5f\tnum %2d (10 Hz)" % (time.time() - time_start, num_iterations)) # 0.01
                 self.rate.sleep()
         except KeyboardInterrupt:
             print('finish')
@@ -266,7 +282,7 @@ class MPPIController:
 def main():
     model_path = sys.argv[1]
     mppic = MPPIController('mppic', model_path)
-    mppic.wait_for_path()
+    # mppic.wait_for_path()
     mppic.run()
 
 
