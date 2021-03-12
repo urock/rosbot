@@ -89,6 +89,7 @@ class MPPIController:
                 # update last tf callback time
                 self.last_tf_callback_time = time.time()
                 # check if goal reached
+                self.robot.set_state(self.robot_state)
                 if self.robot.goal_reached(self.current_goal):
                     if self.goal_queue:
                         # next goal
@@ -211,7 +212,7 @@ class MPPIController:
             if t != batch_x.shape[1]:
                 state = np.concatenate([pred_vw, batch_x[:, t, 2:]], axis=1)
             batch_y.append(pred_vw[:, None])    # add axis for time
-        print("predict_multi_step execution time = {}".format(time.time() - time_start))
+        # print("predict_multi_step execution time = {}".format(time.time() - time_start))
         #concatenate along time axis
         batch_y = np.concatenate(batch_y, axis=1)
         return batch_y
@@ -239,7 +240,7 @@ class MPPIController:
         predicted_velocities = self.predict_multi_step(init_state)
         trajectories = self.predict_trajectories(predicted_velocities)
         loss_for_control = self.loss_for_traj(trajectories, goal)
-        print("loss for control execution time = {}".format(time.time() - time_start))
+        # print("loss for control execution time = {}".format(time.time() - time_start))
         return loss_for_control, trajectories
         
     def visualize_trajectories(self, trajectories):
@@ -294,8 +295,8 @@ class MPPIController:
         """
         # export model with bath_size = 100
         rollout_num = 100                # K 100  (batch size)
-        timesteps_num = 10               # T 10
-        std = 0.05 # standart deviation
+        timesteps_num = 50               # T 10
+        std = 0.1 # standart deviation
         control = np.asarray([[0.0, 0.0]] * timesteps_num) # control shape = [timesteps_num, 2]
         # self.current_goal.x = 2.0
         # self.current_goal.y = 0.0
@@ -310,7 +311,9 @@ class MPPIController:
 
                 num_iterations = 0
                 time_start = time.time()
-                for i in range(2):
+                # control = np.asarray([[0.2, 0.0]] * timesteps_num) # control shape = [timesteps_num, 2]
+
+                for i in range(50):
                     num_iterations += 1
                     # control[None] shape = [1, timesteps_num, 2]
                     control_seqs = control[None] + np.random.normal(0.0, std, size=(rollout_num, timesteps_num, 2))
