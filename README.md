@@ -1,7 +1,5 @@
 ROSBot control mode development 
 
-Инструкция по работе
-
 # 1. Install Prerequisites
 ### 1. [Install ubuntu](http://wiki.ros.org/melodic/Installation/Ubuntu) 
 ### 2. [install ROS Melodic](https://wiki.ros.org/melodic/Installation/Ubuntu)
@@ -23,13 +21,15 @@ catkin build
 ```
 # 2. Run simulation
 open terminal ctrl + alt + t
+
 ```bash
 cd catkin_ws_path
 source devel/setup.zsh
 roslaunch rosbot2 urock_system.launch
 ```
 open another terminal ctrl + alt + t
+
 ```bash
 roslaunch rosbot_controller folow_path.launch traj_type:={sin,polygon}
 ```
-    roslaunch rosbot_controller folow_path.launch traj_type:={sin,polygon}
+
