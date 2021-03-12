@@ -45,7 +45,6 @@ class Plotter:
         self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
 
         # node init time
-        # self.init_time = round(rospy.get_time(), 5)
         self.init_time = None
         # flag for the first callback (used in Tf callback)
         self.first_tick = True
@@ -59,12 +58,11 @@ class Plotter:
         self.model_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
         # time spent running the simulator (for automated tests)
         self.time_spent = 0
-        self.stop_timer = False
         self.current_control = list()
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.control_sub = rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
-        rospy.Timer(rospy.Duration(0.033), self.timer_callback)
+        self.timer_ = rospy.Timer(rospy.Duration(0.033), self.timer_callback)
 
         if self.timeout > 0:
             rospy.Timer(rospy.Duration(1), self.timeout_callback)
@@ -73,8 +71,6 @@ class Plotter:
         rospy.on_shutdown(self.on_shutdown)
 
     def timer_callback(self, timer_event):
-        if self.stop_timer or self.init_time is None:
-            return
         if len(self.current_control) > 0:
             self.time = time_.time() - self.init_time
             self.control['t'].append(self.time)
@@ -105,14 +101,7 @@ class Plotter:
         if self.first_tick:
             self.first_tick = False
             self.init_time = time_.time()        
-
-        # self.time = round(rospy.get_time() - self.init_time, 5)
-        # self.time = time_.time() - self.init_time
-        # self.control['t'].append(self.time)
-        # self.control['x'].append(msg.linear.x)
-        # self.control['yaw'].append(msg.angular.z)
         self.current_control = list([msg.linear.x, msg.angular.z])
-        # self.get_states()
 
 
     def get_states(self, timer_event=None):
@@ -133,7 +122,6 @@ class Plotter:
             trans_vec = tf_transform.translation
             rot_quat = tf_transform.rotation
             yaw = euler_from_quaternion([rot_quat.x, rot_quat.y, rot_quat.z, rot_quat.w])[2]
-            # self.time = round(rospy.get_time() - self.init_time, 5)
             state['t'].append(self.time)
             state['x'].append(trans_vec.x)
             state['y'].append(trans_vec.y)
@@ -158,8 +146,6 @@ class Plotter:
         write_to_file(path=path, data=data, file_name=name)
         path = self.module_path + '/pictures'
         save_plot(path=path, name=name)
-        # all_data = [self.robot_state, self.model_state, self.trajectory]
-        # self.build_general_graph(all_data, self.module_path + '/pictures')
 
     def build_general_graph(self, data, folder):
         """Build a graph containing information about what the trajectory was,
@@ -193,32 +179,22 @@ class Plotter:
         plt.grid(True)
         save_plot(folder_path, name='general_graph', fmt='png')
 
-        # os.makedirs(self.module_path + '/data')
-        # with open(self.module_path + '/data/deviation.txt', 'w+') as file:
-        #     file.writelines('Base link dev = {}\n'.format(base_link_deviation))
-        #     file.writelines('Model link dev = {}\n'.format(model_deviation))
-       
-
-        # plt.show()
 
     def on_shutdown(self):
-        """ """
-
-        # unsubscribe
-        # self.trajectory_sub.unregister()
-        # self.control_sub.unregister()
-        
-
-        # Process and save collected data
+        """
+        Process and save collected data
+        """
+      
         data = [self.robot_state, self.model_state, self.trajectory]
         self.build_general_graph(data, '/pictures')
-        self.stop_timer = True
-        # self.process_collected_data(name='trajectory', data=self.trajectory)
+        self.timer_.shutdown()
+
+        self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
         # self.process_collected_data(name='model_state', data=self.model_state)
 
-        rospy.logwarn("Plotter: output data folder - {}".format(self.module_path))
+        rospy.logwarn("Logger: output data folder - {}".format(self.module_path))
 
         if self.show_plots:
             show_graph()
