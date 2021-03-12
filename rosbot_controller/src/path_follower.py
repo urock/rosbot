@@ -160,9 +160,9 @@ class TrajFollower():
     def on_shutdown(self):
         if self.robot_frame == 'base_link':
             rospy.set_param("/base_link_deviation", self.path_deviation)
+            os.popen("rosnode kill /logger")
             os.popen("rosnode kill /model_runner")
             os.popen("rosnode kill /model_follower")
-            os.popen("rosnode kill /plotter")
 
         if self.robot_frame == 'model_link':
             rospy.set_param("/model_deviation", self.path_deviation)

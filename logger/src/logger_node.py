@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import time as time_
-from plotter.plotter_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
+from logger.logger_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
 
 
 class Plotter:
@@ -23,7 +23,7 @@ class Plotter:
      """
 
     def __init__(self):
-        rospy.init_node("plotter", anonymous=True)
+        rospy.init_node("logger", anonymous=True)
 
         # if true -> show plots on shutdown
         self.show_plots = rospy.get_param("~show_plots", False)
@@ -46,7 +46,7 @@ class Plotter:
 
         # node init time
         # self.init_time = round(rospy.get_time(), 5)
-        self.init_time = time_.time()
+        self.init_time = None
         # flag for the first callback (used in Tf callback)
         self.first_tick = True
         # container for trajectory (/path) fron path_publisher node
@@ -59,6 +59,7 @@ class Plotter:
         self.model_state = {'t': [], 'x': [], 'y': [], 'yaw': []}
         # time spent running the simulator (for automated tests)
         self.time_spent = 0
+        self.stop_timer = False
         self.current_control = list()
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
@@ -72,12 +73,14 @@ class Plotter:
         rospy.on_shutdown(self.on_shutdown)
 
     def timer_callback(self, timer_event):
+        if self.stop_timer or self.init_time is None:
+            return
         if len(self.current_control) > 0:
             self.time = time_.time() - self.init_time
             self.control['t'].append(self.time)
             self.control['x'].append(self.current_control[0])
             self.control['yaw'].append(self.current_control[1])
-            self.get_states()
+            self.fill_state(dst_frame='base_link', state=self.robot_state)
 
     def timeout_callback(self, time_event):
         """called every second, calculates the time spent on simulation,
@@ -141,7 +144,7 @@ class Plotter:
     def process_collected_data(self, data, name='', plot_type='xy'):
         """Builds and saves a graph from data,
           saves data to an output file """
-
+        
         plt.figure(name)
         if plot_type == 'xy':
             plot_xy_data(x=data['x'], y=data['y'])
@@ -190,10 +193,10 @@ class Plotter:
         plt.grid(True)
         save_plot(folder_path, name='general_graph', fmt='png')
 
-        os.makedirs(self.module_path + '/data')
-        with open(self.module_path + '/data/deviation.txt', 'w+') as file:
-            file.writelines('Base link dev = {}\n'.format(base_link_deviation))
-            file.writelines('Model link dev = {}\n'.format(model_deviation))
+        # os.makedirs(self.module_path + '/data')
+        # with open(self.module_path + '/data/deviation.txt', 'w+') as file:
+        #     file.writelines('Base link dev = {}\n'.format(base_link_deviation))
+        #     file.writelines('Model link dev = {}\n'.format(model_deviation))
        
 
         # plt.show()
@@ -202,16 +205,17 @@ class Plotter:
         """ """
 
         # unsubscribe
-        self.trajectory_sub.unregister()
-        self.control_sub.unregister()
+        # self.trajectory_sub.unregister()
+        # self.control_sub.unregister()
+        
 
         # Process and save collected data
         data = [self.robot_state, self.model_state, self.trajectory]
         self.build_general_graph(data, '/pictures')
-
-        self.process_collected_data(name='trajectory', data=self.trajectory)
-        self.process_collected_data(name='control', data=self.control, plot_type='xt')
+        self.stop_timer = True
+        # self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='robot_state', data=self.robot_state)
+        self.process_collected_data(name='control', data=self.control, plot_type='xt')
         # self.process_collected_data(name='model_state', data=self.model_state)
 
         rospy.logwarn("Plotter: output data folder - {}".format(self.module_path))

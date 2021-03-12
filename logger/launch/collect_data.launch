@@ -2,10 +2,10 @@
 
     <arg name="show_plots"       default="false"/>
     <arg name="track_time"       default="false"/>
-    <arg name="output_file"      default="$(find plotter)/output_data"/>
+    <arg name="output_file"      default="$(find logger)/output_data"/>
     <arg name="output_folder"    default=""/>
  
-    <node pkg="plotter" type="plotter_node.py" name="plotter" output="screen">
+    <node pkg="logger" type="logger_node.py" name="logger" output="screen">
         <param name="show_plots"     value="$(arg show_plots)" />
         <param name="track_time"     value="$(arg track_time)" />
         <param name="output_file"    value="$(arg output_file)" />

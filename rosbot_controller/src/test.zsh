@@ -43,7 +43,7 @@ for i in "$@"
 
 source $(catkin locate)/devel/setup.zsh
 
-roslaunch rosbot2 urock_system.launch rviz:=true gui:=false &
+roslaunch rosbot2 spawn_rosbot.launch rviz:=true gui:=false &
 for traj in $(echo $TRAJECTORIES | tr " " " ")
   do
     for v in $(echo $MAX_V_LIST | tr " " " ")
@@ -52,8 +52,9 @@ for traj in $(echo $TRAJECTORIES | tr " " " ")
           do
             rosparam set /max_v $v
             rosparam set /max_w $w
-            roslaunch plotter plotter.launch output_folder:=/traj=$traj-max_v=$v-max_w=$w timeout:=300 &
-            roslaunch rosbot2 test_rosbot.launch traj_type:=$traj
+            roslaunch rosbot_controller publish_path.launch traj_type:=$traj &
+            roslaunch rosbot_controller folow_path.launch &
+            roslaunch logger logger.launch output_folder:=/traj=$traj-max_v=$v-max_w=$w timeout:=300
             ResetPose
           done      
       done
