@@ -49,3 +49,63 @@ cd src/rosbot/rosbot_controller/src/
 * -v - список линейных скоростей
 * -w - список угловых скоростей
 Данные будут сохранены в *logger/output_data/*
+
+# 4. Описание launch файлов
+
+## 4.1 run_simulation.launch
+* Расположение rosbot_controller/launch/run_simulation.launch
+* Что делает: Запускает gazebo, спавнит rosbot, публикует траекторию, запускает контроллер для следования rosobot по пути
+* Аргументы:
+	1. gui - запуск gui Gazebo
+	2. rviz - запуск rviz
+	3. traj_type - тип траектории {sin polygon from_file}
+	4. move_plan - путь до файла с траекторией
+* Пример использования
+```
+roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
+```
+
+## 4.2 spawn_rosbot.launch
+* Расположение rosbot2/launch/spawn_rosbot.launch
+* Что делает: Запускает gazebo, спавгит rosbot
+* Аргументы:
+	1. gui - запуск gui Gazebo
+	2. rviz - запуск rviz
+* Пример использования
+```
+roslaunch rosbot2 spawn_rosbot.launch rviz:=true gui:=false 
+```
+
+## 4.3 publish_path.launch
+* Расположение rosbot_controller/launch/publish_path.launch
+* Что делает: публикует траекторию для rosbot
+* Аргументы:
+	1. traj_type - тип траектории {sin polygon from_file}
+	2. move_plan - путь до файла с траекторией
+* Пример использования
+```
+roslaunch rosbot_controller publish_path.launch traj_type:=2.0sin1.0
+```
+
+## 4.4 follow_path.launch
+* Расположение rosbot_controller/launch/follow_path.launch
+* Что делает: Запускает контроллер для следования rosbot по пути
+* Пример использования
+```
+roslaunch rosbot_controller folow_path.launch
+```
+
+## 4.5 mppi_test.launch
+* Расположение rosbot_controller/launch/mppi_test.launch
+* Что делает: Запускает gazebo, спавнит rosbot, публикует траекторию
+* Аргументы:
+	1. gui - запуск gui Gazebo
+	2. rviz - запуск rviz
+	3. traj_type - тип траектории {sin polygon from_file}
+	4. move_plan - путь до файла с траекторией
+	5. publish_path - true - публикует путь, false - не публикуеть путь
+* Пример использования
+```
+roslaunch rosbot_controller mppi_test.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
+```
+
