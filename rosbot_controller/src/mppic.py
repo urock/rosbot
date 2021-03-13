@@ -294,9 +294,11 @@ class MPPIController:
         
         """
         # export model with bath_size = 100
-        rollout_num = 100                # K 100  (batch size)
-        timesteps_num = 50               # T 10
-        std = 0.1 # standart deviation
+        limit_v = 0.55
+        rollout_num = 1000                # K 100  (batch size)
+        timesteps_num = 10                # T 10
+        v_std = 0.1 # standart deviation
+        w_std = 0.1 # standart deviation
         control = np.asarray([[0.0, 0.0]] * timesteps_num) # control shape = [timesteps_num, 2]
         # self.current_goal.x = 2.0
         # self.current_goal.y = 0.0
@@ -316,9 +318,9 @@ class MPPIController:
                 for i in range(50):
                     num_iterations += 1
                     # control[None] shape = [1, timesteps_num, 2]
-                    control_seqs = control[None] + np.random.normal(0.0, std, size=(rollout_num, timesteps_num, 2))
+                    control_seqs = control[None] + np.random.normal(0.0, v_std, size=(rollout_num, timesteps_num, 2))
                     # control shape = [rollout_num, timesteps_num, 2]
-                    control_seqs = np.clip(control_seqs, -0.1, 0.1)
+                    control_seqs = np.clip(control_seqs, -limit_v, limit_v)
                     control_seqs_loss, trajectories = self.loss_for_control(control_seqs, self.current_goal)
                     # self.visualize_trajectories(trajectories)  # visualize all trajectories
                     opt_loss.append(np.min(control_seqs_loss)) # 
@@ -333,7 +335,7 @@ class MPPIController:
                 # print(opt_loss)
                 # print(control)
                 # print("num_iterations = {}".format(num_iterations))
-                self.publish_control(RobotControl(control[0][0], control[0][1]))
+                self.publish_control(RobotControl(control[1][0], control[1][1]))
                 rospy.loginfo("Continue sim")
                 # os.system('rosservice call /gazebo/unpause_physics') # start sim
                 control = np.concatenate([control[1:], control[-1:]], axis=0)

@@ -1,0 +1,24 @@
+<launch>
+    
+    <arg name="gui"             default="false" />
+    <arg name="rviz"            default="true" />
+
+    <arg name="publish_path"    default="true" />
+    <arg name="traj_type"       default="sin"/>
+    <arg name="move_plan"       default="~"/>
+
+      <!-- spawn rosbot -->
+    <include file="$(find rosbot2)/launch/spawn_rosbot.launch">
+        <arg name="rviz"    value="$(arg rviz)" />
+        <arg name="gui"     value="$(arg gui)" />
+    </include>
+
+    <group if="$(arg publish_path)">
+          <!-- publish path -->
+        <include file="$(find rosbot_controller)/launch/publish_path.launch">
+            <arg name="traj_type"   value="$(arg traj_type)" />
+            <arg name="move_plan"   value="$(arg move_plan)" />
+        </include>
+    </group> 
+
+</launch>
