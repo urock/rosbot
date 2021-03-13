@@ -52,8 +52,7 @@ for traj in $(echo $TRAJECTORIES | tr " " " ")
           do
             rosparam set /max_v $v
             rosparam set /max_w $w
-            roslaunch rosbot_controller publish_path.launch traj_type:=$traj &
-            roslaunch rosbot_controller folow_path.launch &
+            roslaunch rosbot_controller run_simulation.launch traj_type:=$traj &
             roslaunch logger logger.launch output_folder:=/traj=$traj-max_v=$v-max_w=$w timeout:=300
             ResetPose
           done      

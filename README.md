@@ -29,11 +29,13 @@ catkin build
 ```bash
 cd catkin_ws_path
 source devel/setup.zsh
-roslaunch rosbot2 urock_system.launch
+roslaunch rosbot_controller run_simulation.launch traj_type:={sin, polygon}
 ```
-открыть еще терминал
+## 2.1 Пример
 ```bash
-roslaunch rosbot_controller folow_path.launch traj_type:={sin,polygon}
+cd catkin_ws_path
+source devel/setup.zsh
+roslaunch rosbot_controller run_simulation.launch traj_type:=-2.5sin1.0
 ```
 
 # 3. Сбор данных
