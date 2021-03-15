@@ -96,7 +96,7 @@ class NNModelRunner:
 
 def main():
     model_path = sys.argv[1]
-    robot_model = NNModelRunner('nn_model_follower', model_path)
+    robot_model = NNModelRunner('nn_model_runner', model_path)
     robot_model.run()
 
 
