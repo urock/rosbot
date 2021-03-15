@@ -58,3 +58,4 @@ for traj in $(echo $TRAJECTORIES | tr " " " ")
           done      
       done
   done
+rosnode kill -all

@@ -14,7 +14,7 @@ import time as time_
 from logger.logger_tools import plot_xy_data, plot_data, save_plot, write_to_file, show_graph
 
 
-class Plotter:
+class Logger:
     """Class for visualization in the form of graphs (also saves to text file)
      the state of the robot 
      the state of the model 
@@ -202,7 +202,7 @@ class Plotter:
 
 def main():
     """ """
-    plotter = Plotter()
+    logger = Logger()
     try:
         rospy.spin()
     except KeyboardInterrupt:
