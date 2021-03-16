@@ -80,7 +80,6 @@ def SinTrajGenerator(msg, step, a=1.0, f=1.0):
 def PolygonTrajGenerator(msg, step):
 
     p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)] # square
-    # p_edges = [(2.0, 0.1)] # square
     # p_edges = [(0.1, 2.1), (1.2, 0.0),  (1.3, 2.1), (2.5, 0.0), (2.7, 2.2), (3.7, 0.0), (3.9, 2.1), (4.1, 0.0)] # saw 
     # p_edges = [(0.1, -2.1), (-1.2, 0.0),  (-1.3, -2.1), (-2.5, 0.0), (-2.7, -2.2), (-3.7, 0.0), (-3.9, -2.1), (-4.1, 0.0)] # saw 
     # p_edges = [(-2.1, 0.1), (-2.2, 1.2),  (-2.6, 0.0), (-2.8, 1.8), (-2.9, 0.2), (-3.8, 2.5), (-3.9, 0.0), (-5.5, 3.0), (-6.0, 0.0)] # saw
@@ -98,6 +97,7 @@ def PolygonTrajGenerator(msg, step):
         ps.pose.position.x = p[0]
         ps.pose.position.y = p[1]
         ps.pose.position.z = 0 
+        ps.pose.orientation = euler_to_quaternion(yaw=math.atan2(p[1], p[0]), roll=0, pitch=0)
         msg.poses.append(ps)  
 
     return msg     

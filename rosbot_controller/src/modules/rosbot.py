@@ -35,7 +35,7 @@ class Goal:
         self.yaw = yaw
 
     def to_str(self):
-        return "x -> {:.2f}, y -> {:.2f}".format(self.x, self.y)
+        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}".format(self.x, self.y, self.yaw)
 
 
 class Params:
