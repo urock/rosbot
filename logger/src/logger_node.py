@@ -76,7 +76,8 @@ class Logger:
             self.control['t'].append(self.time)
             self.control['x'].append(self.current_control[0])
             self.control['yaw'].append(self.current_control[1])
-            self.fill_state(dst_frame='base_link', state=self.robot_state)
+            self.get_states()
+            # self.fill_state(dst_frame='base_link', state=self.robot_state)
 
     def timeout_callback(self, time_event):
         """called every second, calculates the time spent on simulation,
@@ -110,7 +111,7 @@ class Logger:
 
         # if it is the first callback set init time
         self.fill_state(dst_frame='base_link', state=self.robot_state)
-        # self.fill_state(dst_frame='model_link', state=self.model_state)
+        self.fill_state(dst_frame='model_link', state=self.model_state)
 
     def fill_state(self, dst_frame, state={}, src_frame='odom'):
         """Receives the state of the model or robot via TF transformation"""
@@ -192,7 +193,7 @@ class Logger:
         self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='robot_state', data=self.robot_state)
         self.process_collected_data(name='control', data=self.control, plot_type='xt')
-        # self.process_collected_data(name='model_state', data=self.model_state)
+        self.process_collected_data(name='model_state', data=self.model_state)
 
         rospy.logwarn("Logger: output data folder - {}".format(self.module_path))
 
