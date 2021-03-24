@@ -6,7 +6,7 @@ import rospy
 import tf
 from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Path
-from modules.rosbot import Rosbot, RobotState, RobotControl, Goal
+from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl, Goal
 
 
 # from visualization_msgs.msg import Marker

@@ -6,7 +6,7 @@ import numpy as np
 import nnio
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import Twist, TransformStamped
-from modules.rosbot import Rosbot, RobotState, RobotControl, euler_to_quaternion
+from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl, euler_to_quaternion
 
 
 class NNModelRunner:

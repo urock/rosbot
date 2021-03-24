@@ -4,7 +4,7 @@ import rospy
 import tf
 from geometry_msgs.msg import Twist
 
-from modules.rosbot import Rosbot, RobotState, RobotControl
+from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl
 
 
 class ModelRunner:
