@@ -2,6 +2,8 @@
 import rospy
 import argparse
 from geometry_msgs.msg import Twist
+
+
 N = 0
 V = -0.5
 W = 0.5
@@ -49,38 +51,48 @@ def timer_callback(event):
         cmd_pub.publish(twist_cmd)
 
 
-rospy.init_node("control_generator", anonymous=True)
-cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+def main():
+    import time
+    rospy.init_node("control_generator", anonymous=True)
+    cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+    
+    # parse args
 
-# parse args
-parser = argparse.ArgumentParser()
-parser.add_argument('-file_path', action='store', dest='file_path',
-                    required=False, help='Amplitude')
-args = parser.parse_args()
-FROM_FILE = True if args.file_path is not None else False
 
-if FROM_FILE:
-    import random
-    with open(args.file_path) as f:
-        f.readline()
-        lines = f.readlines()
-        for i in range(len(lines[0:-1])):
-            # print(lines[i].split(" "))
-            cur_t, v, z = lines[i].rstrip().split(" ")
-            cur_t, v, z = float(cur_t), float(v), float(z)
-            next_t = float(lines[i+1].split(" ")[0])
-            dt = next_t - cur_t
-            twist_cmd = Twist()
-            twist_cmd.linear.x = v     # random() return value from 0 to 1
-            twist_cmd.angular.z = z
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-file_path', action='store', dest='file_path',
+                        required=False, help='Amplitude')
+    args = parser.parse_args()
+    FROM_FILE = True if args.file_path is not None else False
+
+    time.sleep(5.0)
+    if FROM_FILE:
+        import random
+        with open(args.file_path) as f:
+            f.readline()
+            lines = f.readlines()
+            for i in range(len(lines[0:-1])):
+                # print(lines[i].split(" "))
+                cur_t, v, z = lines[i].rstrip().split(" ")
+                cur_t, v, z = float(cur_t), float(v), float(z)
+                #     next_t = float(lines[i+1].split(" ")[0])
+                # dt = next_t - cur_t
+                twist_cmd = Twist()
+                twist_cmd.linear.x = v     # random() return value from 0 to 1
+                twist_cmd.angular.z = z
+                cmd_pub.publish(twist_cmd)
+                ### remove it
+                dt = 0.03
+                rospy.sleep(dt)
+            twist_cmd.linear.x = 0
+            twist_cmd.angular.z = 0
             cmd_pub.publish(twist_cmd)
-            ### remove it
-            # dt = 0.03
-            rospy.sleep(dt)
-        twist_cmd.linear.x = 0
-        twist_cmd.angular.z = 0
-        cmd_pub.publish(twist_cmd)
-else:
-    rospy.Timer(rospy.Duration(0.033), timer_callback)
+            # add get state from TF
+            return
+    else:
+        rospy.Timer(rospy.Duration(0.033), timer_callback)
 
-rospy.spin()
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()
