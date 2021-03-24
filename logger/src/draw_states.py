@@ -42,18 +42,18 @@ def main():
     
 
     nn_trajectory = np.zeros([1, 1000, 2]) # shape = [batch, time, x_y]
-    i = 0
-    j = 0
-    file_path = "/home/vytautas/Desktop/nn_model_state.txt"
-    with open(file_path) as f:
-        f.readline()
-        for line in f.readlines():
-            line = line.split() 
-            nn_trajectory[i, j, 0] = float(line[1]) # x
-            nn_trajectory[i, j, 1] = float(line[2]) # y
-            j = j +1
-            if j >= 1000:
-                break  
+    # i = 0
+    # j = 0
+    # file_path = "/home/vytautas/Desktop/nn_model_state.txt"
+    # with open(file_path) as f:
+    #     f.readline()
+    #     for line in f.readlines():
+    #         line = line.split() 
+    #         nn_trajectory[i, j, 0] = float(line[1]) # x
+    #         nn_trajectory[i, j, 1] = float(line[2]) # y
+    #         j = j +1
+    #         if j >= 1000:
+    #             break  
 
 
     fig, ax = plt.subplots(1)
