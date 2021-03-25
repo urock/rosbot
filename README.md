@@ -130,6 +130,7 @@ roslaunch rosbot_controller folow_path.launch
 	3. traj_type - тип траектории {sin polygon from_file}
 	4. move_plan - путь до файла с траекторией
 	5. publish_path - true - публикует путь, false - не публикуеть путь
+	6. nn_model_path - путь до нейросетевой модели
 * Пример использования
 ```
 roslaunch rosbot_controller mppi_test.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
