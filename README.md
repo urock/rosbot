@@ -29,7 +29,7 @@ catkin build
 ```bash
 cd catkin_ws_path
 source devel/setup.zsh
-roslaunch rosbot_controller run_simulation.launch traj_type:={sin, polygon}
+roslaunch rosbot_controller run_simulation.launch traj_type:={sin, polygon} use_nn_model:={true, false}
 ```
 ## 2.1 Пример
 ```bash
@@ -60,14 +60,15 @@ cd src/rosbot/rosbot_controller/src/
 	2. rviz - запуск rviz
 	3. traj_type - тип траектории {sin polygon from_file}
 	4. move_plan - путь до файла с траекторией
+	5. move_plan - запуск нейосетевой модели rosbot
 * Пример использования
 ```
-roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
+roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=true gui:=false use_nn_model:=true
 ```
 
 ## 4.2 spawn_rosbot.launch
 * Расположение rosbot2/launch/spawn_rosbot.launch
-* Что делает: Запускает gazebo, спавгит rosbot
+* Что делает: Запускает gazebo, спавнит rosbot
 * Аргументы:
 	1. gui - запуск gui Gazebo
 	2. rviz - запуск rviz
@@ -76,7 +77,32 @@ roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=tru
 roslaunch rosbot2 spawn_rosbot.launch rviz:=true gui:=false 
 ```
 
-## 4.3 publish_path.launch
+## 4.3 spawn_kinematic_model.launch
+* Расположение rosbot2/launch/spawn_kinematic_model.launch
+* Что делает: спавнит кинематическую модель rosbot
+* Аргументы:
+	1. robot_frame - TF Frame модели
+	2. cmd_topic - топик с командами управления для модели
+* Пример использования
+```
+roslaunch rosbot_controller spawn_kinematic_model.launch 
+```
+
+## 4.4 spawn_nn_model.launch
+* Расположение rosbot2/launch/spawn_nn_model.launch
+* Что делает: спавнит нейросетевую модель rosbot
+* Аргументы:
+	1. nn_model_path - путь до onnx модели
+	2. cmd_topic - запуск rviz
+	3. parent_frame - Статичный TF Frame (odom)
+	4. robot_frame - TF Frame модели
+	5. cmd_freq - частота обновления модели
+* Пример использования
+```
+roslaunch rosbot_controller spawn_nn_model.launch 
+```
+
+## 4.5 publish_path.launch
 * Расположение rosbot_controller/launch/publish_path.launch
 * Что делает: публикует траекторию для rosbot
 * Аргументы:
@@ -87,7 +113,7 @@ roslaunch rosbot2 spawn_rosbot.launch rviz:=true gui:=false
 roslaunch rosbot_controller publish_path.launch traj_type:=2.0sin1.0
 ```
 
-## 4.4 follow_path.launch
+## 4.6 follow_path.launch
 * Расположение rosbot_controller/launch/follow_path.launch
 * Что делает: Запускает контроллер для следования rosbot по пути
 * Пример использования
@@ -95,7 +121,7 @@ roslaunch rosbot_controller publish_path.launch traj_type:=2.0sin1.0
 roslaunch rosbot_controller folow_path.launch
 ```
 
-## 4.5 mppi_test.launch
+## 4.8 mppi_test.launch
 * Расположение rosbot_controller/launch/mppi_test.launch
 * Что делает: Запускает gazebo, спавнит rosbot, публикует траекторию
 * Аргументы:
