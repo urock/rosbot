@@ -1,20 +1,38 @@
 <launch>
-    
+
+    <!-- parameters for gui/rviz visualization  -->
     <arg name="gui"             default="false" />
     <arg name="rviz"            default="true" />
 
+    <!-- parameters for publish_path node -->
     <arg name="publish_path"    default="true" />
     <arg name="traj_type"       default="sin"/>
     <arg name="move_plan"       default="~"/>
 
-      <!-- spawn rosbot -->
+    <!-- parameters for MPPI controller  -->
+    <arg name="nn_model_path"   default="$(find rosbot_controller)/src/model_100.onnx" />
+    <arg name="cmd_topic"       default="cmd_vel" />
+    <arg name="parent_frame"    default="odom"/>
+    <arg name="robot_frame"     default="base_link"/>
+    <arg name="cmd_freq"        default="30"/>
+
+    <!-- spawn rosbot -->
     <include file="$(find rosbot2)/launch/spawn_rosbot.launch">
-        <arg name="rviz"    value="$(arg rviz)" />
-        <arg name="gui"     value="$(arg gui)" />
+        <arg name="rviz"        value="$(arg rviz)" />
+        <arg name="gui"         value="$(arg gui)" />
     </include>
 
+    <!-- MPPI controller node -->
+    <node pkg="rosbot_controller" type="mppic.py" name="mppic" output="screen">
+        <param name="model_path"       value="$(arg nn_model_path)" />
+        <param name="cmd_topic"        value="$(arg cmd_topic)" />
+        <param name="parent_frame"     value="$(arg parent_frame)" />
+        <param name="robot_frame"      value="$(arg robot_frame)" />
+        <param name="cmd_freq"         value="$(arg cmd_freq)" />
+    </node>
+
+    <!-- publish path -->
     <group if="$(arg publish_path)">
-          <!-- publish path -->
         <include file="$(find rosbot_controller)/launch/publish_path.launch">
             <arg name="traj_type"   value="$(arg traj_type)" />
             <arg name="move_plan"   value="$(arg move_plan)" />

@@ -1,19 +1,8 @@
 <launch>
 
-	<!-- spawn kinematic model -->
-    <node pkg="rosbot_controller" type="model_runner.py" name="model_runner" output="screen">
-        <param name="robot_frame"       value="model_link" />
-        <param name="cmd_topic"         value="/cmd_vel_model" />
-    </node>   
-
     <node pkg="rosbot_controller" type="path_follower.py" name="gazebo_follower" output="screen">
         <param name="robot_frame"       value="base_link" />
         <param name="cmd_topic"         value="/cmd_vel" />
-    </node>
-
-    <node pkg="rosbot_controller" type="path_follower.py" name="model_follower" output="screen">
-        <param name="robot_frame"       value="model_link" />
-        <param name="cmd_topic"         value="/cmd_vel_model" />
     </node>
 
 </launch>

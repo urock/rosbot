@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # license removed for brevity
 import rospy
 import sys
@@ -11,21 +11,28 @@ from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl, euler_to_
 
 class NNModelRunner:
     """
-
+    Predicit NN Model state
+    Broadcasting TFMessages
     """
 
-    def __init__(self, node_name, model_path):
+    def __init__(self, node_name):
+        """
+        
+        """
+
         self.node_name = node_name
         rospy.init_node(self.node_name, anonymous=True)
+
+        # get parameters
+        self.model_path = rospy.get_param('~model_path', None)
+        self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
         self.parent_frame = rospy.get_param('~parent_frame', "odom")
         self.model_frame = rospy.get_param('~robot_frame', "nn_model_link")
-        self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
-        self.model_path = model_path
+        self.cmd_freq = int(rospy.get_param('~cmd_freq', 30))  # Hz
 
         self.robot = Rosbot()
         self.model_state = RobotState()
 
-        self.cmd_freq = 30.0  # Hz
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
@@ -95,8 +102,8 @@ class NNModelRunner:
 
 
 def main():
-    model_path = sys.argv[1]
-    robot_model = NNModelRunner('nn_model_runner', model_path)
+    # model_path = sys.argv[1]
+    robot_model = NNModelRunner('nn_model_runner')
     robot_model.run()
 
 

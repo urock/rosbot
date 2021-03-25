@@ -13,8 +13,8 @@ from geometry_msgs.msg import PoseStamped, Twist, Pose, Point
 from geometry_msgs.msg import Vector3, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
-from modules.rosbot import Rosbot, RobotState, RobotControl
-from modules.rosbot import Goal, quaternion_to_euler
+from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl
+from rosbot_controller.rosbot import Goal, quaternion_to_euler
 
 
 class MPPIController:
@@ -22,17 +22,18 @@ class MPPIController:
 
     """
 
-    def __init__(self, node_name, model_path):
+    def __init__(self, node_name):
         rospy.init_node(node_name, anonymous=True)
 
         # get parameters
+        self.model_path = rospy.get_param('~model_path', None)
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
         self.parent_frame = rospy.get_param('~parent_frame', "odom")
         self.robot_frame = rospy.get_param('~robot_frame', "base_link")
         self.cmd_freq = int(rospy.get_param('~cmd_freq', 30))  # Hz
 
         # load NN model 
-        self.model = self.load_nn_model(model_path)
+        self.model = self.load_nn_model(self.model_path)
         # declare robot and current and previous state
         self.robot = Rosbot()
         self.robot_state = RobotState()
@@ -300,13 +301,13 @@ class MPPIController:
         """
         # export model with bath_size = 100
         limit_v = 0.5
-        rollout_num = 1000  # K 1000  (batch size)
-        timesteps_num = 10  # T 10
+        rollout_num = 100  # K 1000  (batch size)
+        timesteps_num = 50  # T 10
         v_std = 0.1  # standart deviation
         w_std = 0.1  # standart deviation
         control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
-        # self.current_goal.x = 2.0
-        # self.current_goal.y = 0.0
+        self.current_goal.x = 2.0
+        self.current_goal.y = 0.0
         try:
             while not rospy.is_shutdown() and not self.stop:
                 rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
@@ -355,8 +356,8 @@ class MPPIController:
 
 
 def main():
-    model_path = sys.argv[1]
-    mppic = MPPIController('mppic', model_path)
+    # model_path = sys.argv[1]
+    mppic = MPPIController('mppic')
     mppic.wait_for_path()
     mppic.run()
     try:
