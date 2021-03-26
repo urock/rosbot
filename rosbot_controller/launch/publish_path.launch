@@ -1,0 +1,20 @@
+<launch>
+	<!--
+	 launch file for path publishing 
+	 traj_type:= sin, polygon or from_file
+	
+	 if traj_type == from_file
+	 you should specify move_plan
+	 move_plan - path to the file with trajectory
+
+	 for more details: https://github.com/urock/rosbot/issues/1
+	-->
+    <arg name="traj_type"       default="sin"/>
+    <arg name="move_plan"       default="~"/>
+   
+    <node pkg="rosbot_controller" type="path_publisher.py" name="path_pub" output="screen">
+        <param name="traj_type"     value="$(arg traj_type)" />
+        <param name="move_plan"     value="$(arg move_plan)" />
+    </node>
+
+</launch>

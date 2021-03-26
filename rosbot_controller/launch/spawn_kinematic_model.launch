@@ -1,0 +1,9 @@
+<launch>
+
+	<!-- spawn kinematic model -->
+    <node pkg="rosbot_controller" type="model_runner.py" name="model_runner" output="screen">
+        <param name="robot_frame"       value="model_link" />
+        <param name="cmd_topic"         value="/cmd_vel" />
+    </node>   
+
+</launch>

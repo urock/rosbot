@@ -1,19 +1,13 @@
 #!/usr/bin/env python
 # license removed for brevity
 import rospy
-import os
-import roslib
 import tf
-import math
-import numpy as np
-from geometry_msgs.msg import PoseStamped, Twist
-from tf.transformations import quaternion_from_euler
+from geometry_msgs.msg import Twist
+
+from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl
 
 
-from modules.rosbot import Rosbot, RobotState, RobotControl
-
-
-class ModelRunner():
+class ModelRunner:
     """
 
     """
@@ -30,7 +24,7 @@ class ModelRunner():
 
         self.tf_br = tf.TransformBroadcaster()
         
-        self.cmd_freq = 20.0 # Hz       
+        self.cmd_freq = 30.0 # Hz       
         self.dt = 1.0 / self.cmd_freq 
         self.rate = rospy.Rate(self.cmd_freq) 
 
