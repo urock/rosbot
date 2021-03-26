@@ -136,3 +136,10 @@ roslaunch rosbot_controller folow_path.launch
 roslaunch rosbot_controller mppi_test.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
 ```
 
+
+# 5. Работа через Docker
+
+```
+cd docker
+docker build .
+```
