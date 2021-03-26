@@ -24,11 +24,10 @@ user $ROSUSER
 RUN cd \
     && git clone https://github.com/gpakosz/.tmux.git \
     && ln -s -f .tmux/.tmux.conf \
-    && cp .tmux/.tmux.conf.local . 
+    && cp .tmux/.tmux.conf.local .   
 
 RUN mkdir /home/$ROSUSER/catkin_ws/ \
     && mkdir /home/$ROSUSER/catkin_ws/src \
-    && cd /home/$ROSUSER/catkin_ws/src \
-    && catkin_init_workspace
+    && echo "source /home/${ROSUSER}/catkin_ws/devel/setup.bash" >> ~/.bashrc 
 
 WORKDIR /home/$ROSUSER
