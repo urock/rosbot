@@ -40,7 +40,7 @@ class MPPIController:
         self.prev_state = RobotState()
         self.current_goal = Goal()
         self.next_goal = None
-
+        # X = [v, w] 
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
@@ -306,8 +306,8 @@ class MPPIController:
         v_std = 0.1  # standart deviation
         w_std = 0.1  # standart deviation
         control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
-        self.current_goal.x = 2.0
-        self.current_goal.y = 0.0
+        # self.current_goal.x = 2.0
+        # self.current_goal.y = 0.0
         try:
             while not rospy.is_shutdown() and not self.stop:
                 rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
