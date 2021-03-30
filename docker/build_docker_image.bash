@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 image_name=rosbot-melodic 
 

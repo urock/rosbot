@@ -1,28 +1,48 @@
-ROSBot control mode development 
+Репозиторий для работы с дифференциальным роботом в ROS Melodic
 
-Инструкция по работе
+# 1. Установка
 
-# 1. Install Prerequisites
-### 1. [Ubuntu 18.04](https://ubuntu.com) 
-### 2. [ROS Melodic](https://wiki.ros.org/melodic/Installation/Ubuntu)
-### 3. Clone repository 
-#### 3.1 создать директорию под catkin_ws 
-#### 3.2 открыть терминал ( ctrl + alt + t )
-*catkin_ws_path - путь до catkin_ws
-```bash
-cd catkin_ws_path
-mkdir -p catkin_ws/src
-cd catkin_ws
-wstool init ./src
-cd src
-git clone git@github.com:urock/rosbot.git 
-cd ..
-sudo apt update
-rosdep install --from-paths src --ignore-src -r -y 
-git submodule update --init --recursive 
-catkin build
-*Перезапустить терминал*
 ```
+git clone git@github.com:urock/rosbot.git
+cd rosbot
+git submodule update --init --recursive
+```
+
+# 5. Работа через Docker
+
+```
+cd docker
+
+# собрать докер образ
+./build_docker_image.bash 
+
+# создает котейнер и заходит в его терминал, если выйти из терминала, то контейнер продолжит работу
+./create_docker_container.bash 
+
+# зайти в терминал, созданного ранее докер контейнера 
+./enter_container.bash 
+
+```
+
+После создания образа и первого входна в контейнер:
+```
+./build_docker_image.bash 
+./create_docker_container.bash 
+
+cd /home/user/catkin_ws
+source /opt/ros/melodic/setup.bash
+catkin_init_workspace
+rosdep update
+rosdep install --from-paths src --ignore-src -r -y
+catkin build
+```
+
+выйти из контейнера (exit) и зайти заново 
+```
+./enter_container.bash 
+roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=true gui:=true
+```
+
 
 # 2. Запуск симулятора
 открыть терминал
@@ -137,9 +157,17 @@ roslaunch rosbot_controller mppi_test.launch traj_type:=2.5sin0.2 rviz:=true gui
 ```
 
 
-# 5. Работа через Docker
 
+
+# 6. Работа в tmux 
+
+* управляющая последовательность: CS = 'Ctrl + A'
+* создать вкладку
 ```
-cd docker
-docker build .
+# внизу
+CS + '-'
+# справа
+CS + '- shift'   
 ```
+* переход между вкладками: `CS + ' стрелки вправо, влево, вниз, вверх
+* убить вкладку: 'CS + x'
