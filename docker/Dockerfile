@@ -3,7 +3,7 @@ FROM ros:melodic-perception
 ENV ROSUSER="user"
 
 RUN adduser --home /home/$ROSUSER --shell /bin/bash --gecos '' --disabled-password $ROSUSER \
-    && usermod -a -G root,sudo $ROSUSER \
+    && usermod -a -G root,sudo,video $ROSUSER \
     && echo "$ROSUSER ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/$ROSUSER
 
 # >>>> Install basic utils
