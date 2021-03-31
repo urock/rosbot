@@ -8,8 +8,8 @@ docker run -it -d --privileged --net=host \
       --runtime=nvidia \
       --gpus=all \
       -v /tmp/.X11-unix:/tmp/.X11-unix:ro \
-      -v ${PWD}/../:/home/user/catkin_ws/src \
+      -v ${PWD}/../:/home/user/catkin_ws/src:rw \
       -e DISPLAY=$DISPLAY \
       -e NVIDIA_VISIBLE_DEVICES="all" \
       -e NVIDIA_DRIVER_CAPABILITIES="all" \
-      -e QT_X11_NO_MITSHM=1 $image_name bash
+      -e QT_X11_NO_MITSHM=1 $image_name bash 
