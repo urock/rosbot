@@ -4,6 +4,3 @@
 [submodule "rosbot_ekf"]
 	path = rosbot_ekf
 	url = https://github.com/husarion/rosbot_ekf.git
-[submodule "m-explore"]
-	path = m-explore
-	url = https://github.com/hrnr/m-explore.git
