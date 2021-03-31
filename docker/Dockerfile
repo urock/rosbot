@@ -38,13 +38,13 @@ COPY scripts/python3-pkgs.sh .
   RUN chmod +x python3-pkgs.sh
   RUN ./python3-pkgs.sh
 
+# ROS
 COPY scripts/ros-pkgs.sh .
   RUN chmod +x ros-pkgs.sh 
   RUN ./ros-pkgs.sh
 
 user $ROSUSER
 
-# ROS
 COPY scripts/ros-setup.sh .
   RUN sudo chmod +x ros-setup.sh 
   RUN ./ros-setup.sh
