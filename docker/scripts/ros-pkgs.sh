@@ -3,7 +3,6 @@ apt-get install -y \
   ros-melodic-ddynamic-reconfigure \
   ros-melodic-move-base \
   ros-melodic-map-server \
-  ros-melodic-mavros-msgs \
   ros-melodic-gmapping \
   ros-melodic-teleop-twist-keyboard \
   ros-melodic-amcl
