@@ -30,3 +30,9 @@ docker attach control
 ```
 docker exec -it control bash 
 ```
+
+## Zsh Theme Configuration
+In Container
+```
+p10k configure
+```
