@@ -10,7 +10,7 @@
     <arg name="move_plan"       default="~"/>
 
     <!-- parameters for MPPI controller  -->
-    <arg name="nn_model_path"   default="$(find rosbot_controller)/src/model_100.onnx" />
+    <arg name="nn_model_path"   default="$(find rosbot_controller)/nets/model_100.onnx" />
     <arg name="cmd_topic"       default="cmd_vel" />
     <arg name="parent_frame"    default="odom"/>
     <arg name="robot_frame"     default="base_link"/>
