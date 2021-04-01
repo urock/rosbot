@@ -52,9 +52,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN apt-mark hold libcublas-11-2 libnccl2
 
 
-##################
-# CUDDNN Runtime #
-##################
+##########
+# CUDDNN #
+##########
 ENV CUDNN_VERSION 8.1.1.33
 
 LABEL com.nvidia.cudnn.version="${CUDNN_VERSION}"
