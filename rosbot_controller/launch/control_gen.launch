@@ -1,0 +1,16 @@
+<launch>
+
+    <node pkg="rosbot_controller" type="control_generator.py" name="control_generator" output="screen">
+        <param name="control_mode"      value="periodic" />
+        <param name="Tmax"              value="15" />
+        <param name="period_lin"        value="3" />
+        <param name="period_ang"        value="3" />
+        <param name="v_min"             value="0.0" />
+        <param name="v_max"             value="3.0" />
+        <param name="w_min"             value="-1.0" />
+        <param name="w_max"             value="1.0" />
+        <param name="a_lin"             value="5.0" />
+        <param name="a_ang"             value="3.0" />
+    </node>
+
+</launch>
