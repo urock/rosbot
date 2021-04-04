@@ -59,7 +59,7 @@ cd src/rosbot/rosbot_controller/src/
 	3. use_nn_model - запуск нейосетевой модели rosbot
 * Пример использования
 ```
-roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=true gui:=false use_nn_model:=true
+roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_model:=true
 ```
 
 ## 4.2 follow_path.launch
@@ -73,6 +73,12 @@ roslaunch rosbot_controller run_simulation.launch traj_type:=2.5sin0.2 rviz:=tru
 roslaunch rosbot_controller follow_path.launch traj_type:=2.5sin0.2
 ```
 
+## 4.3 control_gen.launch
+* Расположение 
+* Пример использования
+```
+roslaunch rosbot_controller control_gen.launch
+```
 
 
 ## 4.8 mppi_test.launch

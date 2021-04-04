@@ -6,7 +6,18 @@ import time
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
+def save_plot(path, name='', fmt='png'):
+    """Saves graph to the output pkg"""
+
+    pwd = os.getcwd()
+    os.chdir(os.path.expanduser('~'))
+    if not os.path.exists(path):
+        os.makedirs(path)
+    os.chdir(path)
+    plt.savefig('{}.{}'.format(name, fmt), fmt='png')
+    os.chdir(pwd)
 
 
 class ControlGenerator():
@@ -21,7 +32,7 @@ class ControlGenerator():
         rospy.init_node(self.node_name, anonymous=True)
         self.mode = rospy.get_param('~control_mode')
 
-        # self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
 
         self.dt = 0.033
         self.v = []
@@ -49,7 +60,7 @@ class ControlGenerator():
             self.generate_periodic_control()
 
         self.build_graph(self.t, self.v, self.w)
-        # self.publish_control_sequence()
+        self.publish_control_sequence()
 
 
     def read_control_from_file(self):
@@ -72,7 +83,7 @@ class ControlGenerator():
             twist_cmd.linear.x = self.v[i]
             twist_cmd.angular.z = self.w[i]
 
-            self.cmd_pub(twist_cmd)
+            self.cmd_pub.publish(twist_cmd)
             rospy.sleep(self.dt)
 
 
@@ -146,6 +157,8 @@ class ControlGenerator():
         plt.legend(loc='best')  # or loc=1
         plt.grid(True)
         plt.show()
+        # save_plot(os.getcwd(), name='graph', fmt='png')
+
 
 
 def main():
