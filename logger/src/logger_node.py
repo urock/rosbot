@@ -82,9 +82,9 @@ class Logger:
             self.delta_time['dt'].append(current_time - self.prev_time)
             self.control['x'].append(self.current_control[0])
             self.control['yaw'].append(self.current_control[1])
-            self.get_states()
+            #self.get_states()
+            self.fill_state(dst_frame='base_link', state=self.robot_state)
             self.prev_time = current_time
-            # self.fill_state(dst_frame='base_link', state=self.robot_state)
 
     def timeout_callback(self, time_event):
         """called every second, calculates the time spent on simulation,
@@ -117,16 +117,17 @@ class Logger:
         """stores msg data about robot state
          and model state in separate containers"""
         # if it is the first callback set init time
+        # s = time_.time()
         self.fill_state(dst_frame='base_link', state=self.robot_state)
-        # self.fill_state(dst_frame='model_link', state=self.model_state)
+        self.fill_state(dst_frame='model_link', state=self.model_state)
+        # print("EXECUTION TIME  = {}".format(time_.time() - s))
 
     def fill_state(self, dst_frame, state, src_frame='odom'):
         """Receives the state of the model or robot via TF transformation"""
-
+        # print("fill state", dst_frame)
         try:
-            # s = time_.time()
             tf_transform = self.tf_buffer.lookup_transform(src_frame, dst_frame, rospy.Time(),
-                                                           rospy.Duration(0.2)).transform
+                                                           rospy.Duration(0.1)).transform
 
             trans_vec = tf_transform.translation
             rot_quat = tf_transform.rotation
@@ -134,18 +135,21 @@ class Logger:
             state['x'].append(trans_vec.x) # append new x, y, yaw
             state['y'].append(trans_vec.y)
             state['yaw'].append(yaw)
-            if self.fisrt_fill_state:
+
+            if len(state['x'])==1:
                 v, w = 0, 0
+                state['v'].append(v)
+                state['w'].append(w)
                 self.fisrt_fill_state = False
             else:
                 dt = self.delta_time['dt'][-1]
-                x_new = state['x'][-1]
-                y_new = state['y'][-1]
-                yaw_new = state['yaw'][-1]
+                x_new = trans_vec.x
+                y_new = trans_vec.y
+                yaw_new = yaw
                 x_prev = state['x'][-2]
                 y_prev = state['y'][-2]
                 yaw_prev = state['yaw'][-2]
-
+                # print(dt, x_new, y_new, yaw_new, x_prev, y_prev, yaw_prev)
 
                 d_yaw = yaw_new - yaw_prev
                 d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
@@ -157,31 +161,35 @@ class Logger:
 
                 alpha = math.atan2(vy,vx)
                 v = v * math.cos(alpha - yaw_new)
+                # print("___________")
+                # print(v, w)
+                state['v'].append(v)
+                state['w'].append(w)
 
-            state['v'].append(v)
-            state['w'].append(w)
-            # print("!!EXECUTION TIME = {}".format(time_.time() - s))
+            
 
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             return tf.LookupException
 
-    def process_collected_data(self, data, name='', plot_type='xy', csv=True):
+    def process_collected_data(self, name, data, plot_type=None, plot_names=None):
         """Builds and saves a graph from data,
           saves data to an output file """
-        
-        #plt.figure(name)
-        #if plot_type == 'xy':
-        #    plot_xy_data(x=data['x'], y=data['y'])
-        #elif plot_type == 'xt':
-        #    plot_xy_data(x=data['t'], y=data['x'])
-        #elif plot_type == 'x':
-        #    plot_data(data['x'])
-        #elif plot_type == 'y':
-        #    plot_data(data['y'])
         path = self.module_path + '/'
-        write_to_file(path=path, data=data, file_name=name, csv=csv)
-        # path = self.module_path + '/pictures'
-        # save_plot(path=path, name=name)
+        write_to_file(path=path, data=data, file_name=name)
+        if plot_type is not None: # [['x', 'y']]
+            plt.figure(name)
+            fig, ax = plt.subplots(len(plot_type))
+            i = 0
+            for keys, plot_name in zip(plot_type, plot_names):
+                if len(keys) == 2:
+                    plot_xy_data(x=data[keys[0]], y=data[keys[1]], ax=ax[i], plot_name=plot_name)
+                if len(keys) == 1:
+                    plot_data(data[keys[0]], ax=ax[i], plot_name=plot_name)
+                i += 1
+            # path = self.module_path + '/'
+            path = self.module_path + '/pictures'
+            save_plot(path=path, name=name)
+            
 
     def build_general_graph(self, data, folder):
         """Build a graph containing information about what the trajectory was,
@@ -200,7 +208,7 @@ class Logger:
         plt.figure("trajectory and states")
 
         plt.plot(x1, y1, color='b', label='robot state', linewidth=3)
-        # plt.plot(x2, y2, color='r', label='model state', linewidth=3)
+        plt.plot(x2, y2, color='r', label='model state', linewidth=3)
         plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
 
         base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
@@ -222,13 +230,13 @@ class Logger:
         """
       
         data = [self.robot_state, self.model_state, self.trajectory]
-        # self.build_general_graph(data, '/pictures')
+        self.build_general_graph(data, '/pictures')
         self.timer_.shutdown()
 
         # self.process_collected_data(name='trajectory', data=self.trajectory)
-        self.process_collected_data(name='state', data=self.robot_state)
-        self.process_collected_data(name='delta_time', data=self.delta_time)
-        self.process_collected_data(name='control', data=self.control, plot_type='xt')
+        self.process_collected_data(name='state', data=self.robot_state, plot_type=[['x', 'y'], ['v'], ['w']], plot_names=["traj", "lin_vel", "ang_vel"])
+        self.process_collected_data(name='delta_time', data=self.delta_time, plot_type=None)
+        self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
         # self.process_collected_data(name='model_state', data=self.model_state)
 
         rospy.logwarn("Logger: output data folder - {}".format(self.module_path))

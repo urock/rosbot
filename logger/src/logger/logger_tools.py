@@ -3,19 +3,40 @@ import os
 import matplotlib.pyplot as plt
 
 
-def plot_xy_data(x, y):
+def plot_xy_data(x, y, ax=None, plot_name=" "):
     """Build a graph from x and y"""
     x = np.array(x)
     y = np.array(y)
-    plt.plot(x, y)
-    plt.grid(True)
+    if ax == None:
+        plt.plot(x, y, label=plot_name)
+        plt.grid(True)
+        plt.title(plot_name)
+    else:
+        ax.plot(x, y, label=plot_name)
+        ax.grid(True)
+        ax.annotate(
+            plot_name,
+            xy=(0, 1), xytext=(12, -12), va='top',
+            xycoords='axes fraction', textcoords='offset points',
+            bbox=dict(facecolor='none', edgecolor='black')
+        )
 
 
-def plot_data(data):
+def plot_data(data, ax=None, plot_name=" "):
     """Build a graph from x or y """
-
-    plt.plot(data)
-    plt.grid(True)
+    if ax == None:
+        plt.plot(data, label=plot_name)
+        plt.grid(True)
+        plt.title(plot_name)
+    else:
+        ax.plot(data, label=plot_name)
+        ax.grid(True)
+        ax.annotate(
+            plot_name,
+            xy=(0, 1), xytext=(12, -12), va='top',
+            xycoords='axes fraction', textcoords='offset points',
+            bbox=dict(facecolor='none', edgecolor='black')
+        )
 
 
 def show_graph():
@@ -40,7 +61,7 @@ def save_plot(path, name='', fmt='png'):
     os.chdir(pwd)
 
 
-def write_to_file(path, data, file_name, csv=True):
+def write_to_file(path, data, file_name):
     """Saves data to the output file"""
 
     pwd = os.getcwd()
