@@ -40,7 +40,7 @@ def save_plot(path, name='', fmt='png'):
     os.chdir(pwd)
 
 
-def write_to_file(path, data, file_name):
+def write_to_file(path, data, file_name, csv=True):
     """Saves data to the output file"""
 
     pwd = os.getcwd()
@@ -48,21 +48,21 @@ def write_to_file(path, data, file_name):
     if not os.path.exists(path):
         os.makedirs(path)
 
-    output_file = open(path + file_name + '.txt', 'w')
-
+    output_file = open(path + file_name + '.csv', 'w')
+    keys = ('dt', 'x', 'y', 'yaw', 'v', 'w')
     # write title
     title = ''
-    for key in ('t', 'x', 'y', 'yaw'):
+    for key in keys:
         if key in data.keys():
             title += key + ' '
     output_file.write(title + '\n')
 
     for i in range(0, len(data.values()[0])):
         item = str()
-        for key in ('t', 'x', 'y', 'yaw'):
+        for key in keys:
             if key in data.keys():
                 item = item + str(round(data[key][i], 5)) + ' '
-        output_file.write(str(item) + '\n')
+        output_file.write(item.strip() + '\n')
 
 
     output_file.close()
