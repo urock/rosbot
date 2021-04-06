@@ -35,6 +35,14 @@ docker attach control
 docker exec -it control bash 
 ```
 
+# 2. Компиляция 
+
+```
+docker attach control
+cd catkin_ws
+catkin build
+```
+
 
 # 3. Сбор данных
 открыть терминал
