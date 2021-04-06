@@ -1,12 +1,10 @@
 <launch>
+    
 
     <!-- parameters for gui/rviz visualization  -->
     <arg name="gui"             default="false" />
     <arg name="rviz"            default="true" />
 
-    <!-- parameters for publish_path node -->
-    <arg name="traj_type"       default="sin"/>
-    <arg name="move_plan"       default="~"/>
 
     <!-- for NN Model -->
     <arg name="use_nn_model"    default="false" />
@@ -36,13 +34,5 @@
         </include>
     </group> 
 
-    <!-- publish path -->
-    <include file="$(find rosbot_controller)/launch/publish_path.launch">
-        <arg name="traj_type"   value="$(arg traj_type)" />
-        <arg name="move_plan"   value="$(arg move_plan)" />
-    </include>
-
-    <!-- launch "simple" controller -->
-    <include file="$(find rosbot_controller)/launch/follow_path.launch"/>
 
 </launch>
