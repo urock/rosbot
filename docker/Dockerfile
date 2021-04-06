@@ -93,6 +93,10 @@ RUN pip3 install --upgrade pip && \
         nnio \
         onnxruntime-gpu 
 
+RUN pip3 install --upgrade pip && \
+    pip3 install \
+	netifaces
+
 RUN pip2 install --upgrade pip && \
     pip2 install \
         typing \
