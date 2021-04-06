@@ -1,9 +1,23 @@
-ROSBot control mode development 
+# ROSBot control mode development 
 
-Инструкция по работе
+##  Table of Contents
+<!-- vim-markdown-toc GitLab -->
 
-# Docker 
-## Install Guide
+* [1. Docker](#1-docker)
+  * [Install Guide](#install-guide)
+  * [Usage Guide](#usage-guide)
+* [2. Компиляция](#2-Компиляция)
+* [3. Сбор данных](#3-Сбор-данных)
+* [4. Описание launch файлов](#4-Описание-launch-файлов)
+  * [4.1 run_simulation.launch](#41-run_simulationlaunch)
+  * [4.2 follow_path.launch](#42-follow_pathlaunch)
+  * [4.3 control_gen.launch](#43-control_genlaunch)
+  * [4.4 mppi_test.launch](#44-mppi_testlaunch)
+
+<!-- vim-markdown-toc -->
+
+## 1. Docker 
+### Install Guide
 - Install dependecies
 ```
 ./dependencies.sh
@@ -19,7 +33,7 @@ ROSBot control mode development
 ./run.sh
 ```
 
-## Usage Guide
+### Usage Guide
 - Start container
 ```
 docker start control
@@ -35,7 +49,7 @@ docker attach control
 docker exec -it control bash 
 ```
 
-# 2. Компиляция 
+## 2. Компиляция 
 
 ```
 docker attach control
@@ -44,7 +58,7 @@ catkin build
 ```
 
 
-# 3. Сбор данных
+## 3. Сбор данных
 открыть терминал
 ```bash
 cd catkin_ws_path
@@ -56,9 +70,9 @@ cd src/rosbot/rosbot_controller/src/
 * -w - список угловых скоростей
 Данные будут сохранены в *logger/output_data/*
 
-# 4. Описание launch файлов
+## 4. Описание launch файлов
 
-## 4.1 run_simulation.launch
+### 4.1 run_simulation.launch
 * Расположение rosbot_controller/launch/run_simulation.launch
 * Что делает: Запускает gazebo, спавнит rosbot, запукает model runners
 * Аргументы:
@@ -70,7 +84,7 @@ cd src/rosbot/rosbot_controller/src/
 roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_model:=true
 ```
 
-## 4.2 follow_path.launch
+### 4.2 follow_path.launch
 * Расположение rosbot_controller/launch/follow_path.launch
 * Что делает: публикует траекторию, запускает контроллер для следования rosobot по пути
 * Аргументы:
@@ -81,7 +95,7 @@ roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_m
 roslaunch rosbot_controller follow_path.launch traj_type:=2.5sin0.2
 ```
 
-## 4.3 control_gen.launch
+### 4.3 control_gen.launch
 * Расположение 
 * Пример использования
 ```
@@ -89,7 +103,7 @@ roslaunch rosbot_controller control_gen.launch
 ```
 
 
-## 4.8 mppi_test.launch
+### 4.4 mppi_test.launch
 * Расположение rosbot_controller/launch/mppi_test.launch
 * Что делает: Запускает gazebo, спавнит rosbot, публикует траекторию
 * Аргументы:
