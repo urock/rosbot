@@ -96,7 +96,7 @@ class Logger:
                 current_time = time_.time()
 
                 self.delta_time['dt'].append(current_time - self.prev_time)
-                print(self.delta_time['dt'][-1])
+                # print(self.delta_time['dt'][-1])
                 self.control['x'].append(self.current_control[0])
                 self.control['yaw'].append(self.current_control[1])
 

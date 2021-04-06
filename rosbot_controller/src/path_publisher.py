@@ -58,8 +58,9 @@ def edges_to_points(edges):
     return points
 
 
-def SinTrajGenerator(msg, step, a=1.0, f=1.0):
-    x_ar = np.arange(0,2*np.pi, step, dtype=float)   # start,stop,step
+def SinTrajGenerator(msg, step, a=1.0, f=1.0, reverse=False):
+    K = -1 if reverse==True else 1
+    x_ar = np.arange(0, 2*np.pi * K, step * K, dtype=float)   # start,stop,step
     y_ar = float(a) * np.sin(float(f) * x_ar)
     yaw_arr = float(a) * float(f) * np.cos(float(f) * x_ar)
 
@@ -80,11 +81,7 @@ def SinTrajGenerator(msg, step, a=1.0, f=1.0):
 def PolygonTrajGenerator(msg, step):
 
     p_edges = [(2.0, -0.1), (2.1, 1.9),  (0.1, 2.0), (0, 0)] # square
-    # p_edges = [(0.1, 2.1), (1.2, 0.0),  (1.3, 2.1), (2.5, 0.0), (2.7, 2.2), (3.7, 0.0), (3.9, 2.1), (4.1, 0.0)] # saw 
-    # p_edges = [(0.1, -2.1), (-1.2, 0.0),  (-1.3, -2.1), (-2.5, 0.0), (-2.7, -2.2), (-3.7, 0.0), (-3.9, -2.1), (-4.1, 0.0)] # saw 
-    # p_edges = [(-2.1, 0.1), (-2.2, 1.2),  (-2.6, 0.0), (-2.8, 1.8), (-2.9, 0.2), (-3.8, 2.5), (-3.9, 0.0), (-5.5, 3.0), (-6.0, 0.0)] # saw
-    # p_edges = [(0.001, 0.005), (-0.001, -0.005), (0.001, 0.005), (-0.001, -0.005)] # saw 
-      
+     
     
     points = edges_to_points(p_edges)
     
@@ -161,10 +158,11 @@ def FromFileTrajGenerator(msg, move_plan):
 
 
 def parse_sin_traj(traj_type):
-    coef = traj_type.split('sin')
-    a = coef[0] if coef[0] != '' or coef[0] is None else 1
-    f = coef[1] if coef[1] != '' or coef[1] is None else 1
-    return a, f
+    traj_type = traj_type.strip().split('sin') # []
+    period = float(traj_type[-1])
+    amplitude = float(traj_type[0].split("_")[-1])
+    reverse = traj_type[0].split("_")[0] == 'reverse'
+    return amplitude, period, reverse
 
 def parse_spiral_traj(traj_type):
     coef = traj_type.split('spiral')
@@ -196,8 +194,8 @@ def main():
 
     if 'sin' in traj_type:
         print("TRY PARSE", traj_type )
-        amplitude, freq = parse_sin_traj(traj_type)
-        msg = SinTrajGenerator(msg, step, amplitude, freq)
+        amplitude, freq, reverse = parse_sin_traj(traj_type)
+        msg = SinTrajGenerator(msg, step, amplitude, freq, reverse)
     elif traj_type == 'polygon':
         msg = PolygonTrajGenerator(msg, step)
     elif traj_type == 'from_file':
