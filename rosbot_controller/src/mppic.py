@@ -70,8 +70,7 @@ class MPPIController:
 
         try:
             while not rospy.is_shutdown() and not self.stop:
-                self.run(limit_v, v_std, w_std, iter_num, timesteps_num, batch_size, batch_size);
-                self.rate.sleep()
+                self.run(limit_v, v_std, w_std, iter_num, timesteps_num, batch_size)
 
         except KeyboardInterrupt:
             print('finish')
@@ -81,13 +80,12 @@ class MPPIController:
         rospy.loginfo("Robot state = {}".format(self.curr_state.to_str()))
         rospy.loginfo("Current goal = {}".format(self.curr_goal.to_str()))
 
-
         control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
         opt_loss = []
         time_start = time.time()
 
         for _ in range(iter_count):
-            control_seqs = control[None] + generate_noise(batch_size, timesteps_num, v_std, w_std)
+            control_seqs = control[None] + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
 
             control_seqs = np.clip(control_seqs, -limit_v, limit_v)
             control_seqs_loss, trajectories = self.loss_for_control(control_seqs, self.curr_goal)
@@ -111,7 +109,7 @@ class MPPIController:
             np.ones([n_steps+1, 2]) * control[-1:]
         ], axis=0)
 
-        rospy.loginfo("Execution time is = {} sec".format(execution_time))  
+        rospy.loginfo("Execution time is = {} sec".format(execution_time))
 
     def generate_noise(self, batch_size, timesteps_num, v_std, w_std):
         v_noise = np.random.normal(0.0, v_std, size=(batch_size, timesteps_num, 1))
