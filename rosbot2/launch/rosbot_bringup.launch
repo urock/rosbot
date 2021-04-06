@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<launch>
-  <include file="$(find astra_launch)/launch/astra.launch"/>
-  <include file="$(find rplidar_ros)/launch/rplidar.launch"/>
-  <include file="$(find rosbot2)/launch/rosbot_static_tf.launch"/>
-  <include file="$(find rosbot_ekf)/launch/all.launch" />
-</launch>

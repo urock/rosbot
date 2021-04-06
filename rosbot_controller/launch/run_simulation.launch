@@ -15,7 +15,7 @@
     <arg name="cmd_freq"        default="30"/>
 
     <!-- spawn rosbot -->
-    <include file="$(find rosbot2)/launch/spawn_rosbot.launch">
+    <include file="$(find rosbot2_gazebo)/launch/spawn_rosbot.launch">
         <arg name="rviz"    value="$(arg rviz)" />
         <arg name="gui"     value="$(arg gui)" />
     </include>

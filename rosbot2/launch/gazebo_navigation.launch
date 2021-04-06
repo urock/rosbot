@@ -1,9 +1,0 @@
-<launch>
-  <include file="$(find rosbot2)/launch/gazebo_bringup.launch"/>
-  <include file="$(find rosbot2)/launch/map_server.launch"/>
-  <include file="$(find rosbot2)/launch/amcl.launch"/>
-
-  <include file="$(find rosbot2)/launch/dwa_move_base.launch"/>
-
-  <include file="$(find rosbot2)/launch/rviz.launch"/>
-</launch>
