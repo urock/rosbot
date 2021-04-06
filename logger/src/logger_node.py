@@ -67,24 +67,41 @@ class Logger:
         # declare subscribers
         self.trajectory_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.control_sub = rospy.Subscriber('/cmd_vel', Twist, self.cmd_vel_callback)
-        self.timer_ = rospy.Timer(rospy.Duration(0.033), self.timer_callback)
-
+        # self.timer_ = rospy.Timer(rospy.Duration(0.033), self.timer_callback)
+        self.tf_sub = rospy.Subscriber('/tf', Twist, self.tf_callback)
         if self.timeout > 0:
             rospy.Timer(rospy.Duration(1), self.timeout_callback)
 
         # set the function that will be executed when shutdown
         rospy.on_shutdown(self.on_shutdown)
 
-    def timer_callback(self, timer_event):
-        if len(self.current_control) > 0:
-            current_time = time_.time()
-            # print("Cuuret time = {}".format(current_time))
-            self.delta_time['dt'].append(current_time - self.prev_time)
-            self.control['x'].append(self.current_control[0])
-            self.control['yaw'].append(self.current_control[1])
-            #self.get_states()
-            self.fill_state(dst_frame='base_link', state=self.robot_state)
-            self.prev_time = current_time
+    # def timer_callback(self, timer_event):
+    #     if len(self.current_control) > 0:
+    #         current_time = time_.time()
+    #         # print("Cuuret time = {}".format(current_time))
+    #         self.delta_time['dt'].append(current_time - self.prev_time)
+    #         self.control['x'].append(self.current_control[0])
+    #         self.control['yaw'].append(self.current_control[1])
+    #         #self.get_states()
+    #         self.fill_state(dst_frame='base_link', state=self.robot_state)
+    #         self.prev_time = current_time
+
+    def tf_callback(self, msg):
+        for item in msg.transforms:
+            if (
+                item.header.frame_id == 'odom' and 
+                item.child_frame_id == 'base_link'   and 
+                len(self.current_control) > 0
+            ):
+                current_time = time_.time()
+
+                self.delta_time['dt'].append(current_time - self.prev_time)
+                print(self.delta_time['dt'][-1])
+                self.control['x'].append(self.current_control[0])
+                self.control['yaw'].append(self.current_control[1])
+
+                self.fill_state(dst_frame='base_link', state=self.robot_state)
+                self.prev_time = current_time
 
     def timeout_callback(self, time_event):
         """called every second, calculates the time spent on simulation,
@@ -228,10 +245,11 @@ class Logger:
         """
         Process and save collected data
         """
-      
+        self.tf_sub.unregister()
+        self.control_sub.unregister()
         data = [self.robot_state, self.model_state, self.trajectory]
         self.build_general_graph(data, '/pictures')
-        self.timer_.shutdown()
+        # self.timer_.shutdown()
 
         # self.process_collected_data(name='trajectory', data=self.trajectory)
         self.process_collected_data(name='state', data=self.robot_state, plot_type=[['x', 'y'], ['v'], ['w']], plot_names=["traj", "lin_vel", "ang_vel"])
