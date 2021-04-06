@@ -14,4 +14,4 @@ docker run -it -d --privileged --net=host \
       -e NVIDIA_DRIVER_CAPABILITIES="all" \
       -e ROS_HOSTNAME=localhost \
       -e ROS_MASTER_URI=http://localhost:11311 \
-      -e QT_X11_NO_MITSHM=1 $image_name zsh \
+      -e QT_X11_NO_MITSHM=1 $image_name zsh 
