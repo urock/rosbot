@@ -10,16 +10,18 @@ def plot_xy_data(x, y, ax=None, plot_name=" "):
     if ax == None:
         plt.plot(x, y, label=plot_name)
         plt.grid(True)
-        plt.title(plot_name)
+        # plt.title(plot_name)
     else:
         ax.plot(x, y, label=plot_name)
         ax.grid(True)
-        ax.annotate(
-            plot_name,
-            xy=(0, 1), xytext=(12, -12), va='top',
-            xycoords='axes fraction', textcoords='offset points',
-            bbox=dict(facecolor='none', edgecolor='black')
-        )
+        # ax.set_title(plot_name)
+        # ax.annotate(
+        #     plot_name,
+        #     xy=(0, 1), xytext=(12, -12), va='top',
+        #     xycoords='axes fraction', textcoords='offset points',
+        #     bbox=dict(facecolor='none', edgecolor='black')
+        # )
+        ax.legend(loc="best")
 
 
 def plot_data(data, ax=None, plot_name=" "):
@@ -27,16 +29,18 @@ def plot_data(data, ax=None, plot_name=" "):
     if ax == None:
         plt.plot(data, label=plot_name)
         plt.grid(True)
-        plt.title(plot_name)
+        # plt.title(plot_name)
     else:
         ax.plot(data, label=plot_name)
         ax.grid(True)
-        ax.annotate(
-            plot_name,
-            xy=(0, 1), xytext=(12, -12), va='top',
-            xycoords='axes fraction', textcoords='offset points',
-            bbox=dict(facecolor='none', edgecolor='black')
-        )
+        # ax.set_title(plot_name)
+        ax.legend(loc="best")
+        # ax.annotate(
+        #     plot_name,
+        #     xy=(0, 1), xytext=(12, -12), va='top',
+        #     xycoords='axes fraction', textcoords='offset points',
+        #     bbox=dict(facecolor='none', edgecolor='black')
+        # )
 
 
 def show_graph():

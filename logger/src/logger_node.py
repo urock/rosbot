@@ -62,6 +62,7 @@ class Logger:
         self.model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
         # time spent running the simulator (for automated tests)
         self.delta_time = {'dt': []}
+        self.time = list()
         self.time_spent = 0
         self.current_control = list()
         # declare subscribers
@@ -94,7 +95,7 @@ class Logger:
                 len(self.current_control) > 0
             ):
                 current_time = time_.time()
-
+                self.time.append(current_time - self.init_time)
                 self.delta_time['dt'].append(current_time - self.prev_time)
                 # print(self.delta_time['dt'][-1])
                 self.control['x'].append(self.current_control[0])
@@ -240,6 +241,31 @@ class Logger:
         plt.grid(True)
         save_plot(folder_path, name='general_graph', fmt='png')
 
+    def plot_velocities_and_control(self):
+        fig, ax = plt.subplots(2)
+        plot_xy_data(x=self.time, y=self.control['x'], ax=ax[0], plot_name="U_V")
+        plot_xy_data(x=self.time, y=self.robot_state['v'], ax=ax[0], plot_name="V")
+
+        plot_xy_data(x=self.time, y=self.control['yaw'], ax=ax[1], plot_name="U_W")
+        plot_xy_data(x=self.time, y=self.robot_state['w'], ax=ax[1], plot_name="W")
+
+        path = self.module_path + '/pictures'
+        save_plot(path=path, name="velocities_and_control")
+
+    def plot_all_state(self):
+        fig, ax = plt.subplots(4)
+
+        plot_xy_data(x=self.robot_state['x'], y=self.robot_state['y'], ax=ax[0], plot_name="x_y")
+
+        plot_xy_data(x=self.time, y=self.robot_state['x'], ax=ax[1], plot_name="x(t)")
+
+        plot_xy_data(x=self.time, y=self.robot_state['y'], ax=ax[2], plot_name="y(t)")
+
+        plot_xy_data(x=self.time, y=self.robot_state['yaw'], ax=ax[3], plot_name="yaw(t)")
+
+        path = self.module_path + '/pictures'
+        save_plot(path=path, name="state")
+
 
     def on_shutdown(self):
         """
@@ -252,10 +278,15 @@ class Logger:
         # self.timer_.shutdown()
 
         # self.process_collected_data(name='trajectory', data=self.trajectory)
-        self.process_collected_data(name='state', data=self.robot_state, plot_type=[['x', 'y'], ['v'], ['w']], plot_names=["traj", "lin_vel", "ang_vel"])
+        self.plot_all_state()
+        self.plot_velocities_and_control()
+        self.process_collected_data(name='state', data=self.robot_state, plot_type=None)
         self.process_collected_data(name='delta_time', data=self.delta_time, plot_type=None)
-        self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
+        # self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
+        self.process_collected_data(name='control', data=self.control, plot_type=None)
+
         # self.process_collected_data(name='model_state', data=self.model_state)
+
 
         rospy.logwarn("Logger: output data folder - {}".format(self.module_path))
 
