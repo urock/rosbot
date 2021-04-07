@@ -7,8 +7,8 @@
     <arg name="v_max"             default="2.0" />
     <arg name="w_min"             default="0.0" />
     <arg name="w_max"             default="0.0" />
-    <arg name="a_lin"             default="1.0" />
-    <arg name="a_ang"             default="0.0" />
+    <arg name="a_lin"             default="0.5" />
+    <arg name="a_ang"             default="0.5" />
 
     <arg name="output_folder"     default="_1" />
 
