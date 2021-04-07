@@ -91,14 +91,13 @@ def main():
     plot_xy_data(x=time, y=model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
 
 
-    # fig3, ax3 = plt.subplots(1)
-    plot_xy_data(x=time, y=robot_state['yaw'], ax=None, plot_name="yaw(t)")
-    plot_xy_data(x=time, y=model_state['yaw'], ax=None, plot_name="kinematic model yaw(t)")
+    fig3, ax3 = plt.subplots(1)
+    plot_xy_data(x=time, y=robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
+    plot_xy_data(x=time, y=model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
 
-    # fig4, ax4 = plt.subplots(1)
-    # plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4[0], plot_name="x_y")
-    # plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4[0], plot_name="kinematic model x_y")
-
+    fig4, ax4 = plt.subplots(1)
+    plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="x_y")
+    plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model x_y")
 
     # fig2.annotate(
     #     "states",
