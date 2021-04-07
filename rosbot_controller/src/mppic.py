@@ -119,7 +119,7 @@ class MPPIController:
         init_states = self.create_init_state(control_seqs)
         predicted_velocities = self.predict_velocities(init_states)
         trajectories = self.predict_trajectories(predicted_velocities)
-        loss = self.get_trag_loss(trajectories)
+        loss = self.get_traj_loss(trajectories)
 
         return loss
 
@@ -179,7 +179,7 @@ class MPPIController:
         ], axis=2)
         return result_xya
 
-    def get_trag_loss(self, trajectories):
+    def get_traj_loss(self, trajectories):
         """
         Calculate cost function (loss) for trajectory
         """
