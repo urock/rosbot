@@ -134,7 +134,6 @@ class MPPIController:
 
         return init_states
 
-    # t0  states float 32, time steps num,
     def predict_velocities(self, init_states):
         """
         Filling initial states with predicted velocities along time horizont for all batches
