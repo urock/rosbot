@@ -97,11 +97,6 @@ class MPPIController:
         for _ in range(iter_count):
             control_seqs = best_control[None] + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
             control_seqs = np.clip(control_seqs, -limit_v, limit_v) # Clip both v and w ?
-
-            # init_states = self.create_init_state(control_seqs)
-            # predicted_velocities = self.predict_velocities(init_states)
-            # trajectories = self.predict_trajectories(predicted_velocities)
-            # control_seqs_loss = self.get_trag_loss(trajectories)
             curr_loss = self.calc_loss(control_seqs)
 
             best_ind = np.argmin(curr_loss, axis=0)
