@@ -135,7 +135,7 @@ class ControlGenerator():
         yield w
         for i in range(int(self.Tw/(2*self.dt))):
             if w < self.w_max:
-                w += self.a_l * self.dt
+                w += self.a_w * self.dt
             yield w            
 
         while True:
