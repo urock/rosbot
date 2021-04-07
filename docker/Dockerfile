@@ -72,6 +72,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN apt-get update && \
     apt-get install -y \
        python-pip \
+       python-tk \
        python3-pip && \
        rm -rf /var/lib/apt/lists/*
 
@@ -91,6 +92,10 @@ RUN pip3 install --upgrade pip && \
         yaml-1.3 \
         nnio \
         onnxruntime-gpu 
+
+RUN pip3 install --upgrade pip && \
+    pip3 install \
+	netifaces
 
 RUN pip2 install --upgrade pip && \
     pip2 install \

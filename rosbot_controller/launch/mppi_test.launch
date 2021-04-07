@@ -10,14 +10,14 @@
     <arg name="move_plan"       default="~"/>
 
     <!-- parameters for MPPI controller  -->
-    <arg name="nn_model_path"   default="$(find rosbot_controller)/nets/model_100.onnx" />
+    <arg name="nn_model_path"   default="$(find rosbot_controller)/nets/model_batch_100.onnx" />
     <arg name="cmd_topic"       default="cmd_vel" />
     <arg name="parent_frame"    default="odom"/>
     <arg name="robot_frame"     default="base_link"/>
     <arg name="cmd_freq"        default="30"/>
 
     <!-- spawn rosbot -->
-    <include file="$(find rosbot2)/launch/spawn_rosbot.launch">
+    <include file="$(find rosbot2_gazebo)/launch/spawn_rosbot.launch">
         <arg name="rviz"        value="$(arg rviz)" />
         <arg name="gui"         value="$(arg gui)" />
     </include>
