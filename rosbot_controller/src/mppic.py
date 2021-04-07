@@ -4,9 +4,11 @@ import time
 import sys
 import os
 import math
+
 import numpy as np
 import nnio
 import matplotlib.pyplot as plt
+
 import rospy
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import PoseStamped, Twist, Pose, Point
@@ -18,10 +20,6 @@ from rosbot_controller.rosbot import Goal, quaternion_to_euler
 
 
 class MPPIController:
-    """
-
-    """
-
     def __init__(self, node_name):
         rospy.init_node(node_name, anonymous=True)
 
@@ -39,9 +37,9 @@ class MPPIController:
         self.curr_state = RobotState()
         self.prev_state = RobotState()
 
-        self.curr_goal = Goal()
-        self.next_goal = None
-        # X = [v, w] 
+        self.curr_goal = Goal() 
+        self.next_goal = None 
+
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
@@ -54,6 +52,7 @@ class MPPIController:
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
+        
         # declare publishers
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
         self.marker_pub = rospy.Publisher('/all_trajectories', MarkerArray, queue_size=10)
@@ -71,45 +70,45 @@ class MPPIController:
         try:
             while not rospy.is_shutdown() and not self.stop:
                 self.run(limit_v, v_std, w_std, iter_num, timesteps_num, batch_size)
-
         except KeyboardInterrupt:
-            print('finish')
+            rospy.loginfo("Interrupted")
 
 
     def run(self, limit_v, v_std, w_std, iter_count, timesteps_num, batch_size):
-        rospy.loginfo("Robot state = {}".format(self.curr_state.to_str()))
-        rospy.loginfo("Current goal = {}".format(self.curr_goal.to_str()))
+        start = time.perf_counter()
+        control = self.get_best_controll(iter_count, timesteps_num, limit_v, batch_size, v_std, w_std)
+        t = time.perf_counter() - start
 
-        control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
-        opt_loss = []
-        time_start = time.time()
+        steps_passed = int((t / self.dt) + 0.5)
+        steps_passed = min(steps_passed, timesteps_num-1)
+
+        v_best = control[0 + steps_passed, 0]
+        w_best = control[0 + steps_passed, 1]
+        self.publish_control( RobotControl(v_best, w_best) )
+
+        rospy.loginfo("Take {} step of MPPI".format(steps_passed))
+        rospy.loginfo("Execution time is = {:10.5f} sec".format(t))
+
+
+    def get_best_controll(self, iter_count, timesteps_num, limit_v, batch_size, v_std, w_std):
+        best_control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
+        best_losses = []
 
         for _ in range(iter_count):
-            control_seqs = control[None] + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
+            control_seqs = best_control + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
 
             control_seqs = np.clip(control_seqs, -limit_v, limit_v)
             control_seqs_loss, trajectories = self.loss_for_control(control_seqs, self.curr_goal)
 
-            opt_ind = np.argmin(control_seqs_loss, axis=0)
-            opt_loss.append(control_seqs_loss[opt_ind])
+            best_ind = np.argmin(control_seqs_loss, axis=0)
+            best_losses.append(control_seqs_loss[best_ind])
 
-            control = control_seqs[opt_ind]  # control shape = [timesteps_num, 2]
-            if opt_loss[-1] <= 0.1:
+            best_control = control_seqs[best_ind]  # control shape = [timesteps_num, 2]
+            if best_losses[-1] <= 0.05:
                 break
 
-        execution_time = time.time() - time_start
-        n_steps = int((execution_time / self.dt) + 0.5)
-        n_steps = min(n_steps, timesteps_num-1)
+        return best_control
 
-        rospy.loginfo("n_steps is = {}".format(n_steps))
-        self.publish_control(RobotControl(control[0, 0], control[0, 1]))
-
-        control = np.concatenate([
-            control[n_steps+1:],
-            np.ones([n_steps+1, 2]) * control[-1:]
-        ], axis=0)
-
-        rospy.loginfo("Execution time is = {} sec".format(execution_time))
 
     def generate_noise(self, batch_size, timesteps_num, v_std, w_std):
         v_noise = np.random.normal(0.0, v_std, size=(batch_size, timesteps_num, 1))
