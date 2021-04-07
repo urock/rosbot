@@ -2,7 +2,6 @@
 # license removed for brevity
 import time
 import sys
-import os
 import math
 
 import numpy as np
@@ -15,9 +14,9 @@ from geometry_msgs.msg import PoseStamped, Twist, Pose, Point
 from geometry_msgs.msg import Vector3, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
+
 from rosbot_controller.rosbot import Rosbot, RobotState, RobotControl
 from rosbot_controller.rosbot import Goal, quaternion_to_euler
-
 
 class MPPIController:
     def __init__(self, node_name):
@@ -76,34 +75,39 @@ class MPPIController:
 
     def run(self, limit_v, v_std, w_std, iter_count, timesteps_num, batch_size):
         start = time.perf_counter()
-        control = self.get_best_controll(iter_count, timesteps_num, limit_v, batch_size, v_std, w_std)
+        control = self.get_best_control(iter_count, timesteps_num, limit_v, batch_size, v_std, w_std)
         t = time.perf_counter() - start
 
-        steps_passed = int((t / self.dt) + 0.5)
+        steps_passed = round( (t / self.dt) )
         steps_passed = min(steps_passed, timesteps_num-1)
 
         v_best = control[0 + steps_passed, 0]
         w_best = control[0 + steps_passed, 1]
-        self.publish_control( RobotControl(v_best, w_best) )
-
-        rospy.loginfo("Take {} step of MPPI".format(steps_passed))
-        rospy.loginfo("Execution time is = {:10.5f} sec".format(t))
+        self.publish_control(RobotControl(v_best, w_best))
 
 
-    def get_best_controll(self, iter_count, timesteps_num, limit_v, batch_size, v_std, w_std):
+        rospy.loginfo_throttle(2,"Take {} step of MPPI".format(steps_passed))
+        rospy.loginfo_throttle(2,"Execution time is = {:10.5f} sec".format(t))
+
+
+    def get_best_control(self, iter_count, timesteps_num, limit_v, batch_size, v_std, w_std):
         best_control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
         best_losses = []
 
         for _ in range(iter_count):
-            control_seqs = best_control + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
+            control_seqs = best_control[None] + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
+            control_seqs = np.clip(control_seqs, -limit_v, limit_v) # Clip both v and w ?
 
-            control_seqs = np.clip(control_seqs, -limit_v, limit_v)
-            control_seqs_loss, trajectories = self.loss_for_control(control_seqs, self.curr_goal)
+            # init_states = self.create_init_state(control_seqs)
+            # predicted_velocities = self.predict_velocities(init_states)
+            # trajectories = self.predict_trajectories(predicted_velocities)
+            # control_seqs_loss = self.get_trag_loss(trajectories)
+            curr_loss = self.calc_loss(control_seqs)
 
-            best_ind = np.argmin(control_seqs_loss, axis=0)
-            best_losses.append(control_seqs_loss[best_ind])
+            best_ind = np.argmin(curr_loss, axis=0)
+            best_losses.append(curr_loss[best_ind])
 
-            best_control = control_seqs[best_ind]  # control shape = [timesteps_num, 2]
+            best_control = control_seqs[best_ind]
             if best_losses[-1] <= 0.05:
                 break
 
@@ -114,6 +118,91 @@ class MPPIController:
         v_noise = np.random.normal(0.0, v_std, size=(batch_size, timesteps_num, 1))
         w_noise = np.random.normal(0.0, w_std, size=(batch_size, timesteps_num, 1))
         return np.concatenate([v_noise, w_noise], axis=2)
+
+
+    def calc_loss(self, control_seqs):
+        init_states = self.create_init_state(control_seqs)
+        predicted_velocities = self.predict_velocities(init_states)
+        trajectories = self.predict_trajectories(predicted_velocities)
+        loss = self.get_trag_loss(trajectories)
+
+        return loss
+
+    def create_init_state(self, control_seqs):
+        shape = control_seqs.shape
+        init_states = np.zeros( (shape[0], shape[1], 5) )
+
+        init_states[:, 0, 0] = self.robot.v
+        init_states[:, 0, 1] = self.robot.w
+        init_states[:, :, 2:4] = control_seqs
+        init_states[:, :, 4] = self.dt
+
+        return init_states
+
+    # t0  states float 32, time steps num,
+    def predict_velocities(self, init_states):
+        """
+        Filling initial states with predicted velocities along time horizont for all batches
+        Args:
+            [in] init_states: batch * time_steps * [(v, w) ,(u) , dt] 
+        Return:
+            Velocities from filled init_states
+        """
+        filled_states = init_states
+        time_steps = init_states.shape[1]
+        for t_step in range(time_steps - 1):
+            curr_batch = init_states[:, t_step].astype(np.float32)
+            curr_predicted = self.model(curr_batch) 
+            filled_states[:, t_step + 1, :2] = curr_predicted 
+
+        return filled_states[:,:,:2]
+
+
+    def predict_trajectories(self, velocities):
+        """
+        Integrates velocities according to 
+        the robot model to obtain trajectories
+        Args:
+            velocities:
+        Return
+            result_xya:
+        """
+        v, w = velocities[:, :, 0], velocities[:, :, 1]
+        current_yaw = self.curr_state.yaw
+        yaw = np.cumsum(w * self.dt, axis=1)
+        yaw += current_yaw - yaw[:, :1]
+        vx = v * np.cos(yaw)
+        vy = v * np.sin(yaw)
+        x = np.cumsum(vx * self.dt, axis=1)
+        y = np.cumsum(vy * self.dt, axis=1)
+        x += self.curr_state.x - x[:, :1]
+        y += self.curr_state.y - y[:, :1]
+
+        result_xya = np.concatenate([
+            x[:, :, None],
+            y[:, :, None],
+            yaw[:, :, None],
+        ], axis=2)
+        return result_xya
+
+    def get_trag_loss(self, trajectories):
+        """
+        Calculate cost function (loss) for trajectory
+        """
+        goal = self.curr_goal
+        traj_x, traj_y, traj_yaw = trajectories[:, :, 0], trajectories[:, :, 1], trajectories[:, :, 2]
+        loss_x = traj_x - goal.x
+        loss_y = traj_y - goal.y
+        loss_yaw = traj_yaw - goal.yaw
+        loss = np.sqrt(loss_x ** 2 + loss_y ** 2) # + loss_yaw ** 2)
+
+        if self.next_goal is not None:
+            i_opt_ind_for_loss = np.argmin(loss, axis=1) # list of indexes 
+        
+        loss = loss.min(axis=1)
+        return loss
+
+
 
     def update_velocities(self, dt):
         """
@@ -165,7 +254,7 @@ class MPPIController:
                             self.next_goal = self.goal_queue.pop(0)
                         self.curr_goal = self.next_goal
                         self.next_goal = self.goal_queue.pop(0)
-                        rospy.logerr("new goal = " + self.curr_goal.to_str())
+                        rospy.loginfo("New goal = " + self.curr_goal.to_str())
                     elif self.next_goal is not None:
                         self.curr_goal = self.next_goal
                         self.next_goal = None
@@ -221,93 +310,6 @@ class MPPIController:
         twist_cmd.angular.z = control.w
         self.cmd_pub.publish(twist_cmd)
 
-    def loss_for_traj(self, trajectories, goal):
-        """
-        Calculate cost function (loss) for trajectory
-        """
-        traj_x, traj_y, traj_yaw = trajectories[:, :, 0], trajectories[:, :, 1], trajectories[:, :, 2]
-        loss_x = traj_x - goal.x
-        loss_y = traj_y - goal.y
-        loss_yaw = traj_yaw - goal.yaw
-        loss = np.sqrt(loss_x ** 2 + loss_y ** 2) # + loss_yaw ** 2)
-
-        if self.next_goal is not None:
-            i_opt_ind_for_loss = np.argmin(loss, axis=1) # list of indexes 
-        
-        loss = loss.min(axis=1)
-        return loss
-
-    def predict_trajectories(self, velocities):
-        """
-        Integrates velocities according to 
-        the robot model to obtain trajectories
-        Args:
-            velocities:
-        Return
-            result_xya:
-        """
-        v, w = velocities[:, :, 0], velocities[:, :, 1]
-        current_yaw = self.curr_state.yaw
-        yaw = np.cumsum(w * self.dt, axis=1)
-        yaw += current_yaw - yaw[:, :1]
-        vx = v * np.cos(yaw)
-        vy = v * np.sin(yaw)
-        x = np.cumsum(vx * self.dt, axis=1)
-        y = np.cumsum(vy * self.dt, axis=1)
-        x += self.curr_state.x - x[:, :1]
-        y += self.curr_state.y - y[:, :1]
-
-        result_xya = np.concatenate([
-            x[:, :, None],
-            y[:, :, None],
-            yaw[:, :, None],
-        ], axis=2)
-        return result_xya
-
-    def predict_multi_step(self, batch_x):
-        """
-        Predicts next speed
-        Args:
-            batch_x: 
-        Return:
-            batch_y:
-        """
-
-        state = batch_x[:, 0]
-        batch_y = [batch_x[:, :1, :2]]  # v and w
-        for t in range(1, batch_x.shape[1] + 1):
-            state = np.array(state, dtype=np.float32)
-            pred_vw = self.model(state)
-            if t != batch_x.shape[1]:
-                state = np.concatenate([pred_vw, batch_x[:, t, 2:]], axis=1)
-            batch_y.append(pred_vw[:, None])  # add axis for time
-        # concatenate along time axis
-        batch_y = np.concatenate(batch_y, axis=1)
-        return batch_y
-
-    def loss_for_control(self, control_seqs, goal):
-        """
-        Calcuate loss for given control seqence
-        Args:
-            control_seqs:
-            goal:
-        Return:
-            loss_for_control
-            trajectories
-        """
-        shape = control_seqs.shape
-        init_state = np.zeros((shape[0], shape[1], 5))
-        # print(self.robot.v, self.robot.w)
-        init_state[:, 0, 0] = self.robot.v
-        init_state[:, 0, 1] = self.robot.w
-        init_state[:, :, 2:4] = control_seqs
-        init_state[:, :, 4] = self.dt
-
-        predicted_velocities = self.predict_multi_step(init_state)
-        trajectories = self.predict_trajectories(predicted_velocities)
-        loss_for_control = self.loss_for_traj(trajectories, goal)
-        # print("loss for control execution time = {}".format(time.time() - time_start))
-        return loss_for_control, trajectories
 
     def visualize_trajectories(self, trajectories):
         """
