@@ -101,7 +101,8 @@ class Logger:
                 self.control['x'].append(self.current_control[0])
                 self.control['yaw'].append(self.current_control[1])
 
-                self.fill_state(dst_frame='base_link', state=self.robot_state)
+                # self.fill_state(dst_frame='base_link', state=self.robot_state)
+                self.get_states()
                 self.prev_time = current_time
 
     def timeout_callback(self, time_event):
@@ -131,7 +132,7 @@ class Logger:
         self.current_control = list([msg.linear.x, msg.angular.z])
 
 
-    def get_states(self, timer_event=None):
+    def get_states(self):
         """stores msg data about robot state
          and model state in separate containers"""
         # if it is the first callback set init time
@@ -254,14 +255,18 @@ class Logger:
 
     def plot_all_state(self):
         fig, ax = plt.subplots(4)
-
+        plt.rcParams['font.size'] = '12'
         plot_xy_data(x=self.robot_state['x'], y=self.robot_state['y'], ax=ax[0], plot_name="x_y")
+        plot_xy_data(x=self.model_state['x'], y=self.model_state['y'], ax=ax[0], plot_name="kinetic x_y")
 
         plot_xy_data(x=self.time, y=self.robot_state['x'], ax=ax[1], plot_name="x(t)")
+        plot_xy_data(x=self.time, y=self.model_state['x'], ax=ax[1], plot_name="kinetic x(t)")
 
         plot_xy_data(x=self.time, y=self.robot_state['y'], ax=ax[2], plot_name="y(t)")
+        plot_xy_data(x=self.time, y=self.model_state['y'], ax=ax[2], plot_name="kinetic y(t)")
 
-        plot_xy_data(x=self.time, y=self.robot_state['yaw'], ax=ax[3], plot_name="yaw(t)")
+        plot_xy_data(x=self.time, y=self.robot_state['yaw'], ax=ax[3], plot_name="rosbot (t)")
+        plot_xy_data(x=self.time, y=self.model_state['yaw'], ax=ax[3], plot_name="kinetic yaw(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="state")
@@ -281,6 +286,7 @@ class Logger:
         self.plot_all_state()
         self.plot_velocities_and_control()
         self.process_collected_data(name='state', data=self.robot_state, plot_type=None)
+        self.process_collected_data(name='kinetic_model_state', data=self.model_state, plot_type=None)
         self.process_collected_data(name='delta_time', data=self.delta_time, plot_type=None)
         # self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
         self.process_collected_data(name='control', data=self.control, plot_type=None)
