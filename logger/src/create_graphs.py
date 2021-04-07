@@ -49,7 +49,8 @@ def parse_file(folder_path, file, data):
 
 def main():
     """ """
-
+    FONT_SIZE = '12'
+    plt.rcParams['font.size'] = '12'
     # parse folder path from command line
     parser = argparse.ArgumentParser()
     parser.add_argument('-folder_path', action='store', dest='folder_path',
@@ -58,17 +59,18 @@ def main():
     folder_path = args.folder_path
 
     # declare file names with data
-    required_files = ['state.csv', 'control.csv', 'delta_time.csv']
+    required_files = ['state.csv', 'kinetic_model_state.csv', 'control.csv', 'delta_time.csv']
 
     # declare containers for data
     robot_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
     control = {'x': [], 'yaw': []}
     delta_time = {'dt': []}
     # print(time)
     # create container for all containers to simplify work with them
 
     # parse each file and  fill the containers
-    for data, file in zip([robot_state, control, delta_time], required_files):
+    for data, file in zip([robot_state, model_state, control, delta_time], required_files):
         parse_file(folder_path, file, data)
 
     # print(robot_state)
@@ -82,9 +84,13 @@ def main():
 
     fig2, ax2 = plt.subplots(4)
     plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax2[0], plot_name="x_y")
+    plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax2[0], plot_name="kinetic x_y")
     plot_xy_data(x=time, y=robot_state['x'], ax=ax2[1], plot_name="x(t)")
+    plot_xy_data(x=time, y=model_state['x'], ax=ax2[1], plot_name="kinetic x(t)")
     plot_xy_data(x=time, y=robot_state['y'], ax=ax2[2], plot_name="y(t)")
+    plot_xy_data(x=time, y=model_state['y'], ax=ax2[2], plot_name="kinetic y(t)")
     plot_xy_data(x=time, y=robot_state['yaw'], ax=ax2[3], plot_name="yaw(t)")
+    plot_xy_data(x=time, y=model_state['yaw'], ax=ax2[3], plot_name="kinetic yaw(t)")
     # fig2.annotate(
     #     "states",
     #     xy=(0, 1), xytext=(12, -12), va='top',
