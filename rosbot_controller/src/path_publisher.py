@@ -102,8 +102,6 @@ def PolygonTrajGenerator(msg, step):
 def SpiralTrajGenerator(msg, step, amplitude):
 
     key_points = []
-    print(key_points)
-    print(amplitude)
     if amplitude > 0:
         k = 1
     else:
@@ -114,7 +112,7 @@ def SpiralTrajGenerator(msg, step, amplitude):
         # for (f in range (0 2*pi*N))
         r = step * math.exp(f*0.1)
         x = k * r * math.cos(f)
-        y = k * r * math.sin(f)
+        y = r * math.sin(f)
         # print(x, y)
         if abs(x) > amplitude or abs(y) > amplitude:
             points = edges_to_points(key_points)
