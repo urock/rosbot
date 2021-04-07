@@ -138,9 +138,9 @@ class MPPIController:
         """
         Filling initial states with predicted velocities along time horizont for all batches
         Args:
-            [in] init_states: batch * time_steps * [(v, w) ,(u) , dt] 
+            [in] init_states: np.array of shape [batch, time_steps, state_dim + control_dim + 1] where 1 is for dt 
         Return:
-            Velocities from filled init_states
+            Predicted velocities over time horizont np.array of shape [batch, time_steps, control_dim]
         """
         filled_states = init_states
         time_steps = init_states.shape[1]
