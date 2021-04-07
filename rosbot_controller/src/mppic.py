@@ -4,9 +4,11 @@ import time
 import sys
 import os
 import math
+
 import numpy as np
 import nnio
 import matplotlib.pyplot as plt
+
 import rospy
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import PoseStamped, Twist, Pose, Point
@@ -18,10 +20,6 @@ from rosbot_controller.rosbot import Goal, quaternion_to_euler
 
 
 class MPPIController:
-    """
-
-    """
-
     def __init__(self, node_name):
         rospy.init_node(node_name, anonymous=True)
 
@@ -36,11 +34,12 @@ class MPPIController:
         self.model = self.load_nn_model(self.model_path)
         # declare robot and current and previous state
         self.robot = Rosbot()
-        self.robot_state = RobotState()
+        self.curr_state = RobotState()
         self.prev_state = RobotState()
-        self.current_goal = Goal()
-        self.next_goal = None
-        # X = [v, w] 
+
+        self.curr_goal = Goal() 
+        self.next_goal = None 
+
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
@@ -53,24 +52,84 @@ class MPPIController:
         self.goal_sub = rospy.Subscriber("/move_base_simple/goal", PoseStamped, self.goal_callback)
         self.path_sub = rospy.Subscriber("/path", Path, self.path_callback)
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.update_state)
+        
         # declare publishers
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
         self.marker_pub = rospy.Publisher('/all_trajectories', MarkerArray, queue_size=10)
         self.curr_path_pub = rospy.Publisher("/curr_path", Path, queue_size=5)
 
+    def start(self):
+        timesteps_num = 50  
+        iter_num = 50
+        limit_v = 0.5
+        batch_size = 100  
+
+        v_std = 0.1  # standart deviation
+        w_std = 0.1  # standart deviation
+
+        try:
+            while not rospy.is_shutdown() and not self.stop:
+                self.run(limit_v, v_std, w_std, iter_num, timesteps_num, batch_size)
+        except KeyboardInterrupt:
+            rospy.loginfo("Interrupted")
+
+
+    def run(self, limit_v, v_std, w_std, iter_count, timesteps_num, batch_size):
+        start = time.perf_counter()
+        control = self.get_best_controll(iter_count, timesteps_num, limit_v, batch_size, v_std, w_std)
+        t = time.perf_counter() - start
+
+        steps_passed = int((t / self.dt) + 0.5)
+        steps_passed = min(steps_passed, timesteps_num-1)
+
+        v_best = control[0 + steps_passed, 0]
+        w_best = control[0 + steps_passed, 1]
+        self.publish_control( RobotControl(v_best, w_best) )
+
+        rospy.loginfo("Take {} step of MPPI".format(steps_passed))
+        rospy.loginfo("Execution time is = {:10.5f} sec".format(t))
+
+
+    def get_best_controll(self, iter_count, timesteps_num, limit_v, batch_size, v_std, w_std):
+        best_control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
+        best_losses = []
+
+        for _ in range(iter_count):
+            control_seqs = best_control + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
+
+            control_seqs = np.clip(control_seqs, -limit_v, limit_v)
+            control_seqs_loss, trajectories = self.loss_for_control(control_seqs, self.curr_goal)
+
+            best_ind = np.argmin(control_seqs_loss, axis=0)
+            best_losses.append(control_seqs_loss[best_ind])
+
+            best_control = control_seqs[best_ind]  # control shape = [timesteps_num, 2]
+            if best_losses[-1] <= 0.05:
+                break
+
+        return best_control
+
+
+    def generate_noise(self, batch_size, timesteps_num, v_std, w_std):
+        v_noise = np.random.normal(0.0, v_std, size=(batch_size, timesteps_num, 1))
+        w_noise = np.random.normal(0.0, w_std, size=(batch_size, timesteps_num, 1))
+        return np.concatenate([v_noise, w_noise], axis=2)
+
     def update_velocities(self, dt):
         """
 
         """
-        vx = (self.robot_state.x - self.prev_state.x) / dt
-        vy = (self.robot_state.y - self.prev_state.y) / dt
+        vx = (self.curr_state.x - self.prev_state.x) / dt
+        vy = (self.curr_state.y - self.prev_state.y) / dt
         v = math.sqrt(vx ** 2 + vy ** 2)
         alpha = math.atan2(vy, vx)
-        v = v * math.cos(alpha - self.robot_state.yaw)
+        v = v * math.cos(alpha - self.curr_state.yaw)
+
         # calculate robot ang velocity
-        d_yaw = (self.robot_state.yaw - self.prev_state.yaw)
+        d_yaw = (self.curr_state.yaw - self.prev_state.yaw)
         d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
         w = d_yaw / dt
+
         # update robot velocities
         self.robot.v = v
         self.robot.w = w
@@ -88,27 +147,27 @@ class MPPIController:
                 # time delta calculation
                 dt = time.time() - self.last_tf_callback_time
                 # update previous state
-                self.prev_state = self.robot_state
+                self.prev_state = self.curr_state
                 # update robot state
                 x, y = item.transform.translation.x, item.transform.translation.y
                 yaw = quaternion_to_euler(item.transform.rotation)[0]
-                self.robot_state = RobotState(x, y, yaw)
-                self.robot.set_state(self.robot_state)
+                self.curr_state = RobotState(x, y, yaw)
+                self.robot.set_state(self.curr_state)
                 # update velocity
                 self.update_velocities(dt)
                 # update last tf callback time
                 self.last_tf_callback_time = time.time()
                 # check if goal reached
-                if self.got_path and self.robot.goal_reached(self.current_goal):
+                if self.got_path and self.robot.goal_reached(self.curr_goal):
                     if len(self.goal_queue) > 0:
                         # next goal
                         if self.next_goal is None:
                             self.next_goal = self.goal_queue.pop(0)
-                        self.current_goal = self.next_goal
+                        self.curr_goal = self.next_goal
                         self.next_goal = self.goal_queue.pop(0)
-                        rospy.logerr("new goal = " + self.current_goal.to_str())
+                        rospy.logerr("new goal = " + self.curr_goal.to_str())
                     elif self.next_goal is not None:
-                        self.current_goal = self.next_goal
+                        self.curr_goal = self.next_goal
                         self.next_goal = None
                     else:
                         # end of trajectory
@@ -188,15 +247,15 @@ class MPPIController:
             result_xya:
         """
         v, w = velocities[:, :, 0], velocities[:, :, 1]
-        current_yaw = self.robot_state.yaw
+        current_yaw = self.curr_state.yaw
         yaw = np.cumsum(w * self.dt, axis=1)
         yaw += current_yaw - yaw[:, :1]
         vx = v * np.cos(yaw)
         vy = v * np.sin(yaw)
         x = np.cumsum(vx * self.dt, axis=1)
         y = np.cumsum(vy * self.dt, axis=1)
-        x += self.robot_state.x - x[:, :1]
-        y += self.robot_state.y - y[:, :1]
+        x += self.curr_state.x - x[:, :1]
+        y += self.curr_state.y - y[:, :1]
 
         result_xya = np.concatenate([
             x[:, :, None],
@@ -295,58 +354,6 @@ class MPPIController:
 
         self.curr_path_pub.publish(path)
 
-    def run(self):
-        """
-        
-        """
-        # export model with bath_size = 100
-        limit_v = 0.5
-        rollout_num = 100  # K 1000  (batch size)
-        timesteps_num = 50  # T 10
-        v_std = 0.1  # standart deviation
-        w_std = 0.1  # standart deviation
-        control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
-        # self.current_goal.x = 2.0
-        # self.current_goal.y = 0.0
-        try:
-            while not rospy.is_shutdown() and not self.stop:
-                rospy.loginfo("Robot state = {}".format(self.robot_state.to_str()))
-                rospy.loginfo("Current goal = {}".format(self.current_goal.to_str()))
-                opt_loss = []
-
-                time_start = time.time()
-
-                for i in range(50):
-                    v_noise = np.random.normal(0.0, v_std, size=(rollout_num, timesteps_num, 1))
-                    w_noise = np.random.normal(0.0, w_std, size=(rollout_num, timesteps_num, 1))
-                    noise = np.concatenate([v_noise, w_noise], axis=2)
-                    control_seqs = control[None] + noise
-
-                    control_seqs = np.clip(control_seqs, -limit_v, limit_v)
-                    control_seqs_loss, trajectories = self.loss_for_control(control_seqs,
-                                                                            self.current_goal)
-                    # self.visualize_trajectories(trajectories)  # visualize all trajectories
-                    opt_loss.append(np.min(control_seqs_loss))  #
-                    opt_ind = np.argmin(control_seqs_loss, axis=0)
-                    # self.show_curr_path(trajectories[opt_ind]) # visualize optimal trajectory
-                    control = control_seqs[opt_ind]  # control shape = [timesteps_num, 2]
-                    # print("control")
-                    # print(control)
-                    if opt_loss[-1] <= 0.1:
-                        break
-                execution_time = time.time() - time_start
-                n_steps = int((execution_time / self.dt) + 0.5)
-                n_steps = min(n_steps, timesteps_num-1)
-                rospy.logwarn("n_steps is = {}".format(n_steps))
-                self.publish_control(RobotControl(control[0, 0], control[0, 1]))
-                control = np.concatenate([
-                    control[n_steps+1:],
-                    np.ones([n_steps+1, 2]) * control[-1:]
-                ], axis=0)
-                rospy.logwarn("Execution time is = {} sec".format(execution_time))  # 0.01
-                self.rate.sleep()
-        except KeyboardInterrupt:
-            print('finish')
 
     def load_nn_model(self, model_path):
         """
@@ -359,7 +366,7 @@ def main():
     # model_path = sys.argv[1]
     mppic = MPPIController('mppic')
     mppic.wait_for_path()
-    mppic.run()
+    mppic.start()
     try:
         rospy.spin()
     except:
