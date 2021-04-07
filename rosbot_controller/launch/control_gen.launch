@@ -1,20 +1,37 @@
 <launch>
 
+    <arg name="Tmax"              default="10" />
+    <arg name="period_lin"        default="3" />
+    <arg name="period_ang"        default="3" />
+    <arg name="v_min"             default="0.0" />
+    <arg name="v_max"             default="2.0" />
+    <arg name="w_min"             default="0.0" />
+    <arg name="w_max"             default="0.0" />
+    <arg name="a_lin"             default="1.0" />
+    <arg name="a_ang"             default="0.0" />
+
+    <arg name="output_folder"     default="_1" />
+
+    <arg name="launch_logger"    default="true" />
+
     <node pkg="rosbot_controller" type="control_generator.py" name="control_generator" output="screen">
         <param name="control_mode"      value="periodic" />
-        <param name="Tmax"              value="10" />
-        <param name="period_lin"        value="3" />
-        <param name="period_ang"        value="3" />
-        <param name="v_min"             value="0.0" />
-        <param name="v_max"             value="2.0" />
-        <param name="w_min"             value="0.0" />
-        <param name="w_max"             value="0.0" />
-        <param name="a_lin"             value="1.0" />
-        <param name="a_ang"             value="0.0" />
+        <param name="Tmax"              value="$(arg Tmax)" />
+        <param name="period_lin"        value="$(arg period_lin)" />
+        <param name="period_ang"        value="$(arg period_ang)" />
+        <param name="v_min"             value="$(arg v_min)" />
+        <param name="v_max"             value="$(arg v_max)" />
+        <param name="w_min"             value="$(arg w_min)" />
+        <param name="w_max"             value="$(arg w_max)" />
+        <param name="a_lin"             value="$(arg a_lin)" />
+        <param name="a_ang"             value="$(arg a_ang)" />
     </node>
 
-    <include file="$(find logger)/launch/logger.launch">
-        <arg name="output_folder"    value="my_dir" />
-    </include>    
+    <group if="$(arg launch_logger)">
+        <include file="$(find logger)/launch/logger.launch">
+            <arg name="output_folder"       value="$(arg output_folder)" />
+        </include>    
+    </group> 
 
 </launch>
+

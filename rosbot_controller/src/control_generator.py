@@ -38,6 +38,7 @@ class ControlGenerator():
         self.v = []
         self.w = []
         self.t = []
+        rospy.on_shutdown(self.on_shutdown)
 
     def run(self):
 
@@ -59,7 +60,7 @@ class ControlGenerator():
 
             self.generate_periodic_control()
 
-        self.build_graph(self.t, self.v, self.w)
+        # self.build_graph(self.t, self.v, self.w)
         self.publish_control_sequence()
 
 
@@ -85,6 +86,12 @@ class ControlGenerator():
 
             self.cmd_pub.publish(twist_cmd)
             rospy.sleep(self.dt)
+
+        twist_cmd.linear.x = 0.0
+        twist_cmd.angular.z = 0.0
+
+        self.cmd_pub.publish(twist_cmd)
+        
 
 
     def generate_periodic_control(self):
@@ -158,6 +165,9 @@ class ControlGenerator():
         plt.grid(True)
         plt.show()
         # save_plot(os.getcwd(), name='graph', fmt='png')
+
+    def on_shutdown(self):
+        os.popen("rosnode kill /logger")
 
 
 
