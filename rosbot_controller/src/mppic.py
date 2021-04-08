@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-# license removed for brevity
+
 import time
-import sys
 import math
 
 import numpy as np
@@ -29,12 +28,19 @@ class MPPIController:
         self.robot_frame = rospy.get_param('~robot_frame', "base_link")
         self.cmd_freq = int(rospy.get_param('~cmd_freq', 30))  # Hz
 
+        # TODO rosparams
+        self.timesteps_num = 50  
+        self.batch_size = 100  
+
+        self.curr_control = np.zeros(shape = (self.batch_size, self.timesteps_num, 2))  
+
         # load NN model 
         self.model = self.load_nn_model(self.model_path)
         # declare robot and current and previous state
         self.robot = Rosbot()
         self.curr_state = RobotState()
         self.prev_state = RobotState()
+
 
         self.curr_goal = Goal() 
         self.next_goal = None 
@@ -58,70 +64,63 @@ class MPPIController:
         self.curr_path_pub = rospy.Publisher("/curr_path", Path, queue_size=5)
 
     def start(self):
-        timesteps_num = 50  
-        iter_num = 50
+        iter_count = 50
         limit_v = 0.5
-        batch_size = 100  
 
         v_std = 0.1  # standart deviation
-        w_std = 0.1  # standart deviation
+        w_std = 0.2  # standart deviation
 
         try:
             while not rospy.is_shutdown() and not self.stop:
-                self.run(limit_v, v_std, w_std, iter_num, timesteps_num, batch_size)
+                self.run(limit_v, v_std, w_std, iter_count)
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")
 
 
-    def run(self, limit_v, v_std, w_std, iter_count, timesteps_num, batch_size):
+    def run(self, limit_v, v_std, w_std, iter_count):
         start = time.perf_counter()
-        control = self.get_best_control(iter_count, timesteps_num, limit_v, batch_size, v_std, w_std)
+
+        control = self.get_best_control(iter_count,  limit_v,  v_std, w_std)
         t = time.perf_counter() - start
 
         steps_passed = round( (t / self.dt) )
-        steps_passed = min(steps_passed, timesteps_num-1)
+        steps_passed = min(steps_passed, self.timesteps_num-1)
 
         v_best = control[0 + steps_passed, 0]
         w_best = control[0 + steps_passed, 1]
+
         self.publish_control(RobotControl(v_best, w_best))
 
+        rospy.loginfo("Take {} step of MPPI \n v = {} \n w = {}".format(steps_passed, v_best, w_best))
+        rospy.loginfo("Execution time is = {:10.5f} sec".format(t))
 
-        rospy.loginfo_throttle(2,"Take {} step of MPPI".format(steps_passed))
-        rospy.loginfo_throttle(2,"Execution time is = {:10.5f} sec".format(t))
 
-
-    def get_best_control(self, iter_count, timesteps_num, limit_v, batch_size, v_std, w_std):
-        best_control = np.asarray([[0.0, 0.0]] * timesteps_num)  # control shape = [timesteps_num, 2]
-        best_losses = []
-
+    def get_best_control(self, iter_count, limit_v, v_std, w_std):
+        best_control = self.curr_control
         for _ in range(iter_count):
-            control_seqs = best_control[None] + self.generate_noise(batch_size, timesteps_num, v_std, w_std)
+            control_seqs = best_control + self.generate_noise(v_std, w_std)
             control_seqs = np.clip(control_seqs, -limit_v, limit_v) # Clip both v and w ?
-            curr_loss = self.calc_loss(control_seqs)
 
-            best_ind = np.argmin(curr_loss, axis=0)
-            best_losses.append(curr_loss[best_ind])
+            init_states = self.create_init_state(control_seqs)
+            predicted_velocities = self.predict_velocities(init_states)
+            trajectories = self.predict_trajectories(predicted_velocities)
+            curr_losses = self.calc_losses(trajectories)
 
+            best_ind = np.argmin(curr_losses, axis=0)
+            best_loss = curr_losses[best_ind]
             best_control = control_seqs[best_ind]
-            if best_losses[-1] <= 0.05:
+
+            if best_loss <= 0.05:
                 break
 
         return best_control
 
 
-    def generate_noise(self, batch_size, timesteps_num, v_std, w_std):
-        v_noise = np.random.normal(0.0, v_std, size=(batch_size, timesteps_num, 1))
-        w_noise = np.random.normal(0.0, w_std, size=(batch_size, timesteps_num, 1))
+    def generate_noise(self, v_std, w_std):
+        v_noise = np.random.normal(0.0, v_std, size=(self.batch_size, self.timesteps_num, 1))
+        w_noise = np.random.normal(0.0, w_std, size=(self.batch_size, self.timesteps_num, 1))
         return np.concatenate([v_noise, w_noise], axis=2)
 
-
-    def calc_loss(self, control_seqs):
-        init_states = self.create_init_state(control_seqs)
-        predicted_velocities = self.predict_velocities(init_states)
-        trajectories = self.predict_trajectories(predicted_velocities)
-        loss = self.get_traj_loss(trajectories)
-
-        return loss
 
     def create_init_state(self, control_seqs):
         shape = control_seqs.shape
@@ -140,12 +139,13 @@ class MPPIController:
         Args:
             [in] init_states: np.array of shape [batch, time_steps, state_dim + control_dim + 1] where 1 is for dt 
         Return:
-            Predicted velocities over time horizont np.array of shape [batch, time_steps, control_dim]
+            Predicted velocities over time horizont: np.array of shape [batch, time_steps, control_dim]
         """
         filled_states = init_states
-        time_steps = init_states.shape[1]
+
+        time_steps = filled_states.shape[1]
         for t_step in range(time_steps - 1):
-            curr_batch = init_states[:, t_step].astype(np.float32)
+            curr_batch = filled_states[:, t_step].astype(np.float32)
             curr_predicted = self.model(curr_batch) 
             filled_states[:, t_step + 1, :2] = curr_predicted 
 
@@ -173,25 +173,26 @@ class MPPIController:
         y += self.curr_state.y - y[:, :1]
 
         result_xya = np.concatenate([
-            x[:, :, None],
-            y[:, :, None],
-            yaw[:, :, None],
+            x[:, :, np.newaxis],
+            y[:, :, np.newaxis],
+            yaw[:, :, np.newaxis],
         ], axis=2)
         return result_xya
 
-    def get_traj_loss(self, trajectories):
+    def calc_losses(self, trajectories):
         """
-        Calculate cost function (loss) for trajectory
+        Calculate cost function (loss) for trajectories
         """
         goal = self.curr_goal
-        traj_x, traj_y, traj_yaw = trajectories[:, :, 0], trajectories[:, :, 1], trajectories[:, :, 2]
-        loss_x = traj_x - goal.x
-        loss_y = traj_y - goal.y
-        loss_yaw = traj_yaw - goal.yaw
-        loss = np.sqrt(loss_x ** 2 + loss_y ** 2) # + loss_yaw ** 2)
+        x, y = trajectories[:, :, 0], trajectories[:, :, 1]
 
-        if self.next_goal is not None:
-            i_opt_ind_for_loss = np.argmin(loss, axis=1) # list of indexes 
+        d_x = x - goal.x
+        d_y = y - goal.y
+
+        loss =  np.sqrt(d_x**2 + d_y**2) 
+
+        # if self.next_goal is not None:
+        #     i_opt_ind_for_loss = np.argmin(loss, axis=1) # list of indexes 
         
         loss = loss.min(axis=1)
         return loss
@@ -199,9 +200,6 @@ class MPPIController:
 
 
     def update_velocities(self, dt):
-        """
-
-        """
         vx = (self.curr_state.x - self.prev_state.x) / dt
         vy = (self.curr_state.y - self.prev_state.y) / dt
         v = math.sqrt(vx ** 2 + vy ** 2)
@@ -288,6 +286,13 @@ class MPPIController:
             if self.got_path:
                 break
             self.rate.sleep()
+
+    def publish_control_seq(self, controls):
+        r = rospy.Rate(self.cmd_freq) 
+        for control in controls:
+            self.publish_control(control)
+            r.sleep()
+
 
     def publish_control(self, control):
         """
