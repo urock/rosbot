@@ -1,5 +1,5 @@
 #!/bin/bash
 
-image_name=rosbot-control
+image_name=gazebo-control-image
 
 docker build . -t $image_name

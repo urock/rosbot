@@ -1,62 +1,53 @@
-# ROSBot control mode development 
+# Rosbot control mode development 
 
-##  Table of Contents
-<!-- vim-markdown-toc GitLab -->
+Репозиторий инструментов работы с Rosbot в ROS Melodic для обучения нейросетевой диманической модели робота и разработки MPC контроллера управления. 
 
-* [1. Docker](#1-docker)
-  * [Install Guide](#install-guide)
-  * [Usage Guide](#usage-guide)
-* [2. Компиляция](#2-Компиляция)
-* [3. Сбор данных](#3-Сбор-данных)
-* [4. Описание launch файлов](#4-Описание-launch-файлов)
-  * [4.1 run_simulation.launch](#41-run_simulationlaunch)
-  * [4.2 follow_path.launch](#42-follow_pathlaunch)
-  * [4.3 control_gen.launch](#43-control_genlaunch)
-  * [4.4 mppi_test.launch](#44-mppi_testlaunch)
+## Введение
 
-<!-- vim-markdown-toc -->
+В репозитории созданы следующие инструменты:
 
-## 1. Docker 
+1. Управление дифференциальным роботом
+	* генератор периодических последовательноcтей управления
+	* контроллер следования по траектории 
+2. Логирование состояния робота и управления
+3. Утилиты построения графиков после проезда
+4. Средства автоматической сборки данных 
+
+## Docker 
+
+Рекомендуется работать через Docker. 
+
+Для работы в Gazebo сборка образа и запуск контейнера осуществляется из директории docker_gazebo: создается `gazebo-control-image` образ и запускается `gazebo-control` контейнер. 
+
+Для работы на реальном роботе сборка образа и запуск контейнера осуществляется из директории docker_robot: создается `robot-control-image` образ и запускается `robot-control` контейнер. **to be done**
+
 ### Install Guide
+- Install docker  https://docs.docker.com/engine/install/ubuntu/
+- Docker post install steps https://docs.docker.com/engine/install/linux-postinstall/
 - Install dependecies
 ```
-./dependencies.sh
+./$docker_dir/dependencies.sh		# установка зависимостей на локальную машину
+./$docker_dir/build.sh				# Build image 
+./$docker_dir/run.sh				# Create & Run container
 ```
-
-- Build image
-```
-./build.sh
-```
-
-- Build & Run container
-```
-./run.sh
-```
+где docker_dir = `docker_gazebo, docker_robot`
 
 ### Usage Guide
-- Start container
 ```
-docker start control
+docker start $container_name 		 # Start container
+docker attach $container_name 		 # Attach to container
+docker exec -it $container_name bash # Open bash session in running container 
 ```
-
-- Attach to container
-```
-docker attach control
-```
-
-- Open bash session in running container
-```
-docker exec -it control bash 
-```
+где container_name - `gazebo-control, robot_control`
 
 ## 2. Компиляция 
 
 ```
-docker attach control
+docker attach $container_name
 cd catkin_ws
 catkin build
+source devel/setup.zsh  # необходимо делать только во время первого запуска контейнера
 ```
-
 
 ## 3. Сбор данных
 открыть терминал
@@ -70,18 +61,19 @@ cd src/rosbot/rosbot_controller/src/
 * -w - список угловых скоростей
 Данные будут сохранены в *logger/output_data/*
 
-## 4. Описание launch файлов
+# 4. Описание launch файлов
 
 ### 4.1 run_simulation.launch
-* Расположение rosbot_controller/launch/run_simulation.launch
-* Что делает: Запускает gazebo, спавнит rosbot, запукает model runners
-* Аргументы:
-	1. gui - запуск gui Gazebo
-	2. rviz - запуск rviz
-	3. use_nn_model - запуск нейосетевой модели rosbot
+Что делает: Запускает gazebo, спавнит rosbot, запукает model runners
+
+Аргументы:
+	
+* gui - запуск gui Gazebo
+* rviz - запуск rviz
+* use_nn_model - запуск нейосетевой модели rosbot
 * Пример использования
 ```
-roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_model:=true
+roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_model:=false
 ```
 
 ### 4.2 follow_path.launch

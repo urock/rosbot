@@ -1,7 +1,7 @@
 #!/bin/bash
 
-image_name=rosbot-control
-container_name=control
+image_name=gazebo-control-image
+container_name=gazebo-control
 
 docker run -it -d --privileged --net=host \
       --name $container_name \
