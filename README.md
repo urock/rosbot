@@ -24,7 +24,6 @@
 ### Install Guide
 - Install docker  https://docs.docker.com/engine/install/ubuntu/
 - Docker post install steps https://docs.docker.com/engine/install/linux-postinstall/
-- Install dependecies
 ```
 ./$docker_dir/dependencies.sh		# установка зависимостей на локальную машину
 ./$docker_dir/build.sh				# Build image 
@@ -38,9 +37,9 @@ docker start $container_name 		 # Start container
 docker attach $container_name 		 # Attach to container
 docker exec -it $container_name bash # Open bash session in running container 
 ```
-где container_name - `gazebo-control, robot_control`
+где container_name = `gazebo-control, robot_control`
 
-## 2. Компиляция 
+## Компиляция 
 
 ```
 docker attach $container_name
@@ -49,21 +48,27 @@ catkin build
 source devel/setup.zsh  # необходимо делать только во время первого запуска контейнера
 ```
 
-## 3. Сбор данных
-открыть терминал
-```bash
-cd catkin_ws_path
-cd src/rosbot/rosbot_controller/src/ 
-./test.zsh -t="5.0sin0.1 -5.0sin0.2 3.0sin3.0 2.0sin1.5" -v="1.5 2.5 3.5 4.5" -w="0.5 1.0 2.5 3.0"
+## Управление дифференциальным роботом
+
+### Управление генератором периодического управления
+
 ```
-* -t - список траекторий
-* -v - список линейных скоростей
-* -w - список угловых скоростей
-Данные будут сохранены в *logger/output_data/*
+roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=true
+roslaunch rosbot_controller control_gen.launch output_folder:=_8 Tmax:=30.0 period_lin:=10 v_max:=1.0 a_lin:=0.5
+```
 
-# 4. Описание launch файлов
+### Управление контроллером следования по траектории
 
-### 4.1 run_simulation.launch
+
+## Логирование состояния робота и управления
+
+
+## Утилиты построения графиков после проезда
+
+
+## Описание launch файлов
+
+### run_simulation.launch
 Что делает: Запускает gazebo, спавнит rosbot, запукает model runners
 
 Аргументы:
@@ -73,7 +78,29 @@ cd src/rosbot/rosbot_controller/src/
 * use_nn_model - запуск нейосетевой модели rosbot
 * Пример использования
 ```
-roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_model:=false
+roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=true use_nn_model:=false
+```
+
+### control_gen.launch
+Что делает: Запускает gazebo, спавнит rosbot, запукает model runners
+
+Аргументы:
+	
+* Tmax          - длительность управления
+* period_lin    - период изменения линейной скорости
+* period_ang    - период изменения угловой скорости
+* v_min         - максимальная линейная скорость
+* v_max         - минимальная линейная скорость
+* w_min         - максимальная угловая скорость
+* w_max         - минимальная угловая скорость
+* a_lin         - линейное ускорение (задавать только положительные числа)
+* a_ang         - угловое ускорение (задавать только положительные числа)
+* launch_logger - флаг запуска логгера, true по-умолчанию
+* output_folder - выходная директория логгера 
+
+* Пример использования
+```
+roslaunch rosbot_controller control_gen.launch output_folder:=_8 Tmax:=30.0 period_lin:=10 v_max:=1.0 a_lin:=0.5
 ```
 
 ### 4.2 follow_path.launch
@@ -87,15 +114,12 @@ roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_m
 roslaunch rosbot_controller follow_path.launch traj_type:=2.5sin0.2
 ```
 
-### 4.3 control_gen.launch
-* Расположение 
-* Пример использования
-```
-roslaunch rosbot_controller control_gen.launch
-```
 
 
-### 4.4 mppi_test.launch
+### 4.4 logger.launch
+
+
+### 4.5 mppi_test.launch
 * Расположение rosbot_controller/launch/mppi_test.launch
 * Что делает: Запускает gazebo, спавнит rosbot, публикует траекторию
 * Аргументы:
@@ -109,3 +133,15 @@ roslaunch rosbot_controller control_gen.launch
 ```
 roslaunch rosbot_controller mppi_test.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
 ```
+
+## Средства автоматической сборки данных 
+
+```bash
+cd catkin_ws_path
+cd src/rosbot/rosbot_controller/src/ 
+./test.zsh -t="5.0sin0.1 -5.0sin0.2 3.0sin3.0 2.0sin1.5" -v="1.5 2.5 3.5 4.5" -w="0.5 1.0 2.5 3.0"
+```
+* -t - список траекторий
+* -v - список линейных скоростей
+* -w - список угловых скоростей
+Данные будут сохранены в *logger/output_data/*
