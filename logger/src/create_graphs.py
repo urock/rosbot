@@ -72,6 +72,9 @@ def main():
     plot_xy_data(x=time, y=model_state['w'], ax=ax[1], plot_name="kinematic model w")
     plot_xy_data(x=time, y=control['yaw'], ax=ax[1], plot_name="u2")
 
+    if args.output_folder != "":
+        save_plot(path=args.output_folder, name="velocities_and_control")    
+
     # plot X(t), Y(t)
     fig2, ax2 = plt.subplots(2)
     ax2[0].set_ylabel('m')
@@ -85,6 +88,9 @@ def main():
     plot_xy_data(x=time, y=robot_state['y'], ax=ax2[1], plot_name="robot y(t)")
     plot_xy_data(x=time, y=model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
 
+    if args.output_folder != "":
+        save_plot(path=args.output_folder, name="XY over time")        
+
     # plot yaw(t)
     fig3, ax3 = plt.subplots(1)
     ax3.set_xlabel('t, sec')        
@@ -92,6 +98,9 @@ def main():
     ax3.set_title("Yaw angle over time")
     plot_xy_data(x=time, y=robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
     plot_xy_data(x=time, y=model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
+
+    if args.output_folder != "":
+        save_plot(path=args.output_folder, name="YAW over time")        
 
     # plot Y(X)
     fig4, ax4 = plt.subplots(1)
@@ -101,10 +110,12 @@ def main():
     plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="x_y")
     plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model x_y")
 
+    if args.output_folder != "":
+        save_plot(path=args.output_folder, name="Y over X")        
+
     plt.show()
     
-    if args.output_folder != "":
-        save_plot(path=args.output_folder, name="velocities_and_control")
+
 
 
 if __name__ == "__main__":
