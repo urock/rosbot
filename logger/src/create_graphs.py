@@ -3,7 +3,7 @@ import os
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
-from logger.logger_tools import plot_xy_data
+from logger.logger_tools import plot_xy_data, save_plot
 
 def parse_file(folder_path, file, data):
     """ """
@@ -25,12 +25,16 @@ def parse_file(folder_path, file, data):
 
 def main():
     """ """
-    FONT_SIZE = '12'
+
     plt.rcParams['font.size'] = '12'
-    # parse folder path from command line
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-folder_path', action='store', dest='folder_path',
                         required=True, help='absolute path to the folder with data.csv')
+    
+    parser.add_argument('-output_folder', action='store', dest='output_folder', 
+                        required=False, default="", 
+                        help="absolute path to the output folder to store images. No images are stored if empty")                        
     args = parser.parse_args()
     folder_path = args.folder_path
 
@@ -98,8 +102,9 @@ def main():
     plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model x_y")
 
     plt.show()
-    # path = self.module_path + '/pictures'
-    # save_plot(path=path, name="velocities_and_control")
+    
+    if args.output_folder != "":
+        save_plot(path=args.output_folder, name="velocities_and_control")
 
 
 if __name__ == "__main__":
