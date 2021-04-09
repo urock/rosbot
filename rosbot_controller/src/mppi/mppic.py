@@ -32,13 +32,14 @@ class MPPIController:
         self.prev_state = State()
 
         self.reference_traj = []
-        self.traj_lookahead = 15
+        self.traj_lookahead = 20
         self.curr_goal_idx = - 1 
         self.goal_tolerance = 0.2
 
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
+        # TODO make entity for this
         self.limit_v = 0.5
         self.timesteps_num = 50
         self.batch_size = 100  
@@ -46,9 +47,9 @@ class MPPIController:
         self.v_std = 0.1  # standart deviation
         self.w_std = 0.1  # standart deviation
         self.goals_interval = 0.1
+        self.model = nnio.ONNXModel(self.model_path)
 
         self.curr_control = np.zeros(shape = (self.batch_size, self.timesteps_num, 2))  
-        self.model = nnio.ONNXModel(self.model_path)
 
         self.got_path = False
         self.path_sub = rospy.Subscriber("/path", Path, self.path_cb)
@@ -181,13 +182,6 @@ class MPPIController:
             goal = self.reference_traj[q]
             loss += (x - goal.x)**2 + (y-goal.y)**2
 
-        # goal = self.get_curr_goal()
-        # x = trajectories[:, :, 0]
-        # y = trajectories[:, :, 1]
-        # dx = (x - goal.x)
-        # dy = (y - goal.y)
-        # loss = dx**2 + dy**2
-
         return loss.min(axis=1)
 
     def get_curr_goal(self):
@@ -240,14 +234,14 @@ class MPPIController:
     def update_goal_cb(self, timer):
         if self.curr_goal_idx == -1:
             return
-        if not self.is_goal_reached():
+
+        nearest_pt_idx, dist = self.get_nearest_traj_point_idx_and_dist(self.curr_state)
+        if not self.is_goal_reached(dist):
+            self.curr_goal_idx = nearest_pt_idx
+            self.publish_goal_marker(self.get_curr_goal(), 1000)
             return
 
-        rospy.loginfo("Goal reached")
-        rospy.loginfo("\tCurr state: {} {} ".format(self.curr_state.x, self.curr_state.y))
-        rospy.loginfo("\tCurr goal: {} {} ".format(self.reference_traj[self.curr_goal_idx].x, self.reference_traj[self.curr_goal_idx].y))
-
-        self.curr_goal_idx += 1
+        self.curr_goal_idx = nearest_pt_idx + 1
         if self.curr_goal_idx == len(self.reference_traj):
             self.curr_goal_idx = -1
             self.got_path = False
@@ -255,12 +249,25 @@ class MPPIController:
 
         self.publish_goal_marker(self.get_curr_goal(), 1000)
 
+    def is_goal_reached(self, dist):
+        return (dist < self.goal_tolerance) and self.got_path 
 
+    def get_nearest_traj_point_idx_and_dist(self, curr_state):
+        min_idx = self.curr_goal_idx
+        min_dist = 10e18
 
-    def is_goal_reached(self):
+        traj_end = len(self.reference_traj)
+        end = self.curr_goal_idx + self.traj_lookahead + 1
+        for q in range(self.curr_goal_idx, end):
+            if q >= traj_end:
+                break
 
-        dist_to_goal = dist_L2(self.curr_state, self.get_curr_goal())
-        return (dist_to_goal < self.goal_tolerance) and self.got_path 
+            curr_dist = dist_L2(curr_state, self.reference_traj[q])
+            if min_dist >= curr_dist:
+                min_dist = curr_dist
+                min_idx = q
+
+        return min_idx, min_dist
 
     def path_cb(self, msg):
         for pose in msg.poses:
@@ -347,34 +354,12 @@ class MPPIController:
         marker.scale = Vector3(0.1, 0.1, 0.1)
         marker.color.r, marker.color.g, marker.color.a = (1.0, 1.0, 1.0)
 
-        rospy.loginfo("marker points int publsiher {} {} ".format(point.x, point.y))
         marker.pose.position.x = point.x
         marker.pose.position.y = point.y
         marker.pose.position.z = 0.05
         marker.pose.orientation.w = 0
 
         self.marker_pub.publish(marker)
-
-    def publish_goal_marker(self, point, id):
-        marker = Marker()
-        marker.id = id
-        marker.header.stamp = rospy.Time.now()
-        marker.header.frame_id = "odom"
-        marker.lifetime = rospy.Duration(0)
-        marker.type = Marker.SPHERE
-        marker.action = Marker.ADD
-        marker.scale = Vector3(0.1, 0.1, 0.1)
-        marker.color.r, marker.color.g, marker.color.a = (1.0, 1.0, 1.0)
-
-        rospy.loginfo("marker points int publsiher {} {} ".format(point.x, point.y))
-        marker.pose.position.x = point.x
-        marker.pose.position.y = point.y
-        marker.pose.position.z = 0.05
-        marker.pose.orientation.w = 0
-
-        self.marker_pub.publish(marker)
-
-
 
 def main():
     mppic = MPPIController('mppic')
