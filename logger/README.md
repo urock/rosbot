@@ -14,11 +14,11 @@
 	* YAW - управление угловой скоростью
 
 
-## Принцип работы
+### Принцип работы
 
 Кажды раз когда публикуется tf сообщение parent_frame - robot_frame, логируется состояние робота (state.csv), и кинематической модели (kinetic_state.csv) текущее управление (control.csv), и время(time.csv). 
 
-## Как запустить
+### Как запустить
 
 ```bash
 roslaunch logger logger.launch output_folder:=/$TRAJ_NAME
@@ -34,21 +34,21 @@ roslaunch logger logger.launch output_folder:=/$TRAJ_NAME
   (defaut value = False)
 * track_time - если true учитывает время запуска в имени выходной папки
   (defaut value = False)
-* parent_frame - 
+* parent_frame - статичный фрейм
   (defaut value = "odom")
-* robot_frame - 
+* robot_frame - tf фрейм робота
   (defaut value = "base_link")
-* kinetic_model_frame - 
+* kinetic_model_frame - tf фрейм кинематической модели робота
   (defaut value = "model_link")
 
-## Выходнеы файлы с данными
+### Выходнеы файлы с данными
 
 * **state.csv** - файл с состоянием робота
 * **kinetic_state.csv** - файл с состоянием кинематической модели робота
 * **control.csv** - файл с управлением
 * **time.csv** - файл с временем
 
-## Графики
+### Графики
 
 * **general_graph.png** - график заданной траектории и пройденного роботом пути
 * **state.png** - 4 графика, для робота и кинематической модели совместные графики пройденного пути Y(x), а также X(t), Y(t), YAW(t)
@@ -57,7 +57,7 @@ roslaunch logger logger.launch output_folder:=/$TRAJ_NAME
 # create_graphs
 Утилита для построения графиков, как у ноды logger, по готовым данным. Графики воможно масштабировать, сохранять.
 
-## Как запустить
+### Как запустить
 
 ```bash
 python3 create_graphs.py -folder_path=$TRAJ_PATH
