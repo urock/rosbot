@@ -76,7 +76,7 @@ def write_to_file(path, data, file_name):
         os.makedirs(path)
 
     output_file = open(path + file_name + '.csv', 'w')
-    keys = ('dt', 'x', 'y', 'yaw', 'v', 'w')
+    keys = ('dt', 't', 'x', 'y', 'yaw', 'v', 'w')
     # write title
     title = ''
     for key in keys:

@@ -62,7 +62,7 @@ class Logger:
         self.model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
         # time spent running the simulator (for automated tests)
         self.delta_time = {'dt': []}
-        self.time = list()
+        self.time = {'t': []}
         self.time_spent = 0
         self.current_control = list()
         # declare subscribers
@@ -95,8 +95,10 @@ class Logger:
                 len(self.current_control) > 0
             ):
                 current_time = time_.time()
-                self.time.append(current_time - self.init_time)
-                self.delta_time['dt'].append(current_time - self.prev_time)
+                
+                self.time['t'].append(current_time - self.init_time)
+                # To calculate speed, but not for predict in the NN model
+                self.delta_time['dt'].append(current_time - self.prev_time) 
                 # print(self.delta_time['dt'][-1])
                 self.control['x'].append(self.current_control[0])
                 self.control['yaw'].append(self.current_control[1])
@@ -244,11 +246,11 @@ class Logger:
 
     def plot_velocities_and_control(self):
         fig, ax = plt.subplots(2)
-        plot_xy_data(x=self.time, y=self.control['x'], ax=ax[0], plot_name="U_V")
-        plot_xy_data(x=self.time, y=self.robot_state['v'], ax=ax[0], plot_name="V")
+        plot_xy_data(x=self.time['t'], y=self.control['x'], ax=ax[0], plot_name="U_V")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['v'], ax=ax[0], plot_name="V")
 
-        plot_xy_data(x=self.time, y=self.control['yaw'], ax=ax[1], plot_name="U_W")
-        plot_xy_data(x=self.time, y=self.robot_state['w'], ax=ax[1], plot_name="W")
+        plot_xy_data(x=self.time['t'], y=self.control['yaw'], ax=ax[1], plot_name="U_W")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['w'], ax=ax[1], plot_name="W")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="velocities_and_control")
@@ -259,14 +261,14 @@ class Logger:
         plot_xy_data(x=self.robot_state['x'], y=self.robot_state['y'], ax=ax[0], plot_name="x_y")
         plot_xy_data(x=self.model_state['x'], y=self.model_state['y'], ax=ax[0], plot_name="kinetic x_y")
 
-        plot_xy_data(x=self.time, y=self.robot_state['x'], ax=ax[1], plot_name="x(t)")
-        plot_xy_data(x=self.time, y=self.model_state['x'], ax=ax[1], plot_name="kinetic x(t)")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['x'], ax=ax[1], plot_name="x(t)")
+        plot_xy_data(x=self.time['t'], y=self.model_state['x'], ax=ax[1], plot_name="kinetic x(t)")
 
-        plot_xy_data(x=self.time, y=self.robot_state['y'], ax=ax[2], plot_name="y(t)")
-        plot_xy_data(x=self.time, y=self.model_state['y'], ax=ax[2], plot_name="kinetic y(t)")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['y'], ax=ax[2], plot_name="y(t)")
+        plot_xy_data(x=self.time['t'], y=self.model_state['y'], ax=ax[2], plot_name="kinetic y(t)")
 
-        plot_xy_data(x=self.time, y=self.robot_state['yaw'], ax=ax[3], plot_name="rosbot (t)")
-        plot_xy_data(x=self.time, y=self.model_state['yaw'], ax=ax[3], plot_name="kinetic yaw(t)")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['yaw'], ax=ax[3], plot_name="rosbot (t)")
+        plot_xy_data(x=self.time['t'], y=self.model_state['yaw'], ax=ax[3], plot_name="kinetic yaw(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="state")
@@ -287,7 +289,7 @@ class Logger:
         self.plot_velocities_and_control()
         self.process_collected_data(name='state', data=self.robot_state, plot_type=None)
         self.process_collected_data(name='kinetic_model_state', data=self.model_state, plot_type=None)
-        self.process_collected_data(name='delta_time', data=self.delta_time, plot_type=None)
+        self.process_collected_data(name='time', data=self.time, plot_type=None)
         # self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
         self.process_collected_data(name='control', data=self.control, plot_type=None)
 
