@@ -34,7 +34,11 @@ class Logger:
         self.module_path = rospy.get_param("~output_file")
         # output folder name
         self.output_folder = rospy.get_param("~output_folder")
-        #
+        
+        self.parent_frame = rospy.get_param("~parent_frame", 'odom')
+        self.robot_frame = rospy.get_param("~robot_frame", 'base_link')
+        self.kinetic_model_frame = rospy.get_param("~kinetic_model_frame", 'model_link')
+
         self.timeout = int(rospy.get_param("~timeout", 0))
 
         self.module_path = self.module_path + self.output_folder
@@ -90,8 +94,8 @@ class Logger:
     def tf_callback(self, msg):
         for item in msg.transforms:
             if (
-                item.header.frame_id == 'odom' and 
-                item.child_frame_id == 'base_link'   and 
+                item.header.frame_id == self.parent_frame and 
+                item.child_frame_id == self.robot_frame   and 
                 len(self.current_control) > 0
             ):
                 current_time = time_.time()
@@ -139,8 +143,8 @@ class Logger:
          and model state in separate containers"""
         # if it is the first callback set init time
         # s = time_.time()
-        self.fill_state(dst_frame='base_link', state=self.robot_state)
-        self.fill_state(dst_frame='model_link', state=self.model_state)
+        self.fill_state(dst_frame=self.robot_frame, state=self.robot_state, src_frame=self.parent_frame)
+        self.fill_state(dst_frame=self.kinetic_model_frame, state=self.model_state, src_frame=self.parent_frame)
         # print("EXECUTION TIME  = {}".format(time_.time() - s))
 
     def fill_state(self, dst_frame, state, src_frame='odom'):
@@ -232,11 +236,11 @@ class Logger:
         plt.plot(x2, y2, color='r', label='model state', linewidth=3)
         plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
 
-        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
-        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
-        plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation,
-                                                                         model_deviation),
-                                                                         fontsize=14)
+        # base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
+        # model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
+        # plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation,
+        #                                                                  model_deviation),
+        #                                                                  fontsize=14)
 
         plt.xlabel('X')
         plt.ylabel('Y')
