@@ -138,11 +138,11 @@ user $ROSUSER
 RUN mkdir -p /home/$ROSUSER/scripts
 WORKDIR /home/$ROSUSER/scripts
 
-COPY scripts/ros-setup.sh .
-RUN ./ros-setup.sh
-
 COPY scripts/utils-setup.sh .
 RUN ./utils-setup.sh
+
+COPY scripts/ros-setup.sh .
+RUN ./ros-setup.sh
 
 WORKDIR /home/$ROSUSER
 RUN rm -rf scripts

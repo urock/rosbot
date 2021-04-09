@@ -11,12 +11,12 @@ def plot_xy_data(x, y, ax=None, plot_name=" "):
         plt.plot(x, y, marker='o', label=plot_name)
         # plt.plot(x, y, label=plot_name)
         plt.grid(True)
-        # plt.title(plot_name)
+        # plt.title(title)
     else:
         ax.plot(x, y, marker='o', label=plot_name)
         # ax.plot(x, y, label=plot_name)
         ax.grid(True)
-        # ax.set_title(plot_name)
+        # ax.set_title(title)
         # ax.annotate(
         #     plot_name,
         #     xy=(0, 1), xytext=(12, -12), va='top',
