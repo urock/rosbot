@@ -1,61 +1,25 @@
-#!/usr/bin/env python
-# license removed for brevity
+#!/usr/bin/env python3
 
 import math
 import numpy as np
 import rospy
 import time
 
-class RobotState():
-
-    def __init__(self, x=0.0, y=0.0, yaw=0.0, vx=0.0, vy=0.0, w=0.0):
-        self.x = x
-        self.y = y
-        self.yaw = yaw
-
-    def to_str(self):
-        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}".format(self.x, self.y, self.yaw)
-
-
-class RobotControl:
-
-    def __init__(self, v=0.0, w=0.0):
-        self.v = v
-        self.w = w
-
-    def to_str(self):
-        return "v -> {:.2f}, w -> {:.2f}".format(self.v, self.w)
-
-
-class Goal:
-
-    def __init__(self, x=0.0, y=0.0, yaw=0.0):
-        self.x = x
-        self.y = y
-        self.yaw = yaw
-
-    def to_str(self):
-        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}".format(self.x, self.y, self.yaw)
-
-
-class Params:
-
-    def __init__(self):
-        self.v_max = rospy.get_param("/max_v", 5.0)
-        self.w_max = rospy.get_param("/max_w", 2.5)
-        self.xy_margin_squared = 0.05
-
+from mpc_types import State, Control, Constraints, dist_L2
 
 class Rosbot:
 
     def __init__(self):
-        self.state = RobotState()
-        self.params = Params()
+        self.state = State()
+        self.params = Constraints()
         self.eps_w = 0.001
         self.eps_r = 0.001
+
         self.v = 0.0
         self.w = 0.0
         self.t = 0.0  # current time in seconds
+
+        self.dist_tolerance = 0.2
 
     def set_state(self, new_state, last_time=[None]):
         curr_time = time.time()
@@ -66,38 +30,31 @@ class Rosbot:
             vy = (new_state.y - self.state.y) / dt
             v = math.sqrt(vx ** 2 + vy ** 2)
             alpha = math.atan2(vy, vx)
+
             self.v = v * math.cos(alpha - new_state.yaw)
 
         last_time[0] = curr_time
         
         self.state = new_state
 
-    def dist_to_goal_L2(self, goal):
-        """
-        param goal - Goal Class object
-        """
-        return (goal.x - self.state.x) ** 2 + (goal.y - self.state.y) ** 2
-
     def goal_reached(self, goal):
-        dist = np.hypot(goal.x - self.state.x, goal.y - self.state.y)
+        return  dist_L2(self.state, goal) < self.dist_tolerance
 
-        # print('>>> goal dist: %f -- %s' % (dist, 'REACHED' if dist < 0.2 else 'NOT REACHED'))
-
-        return dist < 0.2
 
     def calculate_contol(self, goal):
+        """Calculate control towards goal
+
+        Args:
+            goal: target State
         """
-        Given state calculate control towards goal
-        """
-        r = self.dist_to_goal_L2(goal)
+        r = dist_L2(goal)
 
         azim_goal = math.atan2((goal.y - self.state.y), (goal.x - self.state.x))
         alpha = azim_goal - self.state.yaw
 
         if (abs(alpha) > math.pi):
             alpha -= np.sign(alpha) * 2 * math.pi
-        # print(self.params.v_max)
-        # print(self.params.w_max)
+
         v = self.params.v_max * math.tanh(r) * math.cos(alpha)
         if r > self.eps_r:
             w = self.params.w_max * alpha + math.tanh(r) * math.sin(alpha) * math.cos(alpha) / r
@@ -147,48 +104,3 @@ class Rosbot:
         vel_vector = RobotControl(self.v, self.w)
         new_state = self.update_state_by_model(vel_vector, dt)
         return new_state
-
-
-def euler_to_quaternion(yaw, pitch, roll):
-    """
-    Args:
-        yaw: yaw angle
-        pitch: pitch angle
-        roll: roll angle
-    Return:
-        quaternion [qx, qy, qz, qw]
-    """
-    qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(
-        pitch / 2) * np.sin(yaw / 2)
-    qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(
-        pitch / 2) * np.sin(yaw / 2)
-    qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(
-        pitch / 2) * np.cos(yaw / 2)
-    qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(
-        pitch / 2) * np.sin(yaw / 2)
-
-    return [qx, qy, qz, qw]
-from typing import overload
-
-
-def quaternion_to_euler(quaternion):
-    """
-    Args:
-        x, y, z, w
-    Return:
-        Angles [yaw, pitch, roll]
-    """
-    x,  y,  z,  w = quaternion.x, quaternion.y, quaternion.z, quaternion.w
-    t0 = +2.0 * (w * x + y * z)
-    t1 = +1.0 - 2.0 * (x * x + y * y)
-    roll = math.atan2(t0, t1)
-    t2 = +2.0 * (w * y - z * x)
-    t2 = +1.0 if t2 > +1.0 else t2
-    t2 = -1.0 if t2 < -1.0 else t2
-    pitch = math.asin(t2)
-    t3 = +2.0 * (w * z + x * y)
-    t4 = +1.0 - 2.0 * (y * y + z * z)
-    yaw = math.atan2(t3, t4)
-    return [yaw, pitch, roll]
-
-
