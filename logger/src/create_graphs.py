@@ -39,38 +39,35 @@ def main():
     folder_path = args.folder_path
 
     # declare file names with data
-    required_files = ['state.csv', 'kinetic_model_state.csv', 'control.csv', 'delta_time.csv']
+    required_files = ['state.csv', 'kinetic_model_state.csv', 'control.csv', 'time.csv']
 
     # declare containers for data
     robot_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
     model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
     control = {'x': [], 'yaw': []}
-    delta_time = {'dt': []}
+    time = {'t': []}
     # print(time)
     # create container for all containers to simplify work with them
 
     # parse each file and  fill the containers
-    for data, file in zip([robot_state, model_state, control, delta_time], required_files):
+    for data, file in zip([robot_state, model_state, control, time], required_files):
         parse_file(folder_path, file, data)
 
     # print(robot_state)
-
-    time = np.cumsum(np.array(delta_time['dt']))
-
-    # plot velocities and control
+    # time = np.cumsum(np.array(delta_time['dt']))
     fig, ax = plt.subplots(2)
     ax[0].set_ylabel('m/s')
     ax[1].set_ylabel('m/s')
     ax[1].set_xlabel('t, sec')
     ax[0].set_title("linear velocity and control")
-    plot_xy_data(x=time, y=robot_state['v'], ax=ax[0], plot_name="robot v")
-    plot_xy_data(x=time, y=model_state['v'], ax=ax[0], plot_name="kinematic model v")
-    plot_xy_data(x=time, y=control['x'], ax=ax[0], plot_name="u1")
+    plot_xy_data(x=time['t'], y=robot_state['v'], ax=ax[0], plot_name="robot v")
+    plot_xy_data(x=time['t'], y=model_state['v'], ax=ax[0], plot_name="kinematic model v")
+    plot_xy_data(x=time['t'], y=control['x'], ax=ax[0], plot_name="u1")
 
     ax[1].set_title("angular velocity and control")
-    plot_xy_data(x=time, y=robot_state['w'], ax=ax[1], plot_name="robot w")
-    plot_xy_data(x=time, y=model_state['w'], ax=ax[1], plot_name="kinematic model w")
-    plot_xy_data(x=time, y=control['yaw'], ax=ax[1], plot_name="u2")
+    plot_xy_data(x=time['t'], y=robot_state['w'], ax=ax[1], plot_name="robot w")
+    plot_xy_data(x=time['t'], y=model_state['w'], ax=ax[1], plot_name="kinematic model w")
+    plot_xy_data(x=time['t'], y=control['yaw'], ax=ax[1], plot_name="u2")
 
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="velocities_and_control")    
@@ -81,12 +78,12 @@ def main():
     ax2[1].set_ylabel('m')
     ax2[1].set_xlabel('t, sec')    
     ax2[0].set_title("X coord over time")
-    plot_xy_data(x=time, y=robot_state['x'], ax=ax2[0], plot_name="robot x(t)")
-    plot_xy_data(x=time, y=model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
+    plot_xy_data(x=time['t'], y=robot_state['x'], ax=ax2[0], plot_name="robot x(t)")
+    plot_xy_data(x=time['t'], y=model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
     
     ax2[1].set_title("Y coord over time")
-    plot_xy_data(x=time, y=robot_state['y'], ax=ax2[1], plot_name="robot y(t)")
-    plot_xy_data(x=time, y=model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
+    plot_xy_data(x=time['t'], y=robot_state['y'], ax=ax2[1], plot_name="robot y(t)")
+    plot_xy_data(x=time['t'], y=model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
 
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="XY over time")        
@@ -96,8 +93,8 @@ def main():
     ax3.set_xlabel('t, sec')        
     ax3.set_ylabel('Rads')
     ax3.set_title("Yaw angle over time")
-    plot_xy_data(x=time, y=robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
-    plot_xy_data(x=time, y=model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
+    plot_xy_data(x=time['t'], y=robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
+    plot_xy_data(x=time['t'], y=model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
 
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="YAW over time")        
