@@ -15,9 +15,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from mpc_dtypes import State, Control, dist_L2
 from mpc_utils import quaternion_to_euler
-
 from model.rosbot import Rosbot
-
 from profiler import profile
 
 class MPPIController:
@@ -38,7 +36,6 @@ class MPPIController:
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
-        # TODO make entity for this
         self.limit_v = 0.5
         self.time_steps = 50
         self.batch_size = 100
