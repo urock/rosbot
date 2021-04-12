@@ -16,14 +16,12 @@ from visualization_msgs.msg import Marker, MarkerArray
 from mpc_dtypes import State, Control, dist_L2
 from mpc_utils import quaternion_to_euler
 
+from model.rosbot import Rosbot
+
 from profiler import profile
 
 class MPPIController:
-    def __init__(self, node_name):
-        rospy.init_node(node_name, anonymous=True)
-
-        # get parameters
-        self.model_path = rospy.get_param('~model_path', None)
+    def __init__(self, model):
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
         self.map_frame = rospy.get_param('~map_frame', "odom")
         self.base_frame = rospy.get_param('~base_frame', "base_link")
@@ -48,7 +46,7 @@ class MPPIController:
         self.v_std = 0.1  # standart deviation
         self.w_std = 0.15  # standart deviation
         self.goals_interval = 0.1
-        self.model = nnio.ONNXModel(self.model_path)
+        self.model = model
 
         self.control_matrix = np.zeros(shape = (self.batch_size, self.time_steps, 5))
         self.control_matrix[:, :, 4] = self.dt
@@ -85,6 +83,11 @@ class MPPIController:
 
 
     def get_best_control(self):
+        """Calculates next best control using mppic algorithm
+        
+        Return: Control - v, w
+        """
+
         best_control = None 
         iter = -1 
 
@@ -109,15 +112,15 @@ class MPPIController:
         v_best = best_control[0, 0]
         w_best = best_control[0, 1]
 
-        # rospy.loginfo_throttle(2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter, t, v_best, w_best))
+        rospy.loginfo_throttle(2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter, t, v_best, w_best))
         return Control(v_best, w_best)
 
 
     def generate_next_control_seqs(self):
         """ 
         Return:
-            Randomly generated control sequences with means in self.curr_control - 
-            np.array of shape [self.batch_size, self.time_steps, 2] where 2 is for v, w respectively
+            Randomly generates control sequences with means in curr_control - 
+            np.array of shape [batch_size, time_steps, 2] where 2 is for v, w respectively
         """
         v_noises = np.random.normal(0.0, self.v_std, size=(self.batch_size, self.time_steps, 1))
         w_noises = np.random.normal(0.0, self.w_std, size=(self.batch_size, self.time_steps, 1))
@@ -129,6 +132,11 @@ class MPPIController:
 
 
     def update_init_state(self, control_seqs):
+        """Updates current control_matrix velocities and controls
+
+        Args:
+            control_seqs: np.array of shape [batch_size, time_steps, 2] where 2 is for v, w 
+        """
         self.velocities[:, 0, 0] = self.curr_state.v
         self.velocities[:, 0, 1] = self.curr_state.w
         self.controls[:,:] = control_seqs
@@ -146,10 +154,10 @@ class MPPIController:
             self.velocities[:, t_step + 1] = curr_predicted 
 
     def predict_trajectories(self):
-        """ Propagetes trajectories by given velocities knowing current state
+        """ Propagetes trajectories using control matrix velocities and current state
 
-        Args:
-            velocities: predicted velocities = np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+        Return:
+            trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
         """
         v, w = self.velocities[:, :, 0], self.velocities[:, :, 1]
         current_yaw = self.curr_state.yaw
@@ -169,8 +177,15 @@ class MPPIController:
             ], axis=2)
         return traj_points
 
-    # @profile("Loss function", 1)
     def calc_losses(self,trajectories):
+        """Calculate losses
+
+        Args:
+            trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+
+        Return:
+            best losses
+        """
         loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
         x = trajectories[:, :, 0]
         y = trajectories[:, :, 1]
@@ -183,7 +198,7 @@ class MPPIController:
             goal = self.reference_traj[q]
             loss += (x - goal.x)**2 + (y-goal.y)**2
 
-        return loss.min(axis=1)
+        return loss.sum(axis=1)
 
     def get_curr_goal(self):
         return self.reference_traj[self.curr_goal_idx]
@@ -362,64 +377,15 @@ class MPPIController:
         self.marker_pub.publish(marker)
 
 def main():
-    mppic = MPPIController('mppic')
+    rospy.init_node('mppic', anonymous=True)
+    model_path = rospy.get_param('~model_path', None)
+    model = nnio.ONNXModel(model_path)
+
+    # model = Rosbot()
+
+    mppic = MPPIController(model)
     mppic.start()
     rospy.spin()
 
 if __name__ == '__main__':
     main()
-
-
-# Nearest loss. Too long execution
-# loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
-# for batch_idx in range(trajectories.shape[0]):
-#     for time_step_idx in range(trajectories.shape[1]):
-#         pt = trajectories[batch_idx, time_step_idx]
-#         nearest_pt = self.get_nearest_traj_point(pt)
-#         loss[batch_idx, time_step_idx] += self.np_dist_L2(pt, nearest_pt) 
-
-# loss = np.apply_along_axis(trajectories, 1, self.get_trajectory_loss)
-
-# loss = (2.5 * dx**2) + (2.5 * dy**2)  #+ (50 * w**2) + (v**2)
-
-# Get N points 
-# loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
-# traj_end = len(self.reference_traj)
-# end = self.curr_goal_idx + self.traj_lookahead + 1
-# for q in range(self.curr_goal_idx, end):
-#     if q >= traj_end:
-#         break
-#     goal = self.reference_traj[q]
-#     loss +=  (x - goal.x)**2 + (y-goal.y)**2
-
-
-# def get_trajectory_loss(self, trajectory):
-#     loss = 0
-#     for pt in trajectory:
-#         nearest_pt = self.get_nearest_traj_point(pt)
-#         loss += self.np_dist_L2(pt, nearest_pt) 
-#     return loss
-
-# def get_nearest_traj_point_idx(self, curr_point):
-#     min_idx = self.curr_goal_idx
-#     min_dist = 10e18
-
-#     traj_end = len(self.reference_traj)
-#     end = self.curr_goal_idx + self.traj_lookahead + 1
-#     for q in range(self.curr_goal_idx, end):
-#         if q >= traj_end:
-#             break
-
-#         curr_dist = self.np_dist_L2(curr_point, self.reference_traj[q])
-#         if min_dist >= curr_dist:
-#             min_dist = curr_dist
-#             min_idx = q
-#     return min_idx
-
-# def np_dist_L2(self, np_lhs, rhs):
-#     return (np_lhs[0] - rhs.x)** 2 + (np_lhs[1] - rhs.y)**2
-
-# def get_nearest_traj_point(self, curr_point):
-#     return self.reference_traj[self.get_nearest_traj_point_idx(curr_point)]
-
-
