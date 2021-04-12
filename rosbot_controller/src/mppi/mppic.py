@@ -16,6 +16,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 from mpc_dtypes import State, Control, dist_L2
 from mpc_utils import quaternion_to_euler
 from model.rosbot import Rosbot
+
 from profiler import profile
 
 class MPPIController:
@@ -29,20 +30,22 @@ class MPPIController:
         self.prev_state = State()
 
         self.reference_traj = []
-        self.traj_lookahead = 20
+        self.traj_lookahead = 15
         self.curr_goal_idx = - 1
         self.goal_tolerance = 0.2
+        self.goals_interval = 0.1
 
         self.dt = 1.0 / self.cmd_freq
         self.rate = rospy.Rate(self.cmd_freq)
 
         self.limit_v = 0.5
-        self.time_steps = 50
+        self.preferable_speed = 0.3
+        self.time_steps = int( int (self.traj_lookahead * self.goals_interval / self.preferable_speed) / self.dt )
+
         self.batch_size = 100
-        self.iter_count = 3
+        self.iter_count = 2
         self.v_std = 0.1  # standart deviation
         self.w_std = 0.15  # standart deviation
-        self.goals_interval = 0.1
         self.model = model
 
         self.control_matrix = np.zeros(shape = (self.batch_size, self.time_steps, 5))
@@ -61,10 +64,9 @@ class MPPIController:
         rospy.Timer(rospy.Duration(self.dt), self.update_goal_cb)
 
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
-        self.marker_pub = rospy.Publisher('/current_goal', Marker, queue_size=10)
-        self.trajectories_pub = rospy.Publisher('/trajectories', MarkerArray, queue_size=10)
-        self.curr_path_pub = rospy.Publisher("/current_path", Path, queue_size=5)
-
+        self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
+        self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
+        self.path_pub = rospy.Publisher("/mppi_path", Path, queue_size=5)
 
     def start(self):
         """Starts main loop running mppi controller if got path.
@@ -78,6 +80,23 @@ class MPPIController:
                 self.stop()
                 self.rate.sleep()
 
+    def stop(self):
+        self.publish_control(Control())
+
+    def publish_control(self, control):
+        """ Publishes controls for the rosbot
+
+        Args:
+            control: control vector of Control type
+        """
+        cmd  = Twist()
+        cmd.linear.x = control.v
+        cmd.linear.y = 0
+        cmd.linear.z = 0
+        cmd.angular.x = 0
+        cmd.angular.y = 0
+        cmd.angular.z = control.w
+        self.cmd_pub.publish(cmd)
 
     def get_best_control(self):
         """Calculates next best control using mppic algorithm
@@ -101,17 +120,18 @@ class MPPIController:
             best_loss = losses[best_idx]
             best_control = control_seqs[best_idx]
 
+            # self.visualize_trajs(trajectories)
             t =  time.perf_counter() - start
-            if (best_loss <= 0.05) or (t > self.dt / 2):
+            if (best_loss <= 0.05): 
                 break
 
         self.curr_control = best_control
-        v_best = best_control[0, 0]
-        w_best = best_control[0, 1]
+        v_best = best_control[0 + round(t / self.dt), 0]
+        w_best = best_control[0 + round(t / self.dt), 1]
 
-        rospy.loginfo_throttle(2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter, t, v_best, w_best))
+
+        rospy.loginfo_throttle(2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter + 1, t, v_best, w_best))
         return Control(v_best, w_best)
-
 
     def generate_next_control_seqs(self):
         """ 
@@ -127,9 +147,8 @@ class MPPIController:
         next_seqs = np.clip(next_seqs, -self.limit_v, self.limit_v) # Clip both v and w ?
         return next_seqs
 
-
     def update_init_state(self, control_seqs):
-        """Updates current control_matrix velocities and controls
+        """ Updates current control_matrix velocities and controls
 
         Args:
             control_seqs: np.array of shape [batch_size, time_steps, 2] where 2 is for v, w 
@@ -175,7 +194,7 @@ class MPPIController:
         return traj_points
 
     def calc_losses(self,trajectories):
-        """Calculate losses
+        """ Calculate losses
 
         Args:
             trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
@@ -199,7 +218,6 @@ class MPPIController:
 
     def get_curr_goal(self):
         return self.reference_traj[self.curr_goal_idx]
-
 
     def tf_cb(self, msg):
         odom = self.get_odom_tf(msg)
@@ -250,7 +268,7 @@ class MPPIController:
         nearest_pt_idx, dist = self.get_nearest_traj_point_idx_and_dist(self.curr_state)
         if not self.is_goal_reached(dist):
             self.curr_goal_idx = nearest_pt_idx
-            self.publish_goal_marker(self.get_curr_goal(), 1000)
+            self.visualize_reference()
             return
 
         self.curr_goal_idx = nearest_pt_idx + 1
@@ -259,7 +277,8 @@ class MPPIController:
             self.got_path = False
             return
 
-        self.publish_goal_marker(self.get_curr_goal(), 1000)
+        self.visualize_reference()
+
 
     def is_goal_reached(self, dist):
         return (dist < self.goal_tolerance) and self.got_path 
@@ -290,36 +309,13 @@ class MPPIController:
         self.got_path = True
         self.curr_goal_idx = 0
 
-
-
-    def publish_control(self, control):
-        """ Publishes controls for the rosbot
-
-        Args:
-            control: control vector of Control type
-        """
-        cmd  = Twist()
-        cmd.linear.x = control.v
-        cmd.linear.y = 0
-        cmd.linear.z = 0
-        cmd.angular.x = 0
-        cmd.angular.y = 0
-        cmd.angular.z = control.w
-        self.cmd_pub.publish(cmd)
-
-    def stop(self):
-        self.publish_control(Control())
-
     def visualize_trajs(self, trajectories):
         """ Publishes trajectories as arrays of marker points for visualization in Rviz
-
-        Args:
-            trajectories
         """
         marker_array = MarkerArray()
         i = 0
         for traj in trajectories:
-            step = int(len(traj) * 0.1)
+            step = int(len(traj)*0.1)
             for p in traj[::step]:
                 marker = Marker()
                 marker.id = i
@@ -328,7 +324,7 @@ class MPPIController:
                 marker.lifetime = rospy.Duration(0)
                 marker.type = Marker.SPHERE
                 marker.action = Marker.ADD
-                marker.scale = Vector3(0.01, 0.01, 0.01)
+                marker.scale = Vector3(0.05, 0.05, 0.05)
                 marker.color.r, marker.color.g, marker.color.a = (0.0, 1.0, 1.0)
                 marker.pose.position.x = p[0]
                 marker.pose.position.y = p[1]
@@ -336,7 +332,36 @@ class MPPIController:
                 marker.pose.orientation.w = 0
                 i = i + 1
                 marker_array.markers.append(marker)
-        self.trajectories_pub.publish(marker_array)
+        self.trajs_pub.publish(marker_array)
+
+    def visualize_reference(self):
+        """ Publishes trajectories as arrays of marker points for visualization in Rviz
+        """
+        marker_array = MarkerArray()
+        i = 5000 
+
+        traj_end = len(self.reference_traj)
+        end =  self.curr_goal_idx + self.traj_lookahead + 1
+        for q in range(self.curr_goal_idx, end):
+            if q >= traj_end:
+                break
+            marker = Marker()
+            marker.id = i
+            marker.header.stamp = rospy.Time.now()
+            marker.header.frame_id = "odom"
+            marker.lifetime = rospy.Duration(0)
+            marker.type = Marker.SPHERE
+            marker.action = Marker.ADD
+            marker.scale = Vector3(0.05, 0.05, 0.05)
+            marker.color.r, marker.color.g, marker.color.a = (1.0, 0.0, 1.0)
+            marker.pose.position.x = self.reference_traj[q].x 
+            marker.pose.position.y = self.reference_traj[q].y 
+            marker.pose.position.z = 0.05
+            marker.pose.orientation.w = 0
+            i = i + 1
+            marker_array.markers.append(marker)
+        self.ref_pub.publish(marker_array)
+
 
     def pubish_traj(self, traj):
         """
@@ -352,26 +377,7 @@ class MPPIController:
         for i in range(len(tx)):
             path.poses.append(PoseStamped(pose=Pose(position=Point(x=tx[i], y=ty[i], z=0))))
 
-        self.curr_path_pub.publish(path)
-
-
-    def publish_goal_marker(self, point, id):
-        marker = Marker()
-        marker.id = id
-        marker.header.stamp = rospy.Time.now()
-        marker.header.frame_id = "odom"
-        marker.lifetime = rospy.Duration(0)
-        marker.type = Marker.SPHERE
-        marker.action = Marker.ADD
-        marker.scale = Vector3(0.1, 0.1, 0.1)
-        marker.color.r, marker.color.g, marker.color.a = (1.0, 1.0, 1.0)
-
-        marker.pose.position.x = point.x
-        marker.pose.position.y = point.y
-        marker.pose.position.z = 0.05
-        marker.pose.orientation.w = 0
-
-        self.marker_pub.publish(marker)
+        self.path_pub.publish(path)
 
 def main():
     rospy.init_node('mppic', anonymous=True)

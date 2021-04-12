@@ -1,4 +1,5 @@
 import numpy as np
+
 class Rosbot():
     def __call__(self, batch):
         velocities = batch[:, :2].view()
