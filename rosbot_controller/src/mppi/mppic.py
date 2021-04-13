@@ -247,11 +247,11 @@ class MPPIController:
 
         nearest_pt_idx, dist = self.get_nearest_traj_point_idx_and_dist(self.curr_state)
         if not self.is_goal_reached(dist):
-            # self.curr_goal_idx = nearest_pt_idx
+            self.curr_goal_idx = nearest_pt_idx
             self.visualize_reference()
             return
 
-        self.curr_goal_idx = self.curr_goal_idx + 1
+        self.curr_goal_idx = nearest_pt_idx + 1
         if self.curr_goal_idx == self.reference_traj.shape[0]:
             self.curr_goal_idx = -1
             self.got_path = False
