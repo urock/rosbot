@@ -13,18 +13,18 @@ from utils.dtypes import Control, dist_L2_np
 from utils.losses import sum_loss, order_loss, nearest_loss
 from utils.visualizations import visualize_reference
 
-from robot import Robot
+from robot import Odom
 from mppic import MPPIControler
 
 
-class LocalPlaner:
-    def __init__(self, robot: Type[Robot], optimizer: Type[MPPIControler],
+class LocalPlanner:
+    def __init__(self, odom: Type[Odom], optimizer: Type[MPPIControler],
                  goal_tolerance: float, goals_interval: float):
 
         self.dt = 1.0 / optimizer.freq
 
         self.optimizer = optimizer
-        self.robot = robot
+        self.odom = odom
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -140,11 +140,11 @@ def main():
 
     map_frame = rospy.get_param('~map_frame', "odom")
     base_frame = rospy.get_param('~base_frame', "base_link")
-    robot = Robot(map_frame, base_frame)
+    odom = Odom(map_frame, base_frame)
 
     goal_tolerance = 0.2
     goals_interval = 0.1
-    mppic = LocalPlaner(robot, optimizer, goal_tolerance, goals_interval)
+    mppic = LocalPlanner(odom, optimizer, goal_tolerance, goals_interval)
     mppic.start()
     rospy.spin()
 

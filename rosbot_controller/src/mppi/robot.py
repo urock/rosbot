@@ -9,7 +9,7 @@ from utils.dtypes import State
 from utils.geometry import quaternion_to_euler
 
 
-class Robot:
+class Odom:
     """
     Class keeps state of the robot, updating it from external source (tf message)
     """
