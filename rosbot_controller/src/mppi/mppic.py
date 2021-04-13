@@ -19,6 +19,7 @@ from models.rosbot import Rosbot
 
 from losses import sum_loss, order_loss, nearest_loss
 
+
 class MPPIController:
     def __init__(self, model, loss):
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
@@ -30,7 +31,7 @@ class MPPIController:
         self.prev_state = State()
 
         self.reference_traj = np.empty(shape=(0, 3))
-        self.traj_lookahead = 15 
+        self.traj_lookahead = 15
         self.curr_goal_idx = - 1
         self.goal_tolerance = 0.2
         self.goals_interval = 0.1
@@ -353,6 +354,7 @@ class MPPIController:
 
         self.path_pub.publish(path)
 
+
 def main():
     rospy.init_node('mppic', anonymous=True)
     model_path = rospy.get_param('~model_path', None)
@@ -366,4 +368,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
