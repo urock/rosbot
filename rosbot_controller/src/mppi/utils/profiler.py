@@ -2,7 +2,6 @@ from functools import wraps
 import time
 from rospy import loginfo_throttle, loginfo
 
-
 def profile_throttle(tag, freq):
     def inner_f(f):
         @wraps(f)
