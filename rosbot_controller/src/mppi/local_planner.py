@@ -6,26 +6,30 @@ from geometry_msgs.msg import Twist
 from nav_msgs.msg import Path
 from visualization_msgs.msg import MarkerArray
 
-from utils.mpc_utils import quaternion_to_euler
-from utils.mpc_dtypes import Control, dist_L2_np
+from typing import Type
+
+from utils.geometry import quaternion_to_euler
+from utils.dtypes import Control, dist_L2_np
+from utils.losses import sum_loss, order_loss, nearest_loss
+from utils.visualizations import visualize_reference
 
 from robot import Robot
 from mppic import MPPIControler
-from utils.losses import sum_loss, order_loss, nearest_loss
 
 
 class LocalPlaner:
-    def __init__(self, robot, optimizer):
+    def __init__(self, robot: Type[Robot], optimizer: Type[MPPIControler],
+                 goal_tolerance: float, goals_interval: float):
+
         self.dt = 1.0 / optimizer.freq
 
         self.optimizer = optimizer
         self.robot = robot
 
         self.reference_traj = np.empty(shape=(0, 3))
-        self.traj_lookahead = 15
         self.curr_goal_idx = - 1
-        self.goal_tolerance = 0.2
-        self.goals_interval = 0.1
+        self.goal_tolerance = goal_tolerance
+        self.goals_interval = goals_interval
 
         self.has_path = False
         self.path_sub = rospy.Subscriber("/path", Path, self.path_cb)
@@ -35,7 +39,6 @@ class LocalPlaner:
         self.rate = rospy.Rate(self.optimizer.freq)
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
 
-        self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
         self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
         self.path_pub = rospy.Publisher("/mppi_path", Path, queue_size=5)
 
@@ -45,7 +48,7 @@ class LocalPlaner:
         while not rospy.is_shutdown():
             if self.has_path:
                 control = self.optimizer.next_control(self.reference_traj.view(),
-                                                      self.curr_goal_idx, 
+                                                      self.curr_goal_idx,
                                                       self.robot.curr_state)
                 self.publish_control(control)
             else:
@@ -73,7 +76,8 @@ class LocalPlaner:
             self.has_path = False
             return
 
-        # visualize_reference()
+        visualize_reference(2000, self.ref_pub, self.reference_traj.view(),
+                            self.curr_goal_idx, self.optimizer.traj_lookahead)
 
     def is_goal_reached(self, dist):
         return (dist < self.goal_tolerance) and self.has_path
@@ -83,7 +87,7 @@ class LocalPlaner:
         min_dist = 10e18
 
         traj_end = self.reference_traj.shape[0]
-        end = self.curr_goal_idx + self.traj_lookahead + 1
+        end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
         for q in range(self.curr_goal_idx, min(end, traj_end)):
             curr_dist = dist_L2_np(self.robot.curr_state, self.reference_traj[q])
             if min_dist >= curr_dist:
@@ -120,11 +124,27 @@ class LocalPlaner:
 def main():
     rospy.init_node('mppic', anonymous=True)
 
-    loss = nearest_loss
-    robot = Robot()
-    optimizer = MPPIControler(sum_loss)
+    freq = int(rospy.get_param('~cmd_freq', 30))
+    model_path = rospy.get_param('~model_path', None)
 
-    mppic = LocalPlaner(robot, optimizer)
+    batch_size = 100
+    iter_count = 3
+    v_std = 0.1
+    w_std = 0.2
+    loss = nearest_loss
+    traj_lookahead = 15
+    limit_v = 0.5
+    time_steps = 50
+    optimizer = MPPIControler(loss, freq, v_std, w_std, limit_v, traj_lookahead,
+                              iter_count, time_steps, batch_size, model_path)
+
+    map_frame = rospy.get_param('~map_frame', "odom")
+    base_frame = rospy.get_param('~base_frame', "base_link")
+    robot = Robot(map_frame, base_frame)
+
+    goal_tolerance = 0.2
+    goals_interval = 0.1
+    mppic = LocalPlaner(robot, optimizer, goal_tolerance, goals_interval)
     mppic.start()
     rospy.spin()
 

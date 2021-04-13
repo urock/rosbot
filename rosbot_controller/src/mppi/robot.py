@@ -5,23 +5,24 @@ import copy
 import rospy
 from tf2_msgs.msg import TFMessage
 
-from utils.mpc_dtypes import State
-from utils.mpc_utils import quaternion_to_euler
+from utils.dtypes import State
+from utils.geometry import quaternion_to_euler
 
 
 class Robot:
     """
-    Class keeps state of the robot, updating it from external source (tf messages)
+    Class keeps state of the robot, updating it from external source (tf message)
     """
 
-    def __init__(self):
-        self.tf_cb_time = time.time()
-        self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.tf_cb)
-        self.map_frame = rospy.get_param('~map_frame', "odom")
-        self.base_frame = rospy.get_param('~base_frame', "base_link")
+    def __init__(self, map_frame, base_frame):
+        self.map_frame = map_frame
+        self.base_frame = base_frame
 
         self.curr_state = State()
         self.prev_state = State()
+
+        self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.tf_cb)
+        self.tf_cb_time = time.time()
 
     def tf_cb(self, msg):
         odom = self.get_odom_tf(msg)

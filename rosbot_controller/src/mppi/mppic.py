@@ -3,30 +3,36 @@ import nnio
 import time
 
 import rospy
+from typing import Callable
 
-from utils.mpc_dtypes import State, Control, dist_L2, dist_L2_np
-from utils.mpc_utils import quaternion_to_euler
+from utils.dtypes import State, Control, dist_L2, dist_L2_np
+from utils.geometry import quaternion_to_euler
 from utils.profiler import profile
+
+from utils.visualizations import visualize_trajs, MarkerArray
 
 
 class MPPIControler:
-    def __init__(self, loss):
-        self.freq = int(rospy.get_param('~cmd_freq', 30))
-        self.model_path = rospy.get_param('~model_path', None)
+    def __init__(self, loss: Callable[[np.ndarray, np.ndarray, int, int], np.ndarray],
+                 freq: float, v_std: float, w_std: float, limit_v: float,
+                 traj_lookahead: int, iter_count: int, time_steps: int,
+                 batch_size: int, model_path: str):
 
+        self.limit_v = limit_v
+        self.time_steps = time_steps
+        self.traj_lookahead = traj_lookahead
+        self.batch_size = batch_size
+        self.iter_count = iter_count
+
+        self.v_std = v_std
+        self.w_std = w_std
+
+        self.freq = freq
+        self.model_path = model_path
         self.dt = 1.0 / self.freq
-        self.batch_size = 100
-        self.iter_count = 3
-        self.v_std = 0.1
-        self.w_std = 0.3
 
         self.model = nnio.ONNXModel(self.model_path)
         self.loss = loss
-        self.traj_lookahead = 15
-
-        self.limit_v = 0.5
-        self.preferable_speed = 0.5
-        self.time_steps = 50
 
         self.control_matrix = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self.control_matrix[:, :, 4] = self.dt
@@ -34,7 +40,8 @@ class MPPIControler:
         self.controls = self.control_matrix[:, :, 2:4].view()  # v, w
         self.curr_control = np.zeros(shape=(self.time_steps, 2))
 
-    @profile("Control")
+        self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
+
     def next_control(self, reference_traj, goal_idx, curr_state):
         best_control = None
         start = time.perf_counter()
@@ -50,7 +57,7 @@ class MPPIControler:
             best_loss = losses[best_idx]
             best_control = control_seqs[best_idx]
 
-            # self.visualize_trajs(trajectories)
+            visualize_trajs(0, self.trajs_pub, trajectories.view(), 0.3)
             t = time.perf_counter() - start
             self.curr_control = best_control
 
