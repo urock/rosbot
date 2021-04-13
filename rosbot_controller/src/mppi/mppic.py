@@ -13,7 +13,7 @@ from geometry_msgs.msg import Vector3, Point
 from nav_msgs.msg import Path
 from visualization_msgs.msg import Marker, MarkerArray
 
-from mpc_dtypes import State, Control, dist_L2
+from mpc_dtypes import State, Control, dist_L2, dist_L2_np
 from mpc_utils import quaternion_to_euler
 from model.rosbot import Rosbot
 
@@ -29,8 +29,8 @@ class MPPIController:
         self.curr_state = State()
         self.prev_state = State()
 
-        self.reference_traj = []
-        self.traj_lookahead = 15
+        self.reference_traj = np.empty(shape=(0,3))
+        self.traj_lookahead = 5 
         self.curr_goal_idx = - 1
         self.goal_tolerance = 0.2
         self.goals_interval = 0.1
@@ -45,7 +45,7 @@ class MPPIController:
         self.batch_size = 100
         self.iter_count = 2
         self.v_std = 0.1  # standart deviation
-        self.w_std = 0.15  # standart deviation
+        self.w_std = 0.25  # standart deviation
         self.model = model
 
         self.control_matrix = np.zeros(shape = (self.batch_size, self.time_steps, 5))
@@ -120,7 +120,7 @@ class MPPIController:
             best_loss = losses[best_idx]
             best_control = control_seqs[best_idx]
 
-            # self.visualize_trajs(trajectories)
+            self.visualize_trajs(trajectories)
             t =  time.perf_counter() - start
             if (best_loss <= 0.05): 
                 break
@@ -193,7 +193,7 @@ class MPPIController:
             ], axis=2)
         return traj_points
 
-    def calc_losses(self,trajectories):
+    def calc_losses(self, trajectories):
         """ Calculate losses
 
         Args:
@@ -206,13 +206,17 @@ class MPPIController:
         x = trajectories[:, :, 0]
         y = trajectories[:, :, 1]
 
-        traj_end = len(self.reference_traj)
+        goals = np.copy(trajectories)
+
+        traj_end = self.reference_traj.shape[0]
         end = self.curr_goal_idx + self.traj_lookahead + 1
-        for q in range(self.curr_goal_idx, end):
-            if q >= traj_end:
-                break
-            goal = self.reference_traj[q]
-            loss += (x - goal.x)**2 + (y-goal.y)**2
+        min_end = min(traj_end, end)
+
+        steps = min_end - self.curr_goal_idx 
+        goals[:, 0:steps, :] = self.reference_traj[self.curr_goal_idx: min_end]
+        goals[:, steps:, :] = self.reference_traj[min_end - 1]
+
+        loss += (x - goals[:,:,0 ])**2 + (y-goals[:,:,1] )**2
 
         return loss.sum(axis=1)
 
@@ -272,7 +276,7 @@ class MPPIController:
             return
 
         self.curr_goal_idx = nearest_pt_idx + 1
-        if self.curr_goal_idx == len(self.reference_traj):
+        if self.curr_goal_idx == self.reference_traj.shape[0]:
             self.curr_goal_idx = -1
             self.got_path = False
             return
@@ -287,13 +291,10 @@ class MPPIController:
         min_idx = self.curr_goal_idx
         min_dist = 10e18
 
-        traj_end = len(self.reference_traj)
+        traj_end = self.reference_traj.shape[0]
         end =  self.curr_goal_idx + self.traj_lookahead + 1
-        for q in range(self.curr_goal_idx, end):
-            if q >= traj_end:
-                break
-
-            curr_dist = dist_L2(curr_state, self.reference_traj[q])
+        for q in range(self.curr_goal_idx, min(end, traj_end)):
+            curr_dist = dist_L2_np(curr_state, self.reference_traj[q])
             if min_dist >= curr_dist:
                 min_dist = curr_dist
                 min_idx = q
@@ -304,8 +305,8 @@ class MPPIController:
         for pose in msg.poses:
             x, y = pose.pose.position.x, pose.pose.position.y
             yaw = quaternion_to_euler(pose.pose.orientation)[0]
+            self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
 
-            self.reference_traj.append(State(x, y, yaw))
         self.got_path = True
         self.curr_goal_idx = 0
 
@@ -340,7 +341,7 @@ class MPPIController:
         marker_array = MarkerArray()
         i = 5000 
 
-        traj_end = len(self.reference_traj)
+        traj_end = self.reference_traj.shape[0]
         end =  self.curr_goal_idx + self.traj_lookahead + 1
         for q in range(self.curr_goal_idx, end):
             if q >= traj_end:
@@ -354,8 +355,8 @@ class MPPIController:
             marker.action = Marker.ADD
             marker.scale = Vector3(0.05, 0.05, 0.05)
             marker.color.r, marker.color.g, marker.color.a = (1.0, 0.0, 1.0)
-            marker.pose.position.x = self.reference_traj[q].x 
-            marker.pose.position.y = self.reference_traj[q].y 
+            marker.pose.position.x = self.reference_traj[q][0] 
+            marker.pose.position.y = self.reference_traj[q][1]
             marker.pose.position.z = 0.05
             marker.pose.orientation.w = 0
             i = i + 1

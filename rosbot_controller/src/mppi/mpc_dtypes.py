@@ -30,3 +30,6 @@ class Constraints:
 
 def dist_L2(lhs, rhs):
     return np.sqrt((lhs.x - rhs.x)** 2 + (lhs.y - rhs.y)**2)
+
+def dist_L2_np(lhs, rhs_np):
+    return np.sqrt((lhs.x - rhs_np[0])** 2 + (lhs.y - rhs_np[1])**2)
