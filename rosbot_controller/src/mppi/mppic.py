@@ -15,13 +15,12 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from mpc_dtypes import State, Control, dist_L2, dist_L2_np
 from mpc_utils import quaternion_to_euler
-from model.rosbot import Rosbot
+from models.rosbot import Rosbot
 
-from profiler import profile
-
+from losses import sum_loss, order_loss, nearest_loss
 
 class MPPIController:
-    def __init__(self, model):
+    def __init__(self, model, loss):
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
         self.map_frame = rospy.get_param('~map_frame', "odom")
         self.base_frame = rospy.get_param('~base_frame', "base_link")
@@ -31,7 +30,7 @@ class MPPIController:
         self.prev_state = State()
 
         self.reference_traj = np.empty(shape=(0, 3))
-        self.traj_lookahead = 10
+        self.traj_lookahead = 15 
         self.curr_goal_idx = - 1
         self.goal_tolerance = 0.2
         self.goals_interval = 0.1
@@ -40,15 +39,16 @@ class MPPIController:
         self.rate = rospy.Rate(self.cmd_freq)
 
         self.limit_v = 0.5
-        self.preferable_speed = 0.3
+        self.preferable_speed = 0.5
         self.time_steps = int(int(self.traj_lookahead * self.goals_interval /
                                   self.preferable_speed) / self.dt)
 
         self.batch_size = 100
-        self.iter_count = 2
+        self.iter_count = 1
         self.v_std = 0.1  # standart deviation
-        self.w_std = 0.15  # standart deviation
+        self.w_std = 0.3  # standart deviation
         self.model = model
+        self.loss = loss
 
         self.control_matrix = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self.control_matrix[:, :, 4] = self.dt
@@ -74,8 +74,9 @@ class MPPIController:
         """Starts main loop running mppi controller if got path.
         """
         while not rospy.is_shutdown():
-            if self.got_path:
-                control = self.get_best_control()
+            goal_idx = self.curr_goal_idx
+            if self.got_path and goal_idx != -1:
+                control = self.get_best_control(goal_idx)
                 self.rate.sleep()
                 self.publish_control(control)
             else:
@@ -100,7 +101,7 @@ class MPPIController:
         cmd.angular.z = control.w
         self.cmd_pub.publish(cmd)
 
-    def get_best_control(self):
+    def get_best_control(self, goal_idx):
         """Calculates next best control using mppic algorithm
 
         Return: Control - v, w
@@ -116,8 +117,7 @@ class MPPIController:
             self.update_init_state(control_seqs)
             self.predict_velocities()
             trajectories = self.predict_trajectories()
-            losses = self.calc_losses(trajectories)
-
+            losses = self.loss(trajectories, self.reference_traj, self.traj_lookahead, goal_idx)
             best_idx = np.argmin(losses, axis=0)
             best_loss = losses[best_idx]
             best_control = control_seqs[best_idx]
@@ -195,27 +195,6 @@ class MPPIController:
         ], axis=2)
         return traj_points
 
-    def calc_losses(self, trajectories):
-        """ Calculate losses
-        Args:
-            trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
-        Return:
-            best losses
-        """
-        loss = np.zeros(shape=(trajectories.shape[0], trajectories.shape[1]))
-        x = trajectories[:, :, 0]
-        y = trajectories[:, :, 1]
-
-        traj_end = self.reference_traj.shape[0]
-        end = self.curr_goal_idx + self.traj_lookahead + 1
-        for q in range(self.curr_goal_idx, end):
-            if q >= traj_end:
-                break
-            goal = self.reference_traj[q]
-            loss += (x - goal[0])**2 + (y-goal[1])**2
-
-        return loss.sum(axis=1)
-
     def get_curr_goal(self):
         return self.reference_traj[self.curr_goal_idx]
 
@@ -267,11 +246,11 @@ class MPPIController:
 
         nearest_pt_idx, dist = self.get_nearest_traj_point_idx_and_dist(self.curr_state)
         if not self.is_goal_reached(dist):
-            self.curr_goal_idx = nearest_pt_idx
+            # self.curr_goal_idx = nearest_pt_idx
             self.visualize_reference()
             return
 
-        self.curr_goal_idx = nearest_pt_idx + 1
+        self.curr_goal_idx = self.curr_goal_idx + 1
         if self.curr_goal_idx == self.reference_traj.shape[0]:
             self.curr_goal_idx = -1
             self.got_path = False
@@ -311,7 +290,7 @@ class MPPIController:
         marker_array = MarkerArray()
         i = 0
         for traj in trajectories:
-            step = int(len(traj)*0.1)
+            step = int(len(traj)*0.3)
             for p in traj[::step]:
                 marker = Marker()
                 marker.id = i
@@ -374,15 +353,13 @@ class MPPIController:
 
         self.path_pub.publish(path)
 
-
 def main():
     rospy.init_node('mppic', anonymous=True)
     model_path = rospy.get_param('~model_path', None)
     model = nnio.ONNXModel(model_path)
 
-    # model = Rosbot()
-
-    mppic = MPPIController(model)
+    loss = nearest_loss
+    mppic = MPPIController(model, loss)
     mppic.start()
     rospy.spin()
 
@@ -390,29 +367,3 @@ def main():
 if __name__ == '__main__':
     main()
 
-# def calc_losses(self, trajectories):
-#     """ Calculate losses
-
-#     Args:
-#         trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
-
-#     Return:
-#         best losses
-#     """
-#     loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
-#     x = trajectories[:, :, 0]
-#     y = trajectories[:, :, 1]
-
-#     goals = np.copy(trajectories)
-
-#     traj_end = self.reference_traj.shape[0]
-#     end = self.curr_goal_idx + self.traj_lookahead + 1
-#     min_end = min(traj_end, end)
-
-#     steps = min_end - self.curr_goal_idx
-#     goals[:, 0:steps, :] = self.reference_traj[self.curr_goal_idx: min_end]
-#     goals[:, steps:, :] = self.reference_traj[min_end - 1]
-
-#     loss += (x - goals[:,:,0 ])**2 + (y-goals[:,:,1] )**2
-
-#     return loss.sum(axis=1)
