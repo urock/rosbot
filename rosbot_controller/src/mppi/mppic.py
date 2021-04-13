@@ -30,7 +30,7 @@ class MPPIController:
         self.prev_state = State()
 
         self.reference_traj = np.empty(shape=(0,3))
-        self.traj_lookahead = 5 
+        self.traj_lookahead = 10 
         self.curr_goal_idx = - 1
         self.goal_tolerance = 0.2
         self.goals_interval = 0.1
@@ -45,7 +45,7 @@ class MPPIController:
         self.batch_size = 100
         self.iter_count = 2
         self.v_std = 0.1  # standart deviation
-        self.w_std = 0.25  # standart deviation
+        self.w_std = 0.15  # standart deviation
         self.model = model
 
         self.control_matrix = np.zeros(shape = (self.batch_size, self.time_steps, 5))
@@ -193,32 +193,26 @@ class MPPIController:
             ], axis=2)
         return traj_points
 
-    def calc_losses(self, trajectories):
-        """ Calculate losses
+    def calc_losses(self,trajectories):
+            """ Calculate losses
+            Args:
+                trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+            Return:
+                best losses
+            """
+            loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
+            x = trajectories[:, :, 0]
+            y = trajectories[:, :, 1]
 
-        Args:
-            trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+            traj_end = self.reference_traj.shape[0]
+            end = self.curr_goal_idx + self.traj_lookahead + 1
+            for q in range(self.curr_goal_idx, end):
+                if q >= traj_end:
+                    break
+                goal = self.reference_traj[q]
+                loss += (x - goal[0])**2 + (y-goal[1])**2
 
-        Return:
-            best losses
-        """
-        loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
-        x = trajectories[:, :, 0]
-        y = trajectories[:, :, 1]
-
-        goals = np.copy(trajectories)
-
-        traj_end = self.reference_traj.shape[0]
-        end = self.curr_goal_idx + self.traj_lookahead + 1
-        min_end = min(traj_end, end)
-
-        steps = min_end - self.curr_goal_idx 
-        goals[:, 0:steps, :] = self.reference_traj[self.curr_goal_idx: min_end]
-        goals[:, steps:, :] = self.reference_traj[min_end - 1]
-
-        loss += (x - goals[:,:,0 ])**2 + (y-goals[:,:,1] )**2
-
-        return loss.sum(axis=1)
+            return loss.sum(axis=1)
 
     def get_curr_goal(self):
         return self.reference_traj[self.curr_goal_idx]
@@ -393,3 +387,30 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# def calc_losses(self, trajectories):
+#     """ Calculate losses
+
+#     Args:
+#         trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+
+#     Return:
+#         best losses
+#     """
+#     loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
+#     x = trajectories[:, :, 0]
+#     y = trajectories[:, :, 1]
+
+#     goals = np.copy(trajectories)
+
+#     traj_end = self.reference_traj.shape[0]
+#     end = self.curr_goal_idx + self.traj_lookahead + 1
+#     min_end = min(traj_end, end)
+
+#     steps = min_end - self.curr_goal_idx 
+#     goals[:, 0:steps, :] = self.reference_traj[self.curr_goal_idx: min_end]
+#     goals[:, steps:, :] = self.reference_traj[min_end - 1]
+
+#     loss += (x - goals[:,:,0 ])**2 + (y-goals[:,:,1] )**2
+
+#     return loss.sum(axis=1)
