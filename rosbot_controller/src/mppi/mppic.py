@@ -19,6 +19,7 @@ from model.rosbot import Rosbot
 
 from profiler import profile
 
+
 class MPPIController:
     def __init__(self, model):
         self.cmd_topic = rospy.get_param('~cmd_topic', "/cmd_vel")
@@ -29,8 +30,8 @@ class MPPIController:
         self.curr_state = State()
         self.prev_state = State()
 
-        self.reference_traj = np.empty(shape=(0,3))
-        self.traj_lookahead = 10 
+        self.reference_traj = np.empty(shape=(0, 3))
+        self.traj_lookahead = 10
         self.curr_goal_idx = - 1
         self.goal_tolerance = 0.2
         self.goals_interval = 0.1
@@ -40,7 +41,8 @@ class MPPIController:
 
         self.limit_v = 0.5
         self.preferable_speed = 0.3
-        self.time_steps = int( int (self.traj_lookahead * self.goals_interval / self.preferable_speed) / self.dt )
+        self.time_steps = int(int(self.traj_lookahead * self.goals_interval /
+                                  self.preferable_speed) / self.dt)
 
         self.batch_size = 100
         self.iter_count = 2
@@ -48,12 +50,12 @@ class MPPIController:
         self.w_std = 0.15  # standart deviation
         self.model = model
 
-        self.control_matrix = np.zeros(shape = (self.batch_size, self.time_steps, 5))
+        self.control_matrix = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self.control_matrix[:, :, 4] = self.dt
         self.velocities = self.control_matrix[:, :, :2].view()  # v,w
-        self.controls = self.control_matrix[:, :, 2:4].view() # v, w
+        self.controls = self.control_matrix[:, :, 2:4].view()  # v, w
 
-        self.curr_control = np.zeros(shape = (self.time_steps, 2))
+        self.curr_control = np.zeros(shape=(self.time_steps, 2))
 
         self.got_path = False
         self.path_sub = rospy.Subscriber("/path", Path, self.path_cb)
@@ -89,7 +91,7 @@ class MPPIController:
         Args:
             control: control vector of Control type
         """
-        cmd  = Twist()
+        cmd = Twist()
         cmd.linear.x = control.v
         cmd.linear.y = 0
         cmd.linear.z = 0
@@ -100,12 +102,12 @@ class MPPIController:
 
     def get_best_control(self):
         """Calculates next best control using mppic algorithm
-        
+
         Return: Control - v, w
         """
 
-        best_control = None 
-        iter = -1 
+        best_control = None
+        iter = -1
 
         start = time.perf_counter()
         t = start
@@ -121,16 +123,16 @@ class MPPIController:
             best_control = control_seqs[best_idx]
 
             self.visualize_trajs(trajectories)
-            t =  time.perf_counter() - start
-            if (best_loss <= 0.05): 
+            t = time.perf_counter() - start
+            if (best_loss <= 0.05):
                 break
 
         self.curr_control = best_control
         v_best = best_control[0 + round(t / self.dt), 0]
         w_best = best_control[0 + round(t / self.dt), 1]
 
-
-        rospy.loginfo_throttle(2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter + 1, t, v_best, w_best))
+        rospy.loginfo_throttle(
+            2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter + 1, t, v_best, w_best))
         return Control(v_best, w_best)
 
     def generate_next_control_seqs(self):
@@ -144,7 +146,7 @@ class MPPIController:
         noises = np.concatenate([v_noises, w_noises], axis=2)
         next_seqs = self.curr_control[np.newaxis] + noises
 
-        next_seqs = np.clip(next_seqs, -self.limit_v, self.limit_v) # Clip both v and w ?
+        next_seqs = np.clip(next_seqs, -self.limit_v, self.limit_v)  # Clip both v and w ?
         return next_seqs
 
     def update_init_state(self, control_seqs):
@@ -155,7 +157,7 @@ class MPPIController:
         """
         self.velocities[:, 0, 0] = self.curr_state.v
         self.velocities[:, 0, 1] = self.curr_state.w
-        self.controls[:,:] = control_seqs
+        self.controls[:, :] = control_seqs
 
     def predict_velocities(self):
         """ Fills in control_matrix with predicted velocities
@@ -166,8 +168,8 @@ class MPPIController:
         time_steps = self.control_matrix.shape[1]
         for t_step in range(time_steps - 1):
             curr_batch = self.control_matrix[:, t_step].astype(np.float32)
-            curr_predicted = self.model(curr_batch) 
-            self.velocities[:, t_step + 1] = curr_predicted 
+            curr_predicted = self.model(curr_batch)
+            self.velocities[:, t_step + 1] = curr_predicted
 
     def predict_trajectories(self):
         """ Propagetes trajectories using control matrix velocities and current state
@@ -190,29 +192,29 @@ class MPPIController:
             x[:, :, np.newaxis],
             y[:, :, np.newaxis],
             yaw[:, :, np.newaxis],
-            ], axis=2)
+        ], axis=2)
         return traj_points
 
-    def calc_losses(self,trajectories):
-            """ Calculate losses
-            Args:
-                trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
-            Return:
-                best losses
-            """
-            loss = np.zeros(shape = (trajectories.shape[0], trajectories.shape[1]))
-            x = trajectories[:, :, 0]
-            y = trajectories[:, :, 1]
+    def calc_losses(self, trajectories):
+        """ Calculate losses
+        Args:
+            trajectories: trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+        Return:
+            best losses
+        """
+        loss = np.zeros(shape=(trajectories.shape[0], trajectories.shape[1]))
+        x = trajectories[:, :, 0]
+        y = trajectories[:, :, 1]
 
-            traj_end = self.reference_traj.shape[0]
-            end = self.curr_goal_idx + self.traj_lookahead + 1
-            for q in range(self.curr_goal_idx, end):
-                if q >= traj_end:
-                    break
-                goal = self.reference_traj[q]
-                loss += (x - goal[0])**2 + (y-goal[1])**2
+        traj_end = self.reference_traj.shape[0]
+        end = self.curr_goal_idx + self.traj_lookahead + 1
+        for q in range(self.curr_goal_idx, end):
+            if q >= traj_end:
+                break
+            goal = self.reference_traj[q]
+            loss += (x - goal[0])**2 + (y-goal[1])**2
 
-            return loss.sum(axis=1)
+        return loss.sum(axis=1)
 
     def get_curr_goal(self):
         return self.reference_traj[self.curr_goal_idx]
@@ -234,7 +236,7 @@ class MPPIController:
         return odom
 
     def get_tf_cb_diff_time(self):
-        cb_come_time = time.time() 
+        cb_come_time = time.time()
         dt = cb_come_time - self.time_from_prev_tf_cb
         self.time_from_prev_tf_cb = cb_come_time
         return dt
@@ -277,16 +279,15 @@ class MPPIController:
 
         self.visualize_reference()
 
-
     def is_goal_reached(self, dist):
-        return (dist < self.goal_tolerance) and self.got_path 
+        return (dist < self.goal_tolerance) and self.got_path
 
     def get_nearest_traj_point_idx_and_dist(self, curr_state):
         min_idx = self.curr_goal_idx
         min_dist = 10e18
 
         traj_end = self.reference_traj.shape[0]
-        end =  self.curr_goal_idx + self.traj_lookahead + 1
+        end = self.curr_goal_idx + self.traj_lookahead + 1
         for q in range(self.curr_goal_idx, min(end, traj_end)):
             curr_dist = dist_L2_np(curr_state, self.reference_traj[q])
             if min_dist >= curr_dist:
@@ -333,10 +334,10 @@ class MPPIController:
         """ Publishes trajectories as arrays of marker points for visualization in Rviz
         """
         marker_array = MarkerArray()
-        i = 5000 
+        i = 5000
 
         traj_end = self.reference_traj.shape[0]
-        end =  self.curr_goal_idx + self.traj_lookahead + 1
+        end = self.curr_goal_idx + self.traj_lookahead + 1
         for q in range(self.curr_goal_idx, end):
             if q >= traj_end:
                 break
@@ -349,14 +350,13 @@ class MPPIController:
             marker.action = Marker.ADD
             marker.scale = Vector3(0.05, 0.05, 0.05)
             marker.color.r, marker.color.g, marker.color.a = (1.0, 0.0, 1.0)
-            marker.pose.position.x = self.reference_traj[q][0] 
+            marker.pose.position.x = self.reference_traj[q][0]
             marker.pose.position.y = self.reference_traj[q][1]
             marker.pose.position.z = 0.05
             marker.pose.orientation.w = 0
             i = i + 1
             marker_array.markers.append(marker)
         self.ref_pub.publish(marker_array)
-
 
     def pubish_traj(self, traj):
         """
@@ -374,6 +374,7 @@ class MPPIController:
 
         self.path_pub.publish(path)
 
+
 def main():
     rospy.init_node('mppic', anonymous=True)
     model_path = rospy.get_param('~model_path', None)
@@ -384,6 +385,7 @@ def main():
     mppic = MPPIController(model)
     mppic.start()
     rospy.spin()
+
 
 if __name__ == '__main__':
     main()
@@ -407,7 +409,7 @@ if __name__ == '__main__':
 #     end = self.curr_goal_idx + self.traj_lookahead + 1
 #     min_end = min(traj_end, end)
 
-#     steps = min_end - self.curr_goal_idx 
+#     steps = min_end - self.curr_goal_idx
 #     goals[:, 0:steps, :] = self.reference_traj[self.curr_goal_idx: min_end]
 #     goals[:, steps:, :] = self.reference_traj[min_end - 1]
 

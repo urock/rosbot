@@ -1,6 +1,7 @@
 import numpy as np
 import math
 
+
 def euler_to_quaternion(yaw, pitch, roll):
     """
     Args:
@@ -20,6 +21,7 @@ def euler_to_quaternion(yaw, pitch, roll):
         pitch / 2) * np.sin(yaw / 2)
 
     return [qx, qy, qz, qw]
+
 
 def quaternion_to_euler(quaternion):
     """

@@ -1,5 +1,6 @@
 import numpy as np
 
+
 class Rosbot():
     def __call__(self, batch):
         """Evaluates robot speeds in +1 dt time by given batch of current velocities, controls and dts
