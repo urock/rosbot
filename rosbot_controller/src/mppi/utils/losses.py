@@ -4,6 +4,7 @@ from scipy.spatial import distance
 
 import sys
 
+
 def sum_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
     loss = np.zeros(shape=(trajectories.shape[0], trajectories.shape[1]))
     x = trajectories[:, :, 0]

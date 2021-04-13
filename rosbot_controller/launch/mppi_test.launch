@@ -23,7 +23,7 @@
     </include>
 
     <!-- MPPI controller node -->
-    <node pkg="rosbot_controller" type="mppic.py" name="mppic" output="screen">
+    <node pkg="rosbot_controller" type="local_planner.py" name="local_planner" output="screen">
         <param name="model_path"       value="$(arg nn_model_path)" />
         <param name="cmd_topic"        value="$(arg cmd_topic)" />
         <param name="map_frame"        value="$(arg map_frame)" />
