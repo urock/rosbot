@@ -3,6 +3,7 @@
 import time
 import math
 
+import copy
 import numpy as np
 import nnio
 
@@ -145,8 +146,8 @@ class MPPIController:
         v_noises = np.random.normal(0.0, self.v_std, size=(self.batch_size, self.time_steps, 1))
         w_noises = np.random.normal(0.0, self.w_std, size=(self.batch_size, self.time_steps, 1))
         noises = np.concatenate([v_noises, w_noises], axis=2)
-        next_seqs = self.curr_control[np.newaxis] + noises
 
+        next_seqs = self.curr_control[np.newaxis] + noises
         next_seqs = np.clip(next_seqs, -self.limit_v, self.limit_v)  # Clip both v and w ?
         return next_seqs
 
@@ -163,8 +164,6 @@ class MPPIController:
     def predict_velocities(self):
         """ Fills in control_matrix with predicted velocities
 
-        Args:
-            [in] init_states: np.array of shape [batch, time_steps, state_dim + control_dim + 1] where 1 is for dt 
         """
         time_steps = self.control_matrix.shape[1]
         for t_step in range(time_steps - 1):
@@ -213,6 +212,7 @@ class MPPIController:
             if (transform.header.frame_id == self.map_frame
                     and transform.child_frame_id == self.base_frame):
                 odom = transform
+                break;
         return odom
 
     def get_tf_cb_diff_time(self):
@@ -226,7 +226,7 @@ class MPPIController:
         self.curr_state.y = odom.transform.translation.y
         self.curr_state.yaw = quaternion_to_euler(odom.transform.rotation)[0]
         self.update_velocities(dt)
-        self.prev_state = self.curr_state
+        self.prev_state = copy.copy(self.curr_state)
 
     def update_velocities(self, dt):
         v_x = (self.curr_state.x - self.prev_state.x) / dt
