@@ -49,7 +49,7 @@ class LocalPlanner:
             if self.has_path:
                 control = self.optimizer.next_control(self.reference_traj.view(),
                                                       self.curr_goal_idx,
-                                                      self.robot.curr_state)
+                                                      self.odom.curr_state)
                 self.publish_control(control)
             else:
                 self.stop()
@@ -89,7 +89,7 @@ class LocalPlanner:
         traj_end = self.reference_traj.shape[0]
         end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
         for q in range(self.curr_goal_idx, min(end, traj_end)):
-            curr_dist = dist_L2_np(self.robot.curr_state, self.reference_traj[q])
+            curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
             if min_dist >= curr_dist:
                 min_dist = curr_dist
                 min_idx = q
