@@ -34,7 +34,11 @@ class Logger:
         self.module_path = rospy.get_param("~output_file")
         # output folder name
         self.output_folder = rospy.get_param("~output_folder")
-        #
+        
+        self.parent_frame = rospy.get_param("~parent_frame", 'odom')
+        self.robot_frame = rospy.get_param("~robot_frame", 'base_link')
+        self.kinetic_model_frame = rospy.get_param("~kinetic_model_frame", 'model_link')
+
         self.timeout = int(rospy.get_param("~timeout", 0))
 
         self.module_path = self.module_path + self.output_folder
@@ -62,7 +66,7 @@ class Logger:
         self.model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
         # time spent running the simulator (for automated tests)
         self.delta_time = {'dt': []}
-        self.time = list()
+        self.time = {'t': []}
         self.time_spent = 0
         self.current_control = list()
         # declare subscribers
@@ -90,18 +94,21 @@ class Logger:
     def tf_callback(self, msg):
         for item in msg.transforms:
             if (
-                item.header.frame_id == 'odom' and 
-                item.child_frame_id == 'base_link'   and 
+                item.header.frame_id == self.parent_frame and 
+                item.child_frame_id == self.robot_frame   and 
                 len(self.current_control) > 0
             ):
                 current_time = time_.time()
-                self.time.append(current_time - self.init_time)
-                self.delta_time['dt'].append(current_time - self.prev_time)
+                
+                self.time['t'].append(current_time - self.init_time)
+                # To calculate speed, but not for predict in the NN model
+                self.delta_time['dt'].append(current_time - self.prev_time) 
                 # print(self.delta_time['dt'][-1])
                 self.control['x'].append(self.current_control[0])
                 self.control['yaw'].append(self.current_control[1])
 
-                self.fill_state(dst_frame='base_link', state=self.robot_state)
+                # self.fill_state(dst_frame='base_link', state=self.robot_state)
+                self.get_states()
                 self.prev_time = current_time
 
     def timeout_callback(self, time_event):
@@ -131,13 +138,13 @@ class Logger:
         self.current_control = list([msg.linear.x, msg.angular.z])
 
 
-    def get_states(self, timer_event=None):
+    def get_states(self):
         """stores msg data about robot state
          and model state in separate containers"""
         # if it is the first callback set init time
         # s = time_.time()
-        self.fill_state(dst_frame='base_link', state=self.robot_state)
-        self.fill_state(dst_frame='model_link', state=self.model_state)
+        self.fill_state(dst_frame=self.robot_frame, state=self.robot_state, src_frame=self.parent_frame)
+        self.fill_state(dst_frame=self.kinetic_model_frame, state=self.model_state, src_frame=self.parent_frame)
         # print("EXECUTION TIME  = {}".format(time_.time() - s))
 
     def fill_state(self, dst_frame, state, src_frame='odom'):
@@ -229,11 +236,11 @@ class Logger:
         plt.plot(x2, y2, color='r', label='model state', linewidth=3)
         plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
 
-        base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
-        model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
-        plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation,
-                                                                         model_deviation),
-                                                                         fontsize=14)
+        # base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
+        # model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
+        # plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation,
+        #                                                                  model_deviation),
+        #                                                                  fontsize=14)
 
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -243,25 +250,29 @@ class Logger:
 
     def plot_velocities_and_control(self):
         fig, ax = plt.subplots(2)
-        plot_xy_data(x=self.time, y=self.control['x'], ax=ax[0], plot_name="U_V")
-        plot_xy_data(x=self.time, y=self.robot_state['v'], ax=ax[0], plot_name="V")
+        plot_xy_data(x=self.time['t'], y=self.control['x'], ax=ax[0], plot_name="U_V")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['v'], ax=ax[0], plot_name="V")
 
-        plot_xy_data(x=self.time, y=self.control['yaw'], ax=ax[1], plot_name="U_W")
-        plot_xy_data(x=self.time, y=self.robot_state['w'], ax=ax[1], plot_name="W")
+        plot_xy_data(x=self.time['t'], y=self.control['yaw'], ax=ax[1], plot_name="U_W")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['w'], ax=ax[1], plot_name="W")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="velocities_and_control")
 
     def plot_all_state(self):
         fig, ax = plt.subplots(4)
-
+        plt.rcParams['font.size'] = '12'
         plot_xy_data(x=self.robot_state['x'], y=self.robot_state['y'], ax=ax[0], plot_name="x_y")
+        plot_xy_data(x=self.model_state['x'], y=self.model_state['y'], ax=ax[0], plot_name="kinetic x_y")
 
-        plot_xy_data(x=self.time, y=self.robot_state['x'], ax=ax[1], plot_name="x(t)")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['x'], ax=ax[1], plot_name="x(t)")
+        plot_xy_data(x=self.time['t'], y=self.model_state['x'], ax=ax[1], plot_name="kinetic x(t)")
 
-        plot_xy_data(x=self.time, y=self.robot_state['y'], ax=ax[2], plot_name="y(t)")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['y'], ax=ax[2], plot_name="y(t)")
+        plot_xy_data(x=self.time['t'], y=self.model_state['y'], ax=ax[2], plot_name="kinetic y(t)")
 
-        plot_xy_data(x=self.time, y=self.robot_state['yaw'], ax=ax[3], plot_name="yaw(t)")
+        plot_xy_data(x=self.time['t'], y=self.robot_state['yaw'], ax=ax[3], plot_name="rosbot (t)")
+        plot_xy_data(x=self.time['t'], y=self.model_state['yaw'], ax=ax[3], plot_name="kinetic yaw(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="state")
@@ -281,7 +292,8 @@ class Logger:
         self.plot_all_state()
         self.plot_velocities_and_control()
         self.process_collected_data(name='state', data=self.robot_state, plot_type=None)
-        self.process_collected_data(name='delta_time', data=self.delta_time, plot_type=None)
+        self.process_collected_data(name='kinetic_model_state', data=self.model_state, plot_type=None)
+        self.process_collected_data(name='time', data=self.time, plot_type=None)
         # self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
         self.process_collected_data(name='control', data=self.control, plot_type=None)
 

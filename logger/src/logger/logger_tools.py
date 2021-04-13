@@ -8,13 +8,15 @@ def plot_xy_data(x, y, ax=None, plot_name=" "):
     x = np.array(x)
     y = np.array(y)
     if ax == None:
-        plt.plot(x, y, label=plot_name)
+        plt.plot(x, y, marker='o', label=plot_name)
+        # plt.plot(x, y, label=plot_name)
         plt.grid(True)
-        # plt.title(plot_name)
+        # plt.title(title)
     else:
-        ax.plot(x, y, label=plot_name)
+        ax.plot(x, y, marker='o', label=plot_name)
+        # ax.plot(x, y, label=plot_name)
         ax.grid(True)
-        # ax.set_title(plot_name)
+        # ax.set_title(title)
         # ax.annotate(
         #     plot_name,
         #     xy=(0, 1), xytext=(12, -12), va='top',
@@ -74,7 +76,7 @@ def write_to_file(path, data, file_name):
         os.makedirs(path)
 
     output_file = open(path + file_name + '.csv', 'w')
-    keys = ('dt', 'x', 'y', 'yaw', 'v', 'w')
+    keys = ('dt', 't', 'x', 'y', 'yaw', 'v', 'w')
     # write title
     title = ''
     for key in keys:

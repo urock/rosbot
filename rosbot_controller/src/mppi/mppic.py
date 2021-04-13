@@ -15,7 +15,7 @@ from visualization_msgs.msg import Marker, MarkerArray
 
 from mpc_dtypes import State, Control, dist_L2, dist_L2_np
 from mpc_utils import quaternion_to_euler
-from models.rosbot import Rosbot
+from models import Rosbot
 
 from losses import sum_loss, order_loss, nearest_loss
 
