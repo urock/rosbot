@@ -47,9 +47,8 @@ class LocalPlanner:
         """
         while not rospy.is_shutdown():
             if self.has_path:
-                control = self.optimizer.next_control(self.reference_traj.view(),
-                                                      self.curr_goal_idx,
-                                                      self.odom.curr_state)
+                self.optimizer.update_state(self.odom.curr_state)
+                control = self.optimizer.next_control(self.curr_goal_idx)
                 self.publish_control(control)
             else:
                 self.stop()
@@ -102,6 +101,7 @@ class LocalPlanner:
             yaw = quaternion_to_euler(pose.pose.orientation)[0]
             self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
 
+        self.optimizer.set_reference_traj(self.reference_traj.view())
         self.has_path = True
         self.curr_goal_idx = 0
 
