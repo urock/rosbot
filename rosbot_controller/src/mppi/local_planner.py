@@ -128,14 +128,18 @@ def main():
     model_path = rospy.get_param('~model_path', None)
 
     batch_size = 100
-    iter_count = 3
-    v_std = 0.1
-    w_std = 0.2
-    loss = nearest_loss
-    traj_lookahead = 15
-    limit_v = 0.5
     time_steps = 50
-    optimizer = MPPIControler(loss, freq, v_std, w_std, limit_v, traj_lookahead,
+    iter_count = 3
+
+    v_std = 0.1
+    w_std = 0.1
+    limit_v = 0.5
+
+    traj_lookahead = 10 
+    temperature = 0.1
+    loss = sum_loss
+
+    optimizer = MPPIControler(loss, freq, v_std, w_std, limit_v, temperature, traj_lookahead,
                               iter_count, time_steps, batch_size, model_path)
 
     map_frame = rospy.get_param('~map_frame', "odom")
@@ -145,6 +149,7 @@ def main():
     goal_tolerance = 0.2
     goals_interval = 0.1
     mppic = LocalPlanner(odom, optimizer, goal_tolerance, goals_interval)
+
     mppic.start()
     rospy.spin()
 
