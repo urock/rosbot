@@ -62,10 +62,10 @@ class MPPIControler:
         control = self.get_control(round(t / self.dt))
         rospy.loginfo_throttle(
             2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter + 1, t, control.v, control.w))
-        return control 
+        return control
 
-    def get_control(self, offset: int) -> Type[Control] :
-        v_best = self.curr_control_seq[0 + offset  , 0]
+    def get_control(self, offset: int) -> Type[Control]:
+        v_best = self.curr_control_seq[0 + offset, 0]
         w_best = self.curr_control_seq[0 + offset, 1]
 
         return Control(v_best, w_best)
@@ -78,8 +78,7 @@ class MPPIControler:
         best_loss, best_control_seq = self.get_best_control_seq(losses)
         self.curr_control_seq = best_control_seq
         # visualize_trajs(0, self.trajs_pub, trajectories.view(), 0.3)
-        return best_loss 
-
+        return best_loss
 
     def update_control_matrix(self):
         self.randomize_control_seqs()
@@ -87,13 +86,11 @@ class MPPIControler:
         self.velocities[:, 0, 1] = self.curr_state.w
         self.update_velocities()
 
-
     def get_best_control_seq(self, seqs_losses: np.ndarray):
         best_idx = np.argmin(seqs_losses, axis=0)
         best_loss = seqs_losses[best_idx]
         best_control = self.controls[best_idx]
         return best_loss, best_control
-
 
     def update_velocities(self):
         time_steps = self.control_matrix.shape[1]
@@ -101,7 +98,6 @@ class MPPIControler:
             curr_batch = self.control_matrix[:, t_step].astype(np.float32)
             curr_predicted = self.model(curr_batch)
             self.velocities[:, t_step + 1] = curr_predicted
-
 
     def randomize_control_seqs(self):
         """ 
@@ -114,8 +110,8 @@ class MPPIControler:
         noises = np.concatenate([v_noises, w_noises], axis=2)
 
         self.controls[:, :] = self.curr_control_seq[np.newaxis] + noises
-        self.controls[:, :] = np.clip(self.controls[:, :], -self.limit_v, self.limit_v)  # Clip both v and w ?
-
+        self.controls[:, :] = np.clip(self.controls[:, :], -self.limit_v,
+                                      self.limit_v)  # Clip both v and w ?
 
     def predict_trajectories(self):
         """ Propagetes trajectories using control matrix velocities and current state
