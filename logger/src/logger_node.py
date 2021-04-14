@@ -161,35 +161,39 @@ class Logger:
             state['y'].append(trans_vec.y)
             state['yaw'].append(yaw)
 
-            if len(state['x'])==1:
-                v, w = 0, 0
-                state['v'].append(v)
-                state['w'].append(w)
-                self.fisrt_fill_state = False
+            if dst_frame is self.kinetic_model_frame:
+                state['v'].append(self.current_control[0])
+                state['w'].append(self.current_control[1])
             else:
-                dt = self.delta_time['dt'][-1]
-                x_new = trans_vec.x
-                y_new = trans_vec.y
-                yaw_new = yaw
-                x_prev = state['x'][-2]
-                y_prev = state['y'][-2]
-                yaw_prev = state['yaw'][-2]
-                # print(dt, x_new, y_new, yaw_new, x_prev, y_prev, yaw_prev)
+                if len(state['x'])==1:
+                    v, w = 0, 0
+                    state['v'].append(v)
+                    state['w'].append(w)
+                    self.fisrt_fill_state = False
+                else:
+                    dt = self.delta_time['dt'][-1]
+                    x_new = trans_vec.x
+                    y_new = trans_vec.y
+                    yaw_new = yaw
+                    x_prev = state['x'][-2]
+                    y_prev = state['y'][-2]
+                    yaw_prev = state['yaw'][-2]
+                    # print(dt, x_new, y_new, yaw_new, x_prev, y_prev, yaw_prev)
 
-                d_yaw = yaw_new - yaw_prev
-                d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
-                w = d_yaw / dt
+                    d_yaw = yaw_new - yaw_prev
+                    d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
+                    w = d_yaw / dt
 
-                vx = (x_new - x_prev) / dt
-                vy = (y_new - y_prev) / dt
-                v = math.sqrt(vx**2 + vy**2)
+                    vx = (x_new - x_prev) / dt
+                    vy = (y_new - y_prev) / dt
+                    v = math.sqrt(vx**2 + vy**2)
 
-                alpha = math.atan2(vy,vx)
-                v = v * math.cos(alpha - yaw_new)
-                # print("___________")
-                # print(v, w)
-                state['v'].append(v)
-                state['w'].append(w)
+                    alpha = math.atan2(vy,vx)
+                    v = v * math.cos(alpha - yaw_new)
+                    # print("___________")
+                    # print(v, w)
+                    state['v'].append(v)
+                    state['w'].append(w)
 
             
 
