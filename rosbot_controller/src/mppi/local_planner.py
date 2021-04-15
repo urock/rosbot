@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
+from time import time
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -26,6 +27,8 @@ class LocalPlanner:
 
         self.optimizer = optimizer
         self.odom = odom
+        self.path_error = 0.0
+        self.error_measurments_count = 0
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -33,6 +36,7 @@ class LocalPlanner:
         self.goals_interval = goals_interval
 
         self.has_path = False
+        self.path_arrive_time: float 
         self.path_sub = rospy.Subscriber("/path", Path, self.__path_cb)
 
         rospy.Timer(rospy.Duration(self.dt), self.__update_goal_cb)
@@ -53,7 +57,7 @@ class LocalPlanner:
                 self.rate.sleep()
                 self.__publish_control(control)
             else:
-                self.__stop()
+                self.__publish_stop_control()
                 self.rate.sleep()
 
     def __publish_control(self, control):
@@ -71,7 +75,7 @@ class LocalPlanner:
         cmd.angular.z = control.w
         self.cmd_pub.publish(cmd)
 
-    def __stop(self):
+    def __publish_stop_control(self):
         self.__publish_control(Control())
 
     def __update_goal_cb(self, timer):
@@ -84,18 +88,30 @@ class LocalPlanner:
         else:
             self.curr_goal_idx = nearest_pt_idx + 1
 
-        if self.curr_goal_idx == self.reference_traj.shape[0]:
+        if self.curr_goal_idx == len(self.reference_traj):
             self.has_path = False
+            self.print_metrics()
             return
 
+        self.update_error(dist)
         visualize_reference(2000, self.ref_pub, self.reference_traj.view(),
                             self.curr_goal_idx, self.optimizer.traj_lookahead)
+
+    def print_metrics(self):
+        rospy.loginfo("**************** Path Finished *****************\n")
+        rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
+        rospy.loginfo("Path Mean Error: {:.6f}.".format(self.path_error / self.error_measurments_count))
+
+    def update_error(self, dist):
+        self.path_error += dist
+        self.error_measurments_count +=1
+
 
     def __get_nearest_traj_point_and_dist(self):
         min_idx = self.curr_goal_idx
         min_dist = 10e18
 
-        traj_end = self.reference_traj.shape[0]
+        traj_end = len(self.reference_traj)
         end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
         for q in range(self.curr_goal_idx, min(end, traj_end)):
             curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
@@ -115,6 +131,7 @@ class LocalPlanner:
             self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
 
         self.optimizer.set_reference_traj(self.reference_traj.view())
+        self.path_arrive_time = time()
         self.curr_goal_idx = 0
         self.has_path = True
 

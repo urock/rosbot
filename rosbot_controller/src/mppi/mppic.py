@@ -43,7 +43,7 @@ class MPPIControler:
         self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self.batch_of_seqs[:, :, 4] = self.dt
 
-        self.curr_control_seq = np.ones(shape=(self.time_steps, 2)) * 0.2
+        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
         self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
         self.reference_traj: np.ndarray
@@ -70,7 +70,7 @@ class MPPIControler:
         return control
 
     def __optimize(self, goal_idx: int):
-        # Update batch
+        # Update batch seqs
         start = time.time()
         self.update_batch_of_seqs()
         end = time.time() - start
@@ -87,7 +87,7 @@ class MPPIControler:
         losses = self.calc_losses(trajectories, self.reference_traj.view(),
                                   self.traj_lookahead, goal_idx)
         end = time.time() - start
-        rospy.loginfo_throttle(2, "loss {:.5f}".format(end))
+        rospy.loginfo_throttle(2, "Loss calc time {:.5f}".format(end))
 
         # Calc next control
         start = time.time()
@@ -96,7 +96,6 @@ class MPPIControler:
         rospy.loginfo_throttle(2, "calc_next_control_seq {:.5f}".format(end))
 
         self.curr_control_seq = next_control_seq
-
         visualize_trajs(0, self.trajs_pub, trajectories, 0.8)
 
     def update_batch_of_seqs(self):
@@ -117,7 +116,6 @@ class MPPIControler:
         return noises
 
     def __update_velocities(self):
-
         for t_step in range(self.time_steps - 1):
             curr_batch = self.batch_of_seqs[:, t_step].astype(np.float32)
             curr_predicted = self.model(curr_batch)
