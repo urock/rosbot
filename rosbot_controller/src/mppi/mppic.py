@@ -16,7 +16,7 @@ class MPPIControler:
     def __init__(self,
                  loss: Callable[[np.ndarray, np.ndarray, int, int], np.ndarray],
                  calc_next_control_seq_policie: Callable[[np.array, np.ndarray], np.array],
-                 freq: float, v_std: float, w_std: float, limit_v: float, temperature: float,
+                 freq: float, v_std: float, w_std: float, limit_v: float, limit_w, desired_v: float, 
                  traj_lookahead: int, iter_count: int, time_steps: int, batch_size: int,
                  model_path: str):
 
@@ -24,11 +24,13 @@ class MPPIControler:
         self.calc_next_control_seq = calc_next_control_seq_policie
 
         self.limit_v = limit_v
+        self.limit_w = limit_w
+
+        self.desired_v = desired_v
         self.time_steps = time_steps
         self.traj_lookahead = traj_lookahead
         self.batch_size = batch_size
         self.iter_count = iter_count
-        self.temperature = temperature
 
         self.v_std = v_std
         self.w_std = w_std
@@ -61,7 +63,7 @@ class MPPIControler:
             self.__optimize(goal_idx)
         t = time.perf_counter() - start
 
-        offset = round(round(t / self.dt))
+        offset = round(t / self.dt)
         control = self.__get_control(offset)
         self.__displace_controls(offset)
 
@@ -72,20 +74,21 @@ class MPPIControler:
     def __optimize(self, goal_idx: int):
         # Update batch seqs
         start = time.time()
-        self.update_batch_of_seqs()
+        self.__update_batch_of_seqs()
         end = time.time() - start
         rospy.loginfo_throttle(2, "Update batch_seqs {:.5f} ".format(end))
 
         # Predict trajectories
         start = time.time()
-        trajectories = self.__predict_trajectories()
+        trajs = self.__predict_trajs()
         end = time.time() - start
         rospy.loginfo_throttle(2, "Predict trajectories {:.5f}".format(end))
 
         # Calc losses
         start = time.time()
-        losses = self.calc_losses(trajectories, self.reference_traj.view(),
-                                  self.traj_lookahead, goal_idx)
+        losses = self.calc_losses(np.concatenate([trajs, self.batch_of_seqs[:,:, 2:4]], axis=2), 
+                                  self.reference_traj,
+                                  self.traj_lookahead, goal_idx, self.desired_v)
         end = time.time() - start
         rospy.loginfo_throttle(2, "Loss calc time {:.5f}".format(end))
 
@@ -96,15 +99,19 @@ class MPPIControler:
         rospy.loginfo_throttle(2, "calc_next_control_seq {:.5f}".format(end))
 
         self.curr_control_seq = next_control_seq
-        visualize_trajs(0, self.trajs_pub, trajectories, 0.8)
+        visualize_trajs(0, self.trajs_pub, trajs, 0.8)
 
-    def update_batch_of_seqs(self):
+    def __update_batch_of_seqs(self):
         noises = self.__generate_noises()
         self.batch_of_seqs[:, 0, 0] = self.curr_state.v
         self.batch_of_seqs[:, 0, 1] = self.curr_state.w
         self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
-        self.batch_of_seqs[:, :, 2:4] = np.clip(self.batch_of_seqs[:, :, 2:4], -self.limit_v,
+
+        self.batch_of_seqs[:, :, 2:3] = np.clip(self.batch_of_seqs[:, :, 2:3], -self.limit_v,
                                                 self.limit_v)  # Clip both v and w ?
+
+        self.batch_of_seqs[:, :, 3:4] = np.clip(self.batch_of_seqs[:, :, 3:4], -self.limit_w,
+                                                self.limit_w)  # Clip both v and w ?
 
         self.__update_velocities()
 
@@ -135,7 +142,7 @@ class MPPIControler:
         end_part = np.array([self.curr_control_seq[-1]] * offset)
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
-    def __predict_trajectories(self):
+    def __predict_trajs(self):
         """ Propagetes trajectories using control matrix velocities and current state
 
         Return:

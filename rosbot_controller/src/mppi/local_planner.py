@@ -90,19 +90,19 @@ class LocalPlanner:
 
         if self.curr_goal_idx == len(self.reference_traj):
             self.has_path = False
-            self.print_metrics()
+            self.__print_metrics()
             return
 
-        self.update_error(dist)
-        visualize_reference(2000, self.ref_pub, self.reference_traj.view(),
+        self.__update_error(dist)
+        visualize_reference(2000, self.ref_pub, self.reference_traj,
                             self.curr_goal_idx, self.optimizer.traj_lookahead)
 
-    def print_metrics(self):
+    def __print_metrics(self):
         rospy.loginfo("**************** Path Finished *****************\n")
         rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
         rospy.loginfo("Path Mean Error: {:.6f}.".format(self.path_error / self.error_measurments_count))
 
-    def update_error(self, dist):
+    def __update_error(self, dist):
         self.path_error += dist
         self.error_measurments_count +=1
 
@@ -130,7 +130,7 @@ class LocalPlanner:
             yaw = quaternion_to_euler(pose.pose.orientation)[0]
             self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
 
-        self.optimizer.set_reference_traj(self.reference_traj.view())
+        self.optimizer.set_reference_traj(self.reference_traj)
         self.path_arrive_time = time()
         self.curr_goal_idx = 0
         self.has_path = True
@@ -148,16 +148,18 @@ def main():
 
     v_std = 0.1
     w_std = 0.2
-    limit_v = 0.5
 
-    traj_lookahead = 5
-    temperature = 0.1
+    limit_v = 0.5
+    limit_w = 0.7
+
+    desired_v = 0.5
+    traj_lookahead = 7 
 
     loss = sum_loss
     control_policie = calc_softmax_seq
     optimizer = MPPIControler(loss, control_policie,
-                              freq, v_std, w_std, limit_v,
-                              temperature, traj_lookahead,
+                              freq, v_std, w_std, limit_v, limit_w, desired_v,
+                              traj_lookahead,
                               iter_count, time_steps, batch_size, model_path)
 
     map_frame = rospy.get_param('~map_frame', "odom")
