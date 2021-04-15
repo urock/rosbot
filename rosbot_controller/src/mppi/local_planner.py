@@ -105,7 +105,6 @@ class LocalPlanner:
 
         return min_idx, min_dist
 
-
     def __is_goal_reached(self, dist):
         return dist < self.goal_tolerance
 
@@ -132,22 +131,21 @@ def main():
 
     v_std = 0.1
     w_std = 0.2
-    limit_v = 0.5 
+    limit_v = 0.5
 
-    traj_lookahead = 5 
+    traj_lookahead = 5
     temperature = 0.1
 
     loss = sum_loss
     control_policie = calc_softmax_seq
-    optimizer = MPPIControler(loss, control_policie, 
-                              freq, v_std, w_std, limit_v, 
+    optimizer = MPPIControler(loss, control_policie,
+                              freq, v_std, w_std, limit_v,
                               temperature, traj_lookahead,
                               iter_count, time_steps, batch_size, model_path)
 
     map_frame = rospy.get_param('~map_frame', "odom")
     base_frame = rospy.get_param('~base_frame', "base_link")
     odom = Odom(map_frame, base_frame)
-
 
     goal_tolerance = 0.2
     goals_interval = 0.1

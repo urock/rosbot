@@ -24,7 +24,6 @@ class Odom:
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self.__tf_cb)
         self.tf_cb_time = time.time()
 
-
     def get_current_state(self):
         return self.curr_state
 
@@ -38,7 +37,6 @@ class Odom:
 
         dt = self.__get_diff_time()
         self.__update_state(odom, dt)
-
 
     def __get_odom_tf(self, msg):
         odom = None

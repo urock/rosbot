@@ -13,11 +13,11 @@ from utils.visualizations import visualize_trajs, MarkerArray
 
 
 class MPPIControler:
-    def __init__(self, 
+    def __init__(self,
                  loss: Callable[[np.ndarray, np.ndarray, int, int], np.ndarray],
                  calc_next_control_seq_policie: Callable[[np.array, np.ndarray], np.array],
-                 freq: float, v_std: float, w_std: float, limit_v: float, temperature:float,
-                 traj_lookahead: int, iter_count: int, time_steps: int, batch_size: int, 
+                 freq: float, v_std: float, w_std: float, limit_v: float, temperature: float,
+                 traj_lookahead: int, iter_count: int, time_steps: int, batch_size: int,
                  model_path: str):
 
         self.calc_losses = loss
@@ -39,23 +39,21 @@ class MPPIControler:
 
         self.model = nnio.ONNXModel(self.model_path)
 
-        self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5)) # 5 for v, w, control_dim and dt
+        # 5 for v, w, control_dim and dt
+        self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self.batch_of_seqs[:, :, 4] = self.dt
 
-        self.curr_control_seq = np.ones(shape=(self.time_steps, 2))* 0.2
+        self.curr_control_seq = np.ones(shape=(self.time_steps, 2)) * 0.2
         self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
         self.reference_traj: np.ndarray
         self.curr_state: Type[State]
 
-
     def set_reference_traj(self, ref_traj):
         self.reference_traj = ref_traj
 
-
     def update_state(self, state: Type[State]):
         self.curr_state = state
-
 
     def next_control(self, goal_idx: int):
         start = time.perf_counter()
@@ -67,9 +65,9 @@ class MPPIControler:
         control = self.__get_control(offset)
         self.__displace_controls(offset)
 
-        rospy.loginfo_throttle(2, "Offset: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(offset, t, control.v, control.w))
+        rospy.loginfo_throttle(2, "Offset: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(
+            offset, t, control.v, control.w))
         return control
-
 
     def __optimize(self, goal_idx: int):
         # Update batch
@@ -78,7 +76,7 @@ class MPPIControler:
         end = time.time() - start
         rospy.loginfo_throttle(2, "Update batch_seqs {:.5f} ".format(end))
 
-        # Predict trajectories 
+        # Predict trajectories
         start = time.time()
         trajectories = self.__predict_trajectories()
         end = time.time() - start
@@ -86,13 +84,14 @@ class MPPIControler:
 
         # Calc losses
         start = time.time()
-        losses = self.calc_losses(trajectories, self.reference_traj.view(), self.traj_lookahead, goal_idx)
+        losses = self.calc_losses(trajectories, self.reference_traj.view(),
+                                  self.traj_lookahead, goal_idx)
         end = time.time() - start
         rospy.loginfo_throttle(2, "loss {:.5f}".format(end))
 
-        # Calc next control 
+        # Calc next control
         start = time.time()
-        next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:,:,2:4])
+        next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
         end = time.time() - start
         rospy.loginfo_throttle(2, "calc_next_control_seq {:.5f}".format(end))
 
@@ -100,14 +99,13 @@ class MPPIControler:
 
         visualize_trajs(0, self.trajs_pub, trajectories, 0.8)
 
-
     def update_batch_of_seqs(self):
         noises = self.__generate_noises()
         self.batch_of_seqs[:, 0, 0] = self.curr_state.v
         self.batch_of_seqs[:, 0, 1] = self.curr_state.w
-        self.batch_of_seqs[:,:, 2:4] = self.curr_control_seq[None] + noises 
-        self.batch_of_seqs[:,:, 2:4] = np.clip(self.batch_of_seqs[:,:, 2:4], -self.limit_v,
-                                      self.limit_v)  # Clip both v and w ?
+        self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
+        self.batch_of_seqs[:, :, 2:4] = np.clip(self.batch_of_seqs[:, :, 2:4], -self.limit_v,
+                                                self.limit_v)  # Clip both v and w ?
 
         self.__update_velocities()
 
@@ -124,7 +122,6 @@ class MPPIControler:
             curr_batch = self.batch_of_seqs[:, t_step].astype(np.float32)
             curr_predicted = self.model(curr_batch)
             self.batch_of_seqs[:, t_step + 1, :2] = curr_predicted
-
 
     def __get_control(self, offset: int) -> Type[Control]:
         v_best = self.curr_control_seq[0 + offset, 0]

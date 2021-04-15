@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.spatial import distance
 
+
 def sum_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
     loss = np.zeros(shape=(trajectories.shape[0], trajectories.shape[1]))
     x = trajectories[:, :, 0]
@@ -14,7 +15,7 @@ def sum_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
 
     for q in range(goal_idx, end):
         goal = reference_traj[q]
-        loss += ((x - goal[0])**2 + (y-goal[1])**2 + yaw_weight * (yaw-goal[2])**2) * (q+1)  
+        loss += ((x - goal[0])**2 + (y-goal[1])**2 + yaw_weight * (yaw-goal[2])**2) * (q+1)
 
     return loss.sum(axis=1)
 
@@ -63,8 +64,8 @@ def nearest_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
     ref_traj_cropped = reference_traj[goal_idx: end]
     traj_reshaped = np.reshape(trajectories, (i_dim * ii_dim, 3))
 
-    traj_reshaped[:,2:3] = traj_reshaped[:,2:3] * yaw_weight 
-    reference_traj[:,2:3] = reference_traj[:,2:3] * yaw_weight 
+    traj_reshaped[:, 2:3] = traj_reshaped[:, 2:3] * yaw_weight
+    reference_traj[:, 2:3] = reference_traj[:, 2:3] * yaw_weight
 
     distances = distance.cdist(traj_reshaped[:, :3], ref_traj_cropped[:, :3], 'sqeuclidean')
     distances = np.min(distances, axis=1)
