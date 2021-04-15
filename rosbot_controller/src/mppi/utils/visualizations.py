@@ -42,7 +42,7 @@ def create_marker(id, pt):
 
     marker.type = Marker.SPHERE
     marker.action = Marker.ADD
-    marker.scale = Vector3(0.05, 0.05, 0.05)
+    marker.scale = Vector3(0.035, 0.035, 0.035)
     marker.color.r, marker.color.g, marker.color.a = (0.0, 1.0, 1.0)
     marker.pose.position.x = pt[0]
     marker.pose.position.y = pt[1]

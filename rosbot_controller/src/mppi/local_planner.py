@@ -12,6 +12,7 @@ from utils.geometry import quaternion_to_euler
 from utils.dtypes import Control, dist_L2_np
 from utils.losses import sum_loss, order_loss, nearest_loss
 from utils.visualizations import visualize_reference
+from utils.policies import calc_softmax_seq, find_min_seq
 
 from robot import Odom
 from mppic import MPPIControler
@@ -32,9 +33,9 @@ class LocalPlanner:
         self.goals_interval = goals_interval
 
         self.has_path = False
-        self.path_sub = rospy.Subscriber("/path", Path, self.path_cb)
+        self.path_sub = rospy.Subscriber("/path", Path, self.__path_cb)
 
-        rospy.Timer(rospy.Duration(self.dt), self.update_goal_cb)
+        rospy.Timer(rospy.Duration(self.dt), self.__update_goal_cb)
 
         self.rate = rospy.Rate(self.optimizer.freq)
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
@@ -49,63 +50,13 @@ class LocalPlanner:
             if self.has_path:
                 self.optimizer.update_state(self.odom.curr_state)
                 control = self.optimizer.next_control(self.curr_goal_idx)
-                self.publish_control(control)
+                self.rate.sleep()
+                self.__publish_control(control)
             else:
-                self.stop()
+                self.__stop()
+                self.rate.sleep()
 
-            self.rate.sleep()
-
-    def stop(self):
-        self.publish_control(Control())
-
-    def get_curr_goal(self):
-        return self.reference_traj[self.curr_goal_idx]
-
-    def update_goal_cb(self, timer):
-        if not self.has_path:
-            return
-
-        nearest_pt_idx, dist = self.get_nearest_traj_point_idx_and_dist()
-        if not self.is_goal_reached(dist):
-            self.curr_goal_idx = nearest_pt_idx
-        else:
-            self.curr_goal_idx = nearest_pt_idx + 1
-
-        if self.curr_goal_idx == self.reference_traj.shape[0]:
-            self.has_path = False
-            return
-
-        visualize_reference(2000, self.ref_pub, self.reference_traj.view(),
-                            self.curr_goal_idx, self.optimizer.traj_lookahead)
-
-    def is_goal_reached(self, dist):
-        return (dist < self.goal_tolerance) and self.has_path
-
-    def get_nearest_traj_point_idx_and_dist(self):
-        min_idx = self.curr_goal_idx
-        min_dist = 10e18
-
-        traj_end = self.reference_traj.shape[0]
-        end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
-        for q in range(self.curr_goal_idx, min(end, traj_end)):
-            curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
-            if min_dist >= curr_dist:
-                min_dist = curr_dist
-                min_idx = q
-
-        return min_idx, min_dist
-
-    def path_cb(self, msg):
-        for pose in msg.poses:
-            x, y = pose.pose.position.x, pose.pose.position.y
-            yaw = quaternion_to_euler(pose.pose.orientation)[0]
-            self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
-
-        self.optimizer.set_reference_traj(self.reference_traj.view())
-        self.has_path = True
-        self.curr_goal_idx = 0
-
-    def publish_control(self, control):
+    def __publish_control(self, control):
         """ Publishes controls for the rosbot
 
         Args:
@@ -120,6 +71,53 @@ class LocalPlanner:
         cmd.angular.z = control.w
         self.cmd_pub.publish(cmd)
 
+    def __stop(self):
+        self.__publish_control(Control())
+
+    def __update_goal_cb(self, timer):
+        if not self.has_path:
+            return
+
+        nearest_pt_idx, dist = self.__get_nearest_traj_point_and_dist()
+        if not self.__is_goal_reached(dist):
+            self.curr_goal_idx = nearest_pt_idx
+        else:
+            self.curr_goal_idx = nearest_pt_idx + 1
+
+        if self.curr_goal_idx == self.reference_traj.shape[0]:
+            self.has_path = False
+            return
+
+        visualize_reference(2000, self.ref_pub, self.reference_traj.view(),
+                            self.curr_goal_idx, self.optimizer.traj_lookahead)
+
+    def __get_nearest_traj_point_and_dist(self):
+        min_idx = self.curr_goal_idx
+        min_dist = 10e18
+
+        traj_end = self.reference_traj.shape[0]
+        end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
+        for q in range(self.curr_goal_idx, min(end, traj_end)):
+            curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
+            if min_dist >= curr_dist:
+                min_dist = curr_dist
+                min_idx = q
+
+        return min_idx, min_dist
+
+    def __is_goal_reached(self, dist):
+        return dist < self.goal_tolerance
+
+    def __path_cb(self, msg):
+        for pose in msg.poses:
+            x, y = pose.pose.position.x, pose.pose.position.y
+            yaw = quaternion_to_euler(pose.pose.orientation)[0]
+            self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
+
+        self.optimizer.set_reference_traj(self.reference_traj.view())
+        self.curr_goal_idx = 0
+        self.has_path = True
+
 
 def main():
     rospy.init_node('mppic', anonymous=True)
@@ -128,14 +126,21 @@ def main():
     model_path = rospy.get_param('~model_path', None)
 
     batch_size = 100
-    iter_count = 3
+    time_steps = 50
+    iter_count = 1
+
     v_std = 0.1
     w_std = 0.2
-    loss = nearest_loss
-    traj_lookahead = 15
     limit_v = 0.5
-    time_steps = 50
-    optimizer = MPPIControler(loss, freq, v_std, w_std, limit_v, traj_lookahead,
+
+    traj_lookahead = 5
+    temperature = 0.1
+
+    loss = sum_loss
+    control_policie = calc_softmax_seq
+    optimizer = MPPIControler(loss, control_policie,
+                              freq, v_std, w_std, limit_v,
+                              temperature, traj_lookahead,
                               iter_count, time_steps, batch_size, model_path)
 
     map_frame = rospy.get_param('~map_frame', "odom")
@@ -145,6 +150,7 @@ def main():
     goal_tolerance = 0.2
     goals_interval = 0.1
     mppic = LocalPlanner(odom, optimizer, goal_tolerance, goals_interval)
+
     mppic.start()
     rospy.spin()
 
