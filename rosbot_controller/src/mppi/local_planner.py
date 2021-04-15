@@ -12,8 +12,7 @@ from utils.geometry import quaternion_to_euler
 from utils.dtypes import Control, dist_L2_np
 from utils.losses import sum_loss, order_loss, nearest_loss
 from utils.visualizations import visualize_reference
-
-from utils.policies import calc_softmax_seq
+from utils.policies import calc_softmax_seq, find_min_seq
 
 from robot import Odom
 from mppic import MPPIControler
@@ -51,11 +50,11 @@ class LocalPlanner:
             if self.has_path:
                 self.optimizer.update_state(self.odom.curr_state)
                 control = self.optimizer.next_control(self.curr_goal_idx)
+                self.rate.sleep()
                 self.__publish_control(control)
             else:
                 self.__stop()
-
-            self.rate.sleep()
+                self.rate.sleep()
 
     def __publish_control(self, control):
         """ Publishes controls for the rosbot
