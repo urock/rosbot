@@ -1,5 +1,4 @@
 import numpy as np
-import nnio
 import time
 
 import rospy
@@ -18,7 +17,7 @@ class MPPIControler:
                  calc_next_control_seq_policie: Callable[[np.array, np.ndarray], np.array],
                  freq: float, v_std: float, w_std: float, limit_v: float, limit_w, desired_v: float, 
                  traj_lookahead: int, iter_count: int, time_steps: int, batch_size: int,
-                 model_path: str):
+                 model):
 
         self.calc_losses = loss
         self.calc_next_control_seq = calc_next_control_seq_policie
@@ -36,10 +35,9 @@ class MPPIControler:
         self.w_std = w_std
 
         self.freq = freq
-        self.model_path = model_path
+        self.model = model
         self.dt = 1.0 / self.freq
 
-        self.model = nnio.ONNXModel(self.model_path)
 
         # 5 for v, w, control_dim and dt
         self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))

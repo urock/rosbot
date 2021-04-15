@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
+import nnio
 from time import time
 
 import rospy
@@ -17,6 +18,7 @@ from utils.policies import calc_softmax_seq, find_min_seq
 
 from robot import Odom
 from mppic import MPPIControler
+from models.rosbot import RosbotKinematic
 
 
 class LocalPlanner:
@@ -157,10 +159,14 @@ def main():
 
     loss = sum_loss
     control_policie = calc_softmax_seq
+
+    model_path = model_path
+    model = nnio.ONNXModel(model_path)
+    # model = RosbotKinematic()
     optimizer = MPPIControler(loss, control_policie,
                               freq, v_std, w_std, limit_v, limit_w, desired_v,
                               traj_lookahead,
-                              iter_count, time_steps, batch_size, model_path)
+                              iter_count, time_steps, batch_size, model)
 
     map_frame = rospy.get_param('~map_frame', "odom")
     base_frame = rospy.get_param('~base_frame', "base_link")
