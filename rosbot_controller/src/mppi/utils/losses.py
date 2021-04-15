@@ -1,15 +1,12 @@
 import numpy as np
-from numba import jit
 from scipy.spatial import distance
-
-import sys
-
 
 def sum_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
     loss = np.zeros(shape=(trajectories.shape[0], trajectories.shape[1]))
     x = trajectories[:, :, 0]
     y = trajectories[:, :, 1]
     yaw = trajectories[:, :, 2]
+    yaw_weight = 0.15
 
     traj_end = reference_traj.shape[0]
     end = goal_idx + traj_lookahead + 1
@@ -17,7 +14,7 @@ def sum_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
 
     for q in range(goal_idx, end):
         goal = reference_traj[q]
-        loss += ((x - goal[0])**2 + (y-goal[1])**2 + (yaw-goal[2])**2)*(q+1)
+        loss += ((x - goal[0])**2 + (y-goal[1])**2 + yaw_weight * (yaw-goal[2])**2) * (q+1)  
 
     return loss.sum(axis=1)
 
@@ -57,7 +54,7 @@ def nearest_loss(trajectories, reference_traj, traj_lookahead, goal_idx):
     i_dim = trajectories.shape[0]
     ii_dim = trajectories.shape[1]
     r_dim = reference_traj.shape[0]
-    yaw_weight = 0.5
+    yaw_weight = 0.2
 
     traj_end = r_dim
     end = goal_idx + traj_lookahead

@@ -13,10 +13,15 @@ from utils.visualizations import visualize_trajs, MarkerArray
 
 
 class MPPIControler:
-    def __init__(self, loss: Callable[[np.ndarray, np.ndarray, int, int], np.ndarray],
+    def __init__(self, 
+                 loss: Callable[[np.ndarray, np.ndarray, int, int], np.ndarray],
+                 calc_next_control_seq_policie: Callable[[np.array, np.ndarray], np.array],
                  freq: float, v_std: float, w_std: float, limit_v: float, temperature:float,
-                 traj_lookahead: int, iter_count: int, time_steps: int,
-                 batch_size: int, model_path: str):
+                 traj_lookahead: int, iter_count: int, time_steps: int, batch_size: int, 
+                 model_path: str):
+
+        self.calc_losses = loss
+        self.calc_next_control_seq = calc_next_control_seq_policie
 
         self.limit_v = limit_v
         self.time_steps = time_steps
@@ -33,18 +38,16 @@ class MPPIControler:
         self.dt = 1.0 / self.freq
 
         self.model = nnio.ONNXModel(self.model_path)
-        self.loss = loss
 
-        self.control_matrix = np.zeros(shape=(self.batch_size, self.time_steps, 5))
-        self.control_matrix[:, :, 4] = self.dt
-        self.velocities_batch = self.control_matrix[:, :, :2].view()  # v, w
-        self.control_batch = self.control_matrix[:, :, 2:4].view()  # v, w
+        self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5)) # 5 for v, w, control_dim and dt
+        self.batch_of_seqs[:, :, 4] = self.dt
 
-        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
+        self.curr_control_seq = np.ones(shape=(self.time_steps, 2))* 0.2
         self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
         self.reference_traj: np.ndarray
         self.curr_state: Type[State]
+
 
     def set_reference_traj(self, ref_traj):
         self.reference_traj = ref_traj
@@ -56,87 +59,95 @@ class MPPIControler:
 
     def next_control(self, goal_idx: int):
         start = time.perf_counter()
-
-        for iter in range(self.iter_count):
-            self.optimize(goal_idx)
-
+        for _ in range(self.iter_count):
+            self.__optimize(goal_idx)
         t = time.perf_counter() - start
 
         offset = round(round(t / self.dt))
-        control = self.get_control(offset)
-        rospy.loginfo_throttle(2, "Iter: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(iter, t, control.v, control.w))
-        self.displace_controls(offset)
+        control = self.__get_control(offset)
+        self.__displace_controls(offset)
+
+        rospy.loginfo_throttle(2, "Offset: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(offset, t, control.v, control.w))
         return control
 
 
-    def optimize(self, goal_idx: int):
-        self.update_batch_seqs()
-        trajectories = self.predict_trajectories()
-        losses = self.loss(trajectories, self.reference_traj.view(), self.traj_lookahead, goal_idx)
-        next_control_seq = self.calc_next_control_seq(losses)
+    def __optimize(self, goal_idx: int):
+        # Update batch
+        start = time.time()
+        self.update_batch_of_seqs()
+        end = time.time() - start
+        rospy.loginfo_throttle(2, "Update batch_seqs {:.5f} ".format(end))
+
+        # Predict trajectories 
+        start = time.time()
+        trajectories = self.__predict_trajectories()
+        end = time.time() - start
+        rospy.loginfo_throttle(2, "Predict trajectories {:.5f}".format(end))
+
+        # Calc losses
+        start = time.time()
+        losses = self.calc_losses(trajectories, self.reference_traj.view(), self.traj_lookahead, goal_idx)
+        end = time.time() - start
+        rospy.loginfo_throttle(2, "loss {:.5f}".format(end))
+
+        # Calc next control 
+        start = time.time()
+        next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:,:,2:4])
+        end = time.time() - start
+        rospy.loginfo_throttle(2, "calc_next_control_seq {:.5f}".format(end))
+
         self.curr_control_seq = next_control_seq
-        visualize_trajs(0, self.trajs_pub, trajectories)
 
-    def calc_next_control_seq(self, losses: np.ndarray):
-        """ Calculate control for givven losses and control
- 
-        Args:
-            controls: np.array of shape [batch_size, time_steps, 2]
-            losses: np.array of shape [batch_size]
-        """
-        T = self.temperature
-        losses = losses - np.min(losses)
+        visualize_trajs(0, self.trajs_pub, trajectories, 0.8)
 
-        exponents = np.exp(-1/T * losses)
-        softmaxes = exponents / np.sum(exponents) # -> shape = [batch_size]
 
-        control = (self.control_batch * softmaxes[:, np.newaxis, np.newaxis]).sum(axis=0)
-
-        return control 
-
-    def update_batch_seqs(self):
-        noises = self.generate_noises()
-        self.control_batch[:, :] = self.curr_control_seq[np.newaxis] + noises
-        self.control_batch[:, :] = np.clip(self.control_batch[:, :], -self.limit_v,
+    def update_batch_of_seqs(self):
+        noises = self.__generate_noises()
+        self.batch_of_seqs[:, 0, 0] = self.curr_state.v
+        self.batch_of_seqs[:, 0, 1] = self.curr_state.w
+        self.batch_of_seqs[:,:, 2:4] = self.curr_control_seq[None] + noises 
+        self.batch_of_seqs[:,:, 2:4] = np.clip(self.batch_of_seqs[:,:, 2:4], -self.limit_v,
                                       self.limit_v)  # Clip both v and w ?
-        self.velocities_batch[:, 0, 0] = self.curr_state.v
-        self.velocities_batch[:, 0, 1] = self.curr_state.w
-        self.update_velocities()
 
+        self.__update_velocities()
 
-    def update_velocities(self):
-        for t_step in range(self.time_steps - 1):
-            curr_batch = self.control_matrix[:, t_step].astype(np.float32)
-            curr_predicted = self.model(curr_batch)
-            self.velocities_batch[:, t_step + 1] = curr_predicted
-
-
-    def get_control(self, offset: int) -> Type[Control]:
-        v_best = self.curr_control_seq[0 + offset, 0]
-        w_best = self.curr_control_seq[0 + offset, 1]
-
-        return Control(v_best, w_best)
-
-    def displace_controls(self, offset: int):
-        control_cropped = self.curr_control_seq[offset:]
-        end_part = np.array([self.curr_control_seq[-1]] * offset)
-        self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
-
-    def generate_noises(self):
+    def __generate_noises(self):
         v_noises = np.random.normal(0.0, self.v_std, size=(self.batch_size, self.time_steps, 1))
         w_noises = np.random.normal(0.0, self.w_std, size=(self.batch_size, self.time_steps, 1))
         noises = np.concatenate([v_noises, w_noises], axis=2)
 
         return noises
 
+    def __update_velocities(self):
 
-    def predict_trajectories(self):
+        for t_step in range(self.time_steps - 1):
+            curr_batch = self.batch_of_seqs[:, t_step].astype(np.float32)
+            curr_predicted = self.model(curr_batch)
+            self.batch_of_seqs[:, t_step + 1, :2] = curr_predicted
+
+
+    def __get_control(self, offset: int) -> Type[Control]:
+        v_best = self.curr_control_seq[0 + offset, 0]
+        w_best = self.curr_control_seq[0 + offset, 1]
+
+        return Control(v_best, w_best)
+
+    def __displace_controls(self, offset: int):
+        if offset == 0:
+            return
+
+        control_cropped = self.curr_control_seq[offset:]
+        end_part = np.array([self.curr_control_seq[-1]] * offset)
+        self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
+
+    def __predict_trajectories(self):
         """ Propagetes trajectories using control matrix velocities and current state
 
         Return:
             trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
         """
-        v, w = self.velocities_batch[:, :, 0], self.velocities_batch[:, :, 1]
+
+        v, w = self.batch_of_seqs[:, :, 0], self.batch_of_seqs[:, :, 1]
         current_yaw = self.curr_state.yaw
         yaw = np.cumsum(w * self.dt, axis=1)
         yaw += current_yaw - yaw[:, :1]
