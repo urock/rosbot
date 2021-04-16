@@ -10,6 +10,7 @@ from utils.visualizations import visualize_trajs, MarkerArray
 
 from utils.optimization.losses import sum_loss, triangle_loss
 
+
 class MPPIController:
     def __init__(self, model, loss, next_control_policie):
         self.freq = int(rospy.get_param('~cmd_freq', 30))
@@ -52,7 +53,7 @@ class MPPIController:
 
         t = perf_counter() - start
 
-        offset = round(t / self.dt) 
+        offset = round(t / self.dt)
         offset = offset if offset < self.time_steps else 0
 
         control = self._get_control(offset)
@@ -68,7 +69,7 @@ class MPPIController:
         trajs = self._predict_trajs()
         state = np.concatenate([trajs, self.batch_of_seqs[:, :, 2:4]], axis=2)
         losses = self.calc_losses(state, self.reference_traj, self.traj_lookahead,
-                                    goal_idx, self.desired_v, self.goals_interval)
+                                  goal_idx, self.desired_v, self.goals_interval)
 
         next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
         self.curr_control_seq = next_control_seq

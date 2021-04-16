@@ -23,7 +23,7 @@ class LocalPlanner:
 
         self.controller_freq = rospy.get_param('controller_freq', 90)
         self.rate = rospy.Rate(self.controller_freq)
-        self.control_dt = 1.0/ self.controller_freq
+        self.control_dt = 1.0 / self.controller_freq
 
         self.optimizer = optimizer
         self.odom = odom
@@ -43,7 +43,6 @@ class LocalPlanner:
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
         self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
         self.path_pub = rospy.Publisher("/mppi_path", Path, queue_size=5)
-
 
     def start(self):
         """Starts main loop running mppi controller if got path.

@@ -24,7 +24,6 @@ class Odom:
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self._tf_cb)
         self.tf_cb_time = time.time()
 
-
     def _tf_cb(self, msg):
         odom = self._get_odom_tf(msg)
         if not odom:

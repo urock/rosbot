@@ -18,6 +18,7 @@ from local_planner import LocalPlanner
 
 pr = cProfile.Profile(timeunit=0.00)
 
+
 def start_planner():
     rospy.init_node('mppic', anonymous=True, disable_signals=True)
 
