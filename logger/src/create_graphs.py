@@ -73,6 +73,7 @@ def main():
     plot_xy_data(x=time['t'], y=model_state['v'], ax=ax[0], plot_name="kinematic model v")
     plot_xy_data(x=time['t'], y=control['x'], ax=ax[0], plot_name="u1")
     if nn_model_state is not None:
+        # print(nn_model_state['v'])
         plot_xy_data(x=time['t'], y=nn_model_state['v'], ax=ax[0], plot_name="nn model v")
 
     ax[1].set_title("angular velocity and control")
@@ -127,7 +128,7 @@ def main():
     plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="x_y")
     plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model x_y")
     if nn_model_state is not None:
-        plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="nn model x_y")
+        plot_xy_data(x=nn_model_state['x'], y=nn_model_state['y'], ax=ax4, plot_name="nn model x_y")
     
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="Y over X")        
