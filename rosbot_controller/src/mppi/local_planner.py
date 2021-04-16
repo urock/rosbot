@@ -20,13 +20,14 @@ from mppic import MPPIController
 class LocalPlanner:
     def __init__(self, odom: Type[Odom], optimizer: Type[MPPIController]):
         self.goal_tolerance = rospy.get_param('~v_std', 0.2)
-        self.goals_interval = rospy.get_param('~w_std', 0.1)
+
+        self.controller_freq = rospy.get_param('controller_freq', 90)
+        self.rate = rospy.Rate(self.controller_freq)
+        self.control_dt = 1.0/ self.controller_freq
 
         self.optimizer = optimizer
         self.odom = odom
 
-        self.rate = rospy.Rate(self.optimizer.freq)
-        self.dt = 1.0 / self.optimizer.freq
         self.path_error = 0.0
         self.error_measurments_count = 0
 
@@ -37,11 +38,12 @@ class LocalPlanner:
         self.path_arrive_time: float
         self.path_sub = rospy.Subscriber("/path", Path, self._path_cb)
 
-        rospy.Timer(rospy.Duration(self.dt), self._update_goal_cb)
+        rospy.Timer(rospy.Duration(self.control_dt), self._update_goal_cb)
 
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
         self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
         self.path_pub = rospy.Publisher("/mppi_path", Path, queue_size=5)
+
 
     def start(self):
         """Starts main loop running mppi controller if got path.

@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 
-import rospy
 import nnio
-
-from utils.losses import sum_loss, order_loss, nearest_loss
-from utils.policies import calc_softmax_seq, find_min_seq
-
-from models.rosbot import RosbotKinematic
-from robot import Odom
-from mppic import MPPIController
-from local_planner import LocalPlanner
-
 import cProfile
 import pstats
 import io
 import signal
 
-pr = cProfile.Profile(timeunit=0.00)
+import rospy
 
+from utils.optimization.losses import sum_loss, triangle_loss
+from utils.optimization.policies import calc_softmax_seq, find_min_seq
+from models.rosbot import RosbotKinematic
+
+from robot import Odom
+from mppic import MPPIController
+from local_planner import LocalPlanner
+
+pr = cProfile.Profile(timeunit=0.00)
 
 def start_planner():
     rospy.init_node('mppic', anonymous=True, disable_signals=True)

@@ -24,11 +24,6 @@ class Odom:
         self.tf_sub = rospy.Subscriber("/tf", TFMessage, self._tf_cb)
         self.tf_cb_time = time.time()
 
-    def get_current_state(self):
-        return self.curr_state
-
-    def get_previous_state(self):
-        return self.prev_state
 
     def _tf_cb(self, msg):
         odom = self._get_odom_tf(msg)

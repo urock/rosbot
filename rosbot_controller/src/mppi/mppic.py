@@ -6,10 +6,9 @@ from typing import Callable, Type
 
 from utils.dtypes import State, Control, dist_L2, dist_L2_np
 from utils.geometry import quaternion_to_euler
-from utils.profiler import profile
-
 from utils.visualizations import visualize_trajs, MarkerArray
 
+from utils.optimization.losses import sum_loss, triangle_loss
 
 class MPPIController:
     def __init__(self, model, loss, next_control_policie):
@@ -24,6 +23,7 @@ class MPPIController:
         self.limit_w = rospy.get_param('~limit_w', 0.7)
         self.desired_v = rospy.get_param('~desired_v', 0.5)
         self.traj_lookahead = int(rospy.get_param('~traj_lookahead', 7))
+        self.goals_interval = rospy.get_param('~goals_interval', 0.1)
 
         self.calc_losses = loss
         self.calc_next_control_seq = next_control_policie
@@ -45,21 +45,16 @@ class MPPIController:
     def update_state(self, state: Type[State]):
         self.curr_state = state
 
-    def next_control(self, goal_idx: int):
+    def next_control(self, goal_idx):
         start = perf_counter()
         for _ in range(self.iter_count):
-            self._update_batch_of_seqs()
-            trajs = self._predict_trajs()
-            state = np.concatenate([trajs, self.batch_of_seqs[:, :, 2:4]], axis=2)
-            losses = self.calc_losses(state, self.reference_traj, self.traj_lookahead,
-                                      goal_idx, self.desired_v)
-            next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
-            self.curr_control_seq = next_control_seq
-            # visualize_trajs(0, self.trajs_pub, trajs, 0.8)
+            self._optimize(goal_idx)
 
         t = perf_counter() - start
 
-        offset = round(t / self.dt)
+        offset = round(t / self.dt) 
+        offset = offset if offset < self.time_steps else 0
+
         control = self._get_control(offset)
 
         rospy.loginfo_throttle(2, "Offset: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(
@@ -68,7 +63,16 @@ class MPPIController:
         self._displace_controls(offset)
         return control
 
-    # def _optimize(self, goal_idx: int):
+    def _optimize(self, goal_idx: int):
+        self._update_batch_of_seqs()
+        trajs = self._predict_trajs()
+        state = np.concatenate([trajs, self.batch_of_seqs[:, :, 2:4]], axis=2)
+        losses = self.calc_losses(state, self.reference_traj, self.traj_lookahead,
+                                    goal_idx, self.desired_v, self.goals_interval)
+
+        next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
+        self.curr_control_seq = next_control_seq
+        # visualize_trajs(0, self.trajs_pub, trajs, 0.8)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()
@@ -97,7 +101,7 @@ class MPPIController:
             curr_predicted = self.model(curr_batch)
             self.batch_of_seqs[:, t_step + 1, :2] = curr_predicted
 
-    def _get_control(self, offset: int) -> Type[Control]:
+    def _get_control(self, offset: int):
         v_best = self.curr_control_seq[0 + offset, 0]
         w_best = self.curr_control_seq[0 + offset, 1]
 
