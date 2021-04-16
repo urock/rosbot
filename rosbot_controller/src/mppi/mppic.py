@@ -8,8 +8,6 @@ from utils.dtypes import State, Control, dist_L2, dist_L2_np
 from utils.geometry import quaternion_to_euler
 from utils.visualizations import visualize_trajs, MarkerArray
 
-from utils.optimization.losses import sum_loss, triangle_loss
-
 
 class MPPIController:
     def __init__(self, model, loss, next_control_policie):
