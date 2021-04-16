@@ -8,7 +8,7 @@ import signal
 
 import rospy
 
-from utils.optimization.losses import sum_loss, triangle_loss
+from utils.optimization.losses import sum_loss, triangle_loss, nearest_loss
 from utils.optimization.policies import calc_softmax_seq, find_min_seq
 from models.rosbot import RosbotKinematic
 
@@ -19,6 +19,13 @@ from local_planner import LocalPlanner
 pr = cProfile.Profile(timeunit=0.00)
 
 
+def main():
+    signal.signal(signal.SIGINT, handler)
+
+    pr.enable()
+    start_planner()
+    pr.disable()
+
 def start_planner():
     rospy.init_node('mppic', anonymous=True, disable_signals=True)
 
@@ -26,7 +33,7 @@ def start_planner():
     model = nnio.ONNXModel(model_path)
     # model = RosbotKinematic()
 
-    optimizer = MPPIController(model, sum_loss, calc_softmax_seq)
+    optimizer = MPPIController(model, nearest_loss, calc_softmax_seq)
     odom = Odom()
     mppic = LocalPlanner(odom, optimizer)
 
@@ -43,15 +50,6 @@ def handler(signum, frame):
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats(20)
     print(s.getvalue())
-
-
-def main():
-    signal.signal(signal.SIGINT, handler)
-
-    pr.enable()
-    start_planner()
-    pr.disable()
-
 
 if __name__ == '__main__':
     main()
