@@ -18,13 +18,13 @@ def sum_loss(state, reference_traj, traj_lookahead, goal_idx, desired_v):
 
     for q in range(goal_idx, end):
         goal = reference_traj[q]
-        loss += ((x - goal[0])**2 + (y-goal[1])**2 + yaw_weight * (yaw-goal[2])**2) * (q+1) 
+        loss += ((x - goal[0])**2 + (y-goal[1])**2 + yaw_weight * (yaw-goal[2])**2) * (q+1)
 
-    loss += v_desiried_weight * (v - desired_v)**2 
+    loss += v_desiried_weight * (v - desired_v)**2
     return loss.sum(axis=1)
 
 
-def order_loss(trajs, reference_traj, traj_lookahead, goal_idx, desired_v):
+def order_loss(state, reference_traj, traj_lookahead, goal_idx, desired_v):
     loss = np.zeros(shape=(trajs.shape[0], trajs.shape[1]))
     x = trajs[:, :, 0]
     y = trajs[:, :, 1]
@@ -44,7 +44,7 @@ def order_loss(trajs, reference_traj, traj_lookahead, goal_idx, desired_v):
     return loss.sum(axis=1)
 
 
-def nearest_loss(trajs, reference_traj, traj_lookahead, goal_idx, desired_v):
+def nearest_loss(state, reference_traj, traj_lookahead, goal_idx, desired_v):
     """ Loss according to nearest reference_traj
 
     Args:
@@ -66,7 +66,7 @@ def nearest_loss(trajs, reference_traj, traj_lookahead, goal_idx, desired_v):
     end = min(end, traj_end)
 
     ref_traj_cropped = reference_traj[goal_idx: end]
-    traj_reshaped = np.reshape(trajs[:,:,:3], (i_dim * ii_dim, 3))
+    traj_reshaped = np.reshape(trajs[:, :, :3], (i_dim * ii_dim, 3))
 
     traj_reshaped[:, 2:3] = traj_reshaped[:, 2:3] * yaw_weight
     reference_traj[:, 2:3] = reference_traj[:, 2:3] * yaw_weight
