@@ -1,5 +1,5 @@
 import numpy as np
-import time
+from time import perf_counter
 
 import rospy
 from typing import Callable, Type
@@ -39,8 +39,7 @@ class MPPIControler:
         self.dt = 1.0 / self.freq
 
 
-        # 5 for v, w, control_dim and dt
-        self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
+        self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5)) # 5 for v, w, control_dim and dt
         self.batch_of_seqs[:, :, 4] = self.dt
 
         self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
@@ -56,48 +55,54 @@ class MPPIControler:
         self.curr_state = state
 
     def next_control(self, goal_idx: int):
-        start = time.perf_counter()
+        overall = perf_counter()
         for _ in range(self.iter_count):
-            self.__optimize(goal_idx)
-        t = time.perf_counter() - start
+            # Update batch seqs
+            start = perf_counter()
+            self.__update_batch_of_seqs()
+
+            end = perf_counter() - start
+            # rospy.loginfo_throttle(2, "Update batch_seqs {:.5f} ".format(end))
+            total_sum_time = end
+
+            # Predict trajectories
+            start = perf_counter()
+            trajs = self.__predict_trajs()
+            end = perf_counter() - start
+            # rospy.loginfo_throttle(2, "Predict trajectories {:.5f}".format(end))
+            total_sum_time += end;
+
+            # Calc losses
+            start = perf_counter()
+            losses = self.calc_losses(np.concatenate([trajs, self.batch_of_seqs[:,:, 2:4]], axis=2), 
+                                    self.reference_traj,
+                                    self.traj_lookahead, goal_idx, self.desired_v)
+            end = perf_counter() - start
+            # rospy.loginfo_throttle(2, "Loss calc time {:.5f}".format(end))
+            total_sum_time += end;
+
+            # Calc next control
+            start = perf_counter()
+            next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
+            end = perf_counter() - start
+            # rospy.loginfo_throttle(2, "calc_next_control_seq {:.5f}".format(end))
+            total_sum_time += end;
+            self.curr_control_seq = next_control_seq
+            # rospy.loginfo_throttle(2, "Total sum {:.5f}".format(total_sum_time))
+
+        # visualize_trajs(0, self.trajs_pub, trajs, 0.8)
+        t = perf_counter() - overall
 
         offset = round(t / self.dt)
         control = self.__get_control(offset)
-        self.__displace_controls(offset)
 
         rospy.loginfo_throttle(2, "Offset: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(
             offset, t, control.v, control.w))
+
+        self.__displace_controls(offset)
         return control
 
-    def __optimize(self, goal_idx: int):
-        # Update batch seqs
-        start = time.time()
-        self.__update_batch_of_seqs()
-        end = time.time() - start
-        rospy.loginfo_throttle(2, "Update batch_seqs {:.5f} ".format(end))
-
-        # Predict trajectories
-        start = time.time()
-        trajs = self.__predict_trajs()
-        end = time.time() - start
-        rospy.loginfo_throttle(2, "Predict trajectories {:.5f}".format(end))
-
-        # Calc losses
-        start = time.time()
-        losses = self.calc_losses(np.concatenate([trajs, self.batch_of_seqs[:,:, 2:4]], axis=2), 
-                                  self.reference_traj,
-                                  self.traj_lookahead, goal_idx, self.desired_v)
-        end = time.time() - start
-        rospy.loginfo_throttle(2, "Loss calc time {:.5f}".format(end))
-
-        # Calc next control
-        start = time.time()
-        next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
-        end = time.time() - start
-        rospy.loginfo_throttle(2, "calc_next_control_seq {:.5f}".format(end))
-
-        self.curr_control_seq = next_control_seq
-        visualize_trajs(0, self.trajs_pub, trajs, 0.8)
+    # def __optimize(self, goal_idx: int):
 
     def __update_batch_of_seqs(self):
         noises = self.__generate_noises()
@@ -106,10 +111,10 @@ class MPPIControler:
         self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
 
         self.batch_of_seqs[:, :, 2:3] = np.clip(self.batch_of_seqs[:, :, 2:3], -self.limit_v,
-                                                self.limit_v)  # Clip both v and w ?
+                                                self.limit_v)
 
         self.batch_of_seqs[:, :, 3:4] = np.clip(self.batch_of_seqs[:, :, 3:4], -self.limit_w,
-                                                self.limit_w)  # Clip both v and w ?
+                                                self.limit_w)
 
         self.__update_velocities()
 

@@ -12,14 +12,10 @@ from typing import Type
 
 from utils.geometry import quaternion_to_euler
 from utils.dtypes import Control, dist_L2_np
-from utils.losses import sum_loss, order_loss, nearest_loss
 from utils.visualizations import visualize_reference
-from utils.policies import calc_softmax_seq, find_min_seq
 
 from robot import Odom
 from mppic import MPPIControler
-from models.rosbot import RosbotKinematic
-
 
 class LocalPlanner:
     def __init__(self, odom: Type[Odom], optimizer: Type[MPPIControler],
@@ -136,49 +132,3 @@ class LocalPlanner:
         self.path_arrive_time = time()
         self.curr_goal_idx = 0
         self.has_path = True
-
-
-def main():
-    rospy.init_node('mppic', anonymous=True)
-
-    freq = int(rospy.get_param('~cmd_freq', 30))
-    model_path = rospy.get_param('~model_path', None)
-
-    batch_size = 100
-    time_steps = 50
-    iter_count = 1
-
-    v_std = 0.1
-    w_std = 0.2
-
-    limit_v = 0.5
-    limit_w = 0.7
-
-    desired_v = 0.5
-    traj_lookahead = 7 
-
-    loss = sum_loss
-    control_policie = calc_softmax_seq
-
-    model_path = model_path
-    model = nnio.ONNXModel(model_path)
-    # model = RosbotKinematic()
-    optimizer = MPPIControler(loss, control_policie,
-                              freq, v_std, w_std, limit_v, limit_w, desired_v,
-                              traj_lookahead,
-                              iter_count, time_steps, batch_size, model)
-
-    map_frame = rospy.get_param('~map_frame', "odom")
-    base_frame = rospy.get_param('~base_frame', "base_link")
-    odom = Odom(map_frame, base_frame)
-
-    goal_tolerance = 0.2
-    goals_interval = 0.1
-    mppic = LocalPlanner(odom, optimizer, goal_tolerance, goals_interval)
-
-    mppic.start()
-    rospy.spin()
-
-
-if __name__ == '__main__':
-    main()
