@@ -16,8 +16,7 @@ class Optimizer(ABC):
         """Set current state to this
 
         Args:
-            self: [TODO:description]
-            state: [TODO:description]
+            state: current state of type State [x, y, yaw] 
         """
         pass
 
@@ -30,6 +29,6 @@ class Optimizer(ABC):
             goal_idx: idx of reference goal
 
         Return:
-            next control of type Control - (v,w)
+            next control of type Control - [v, w]
         """
         pass
