@@ -8,13 +8,13 @@ import signal
 
 import rospy
 
-from utils.optimization.losses import triangle_loss, nearest_loss
-from utils.optimization.policies import calc_softmax_seq, find_min_seq
-from models.rosbot import RosbotKinematic
-
-from robot import Odom
+from optimization.policies.loss import triangle_loss, nearest_loss
+from optimization.policies.control import calc_softmax_seq, find_min_seq
+from optimization.models.rosbot import RosbotKinematic
 from mppic import MPPIController
 from local_planner import LocalPlanner
+from robot import Odom
+
 
 pr = cProfile.Profile(timeunit=0.00)
 
@@ -28,11 +28,10 @@ def main():
 
 
 def start_planner():
-    rospy.init_node('mppic', anonymous=True, disable_signals=True)
+    rospy.init_node('planner', anonymous=True, disable_signals=True)
 
-    model_path = rospy.get_param('~model_path', None)
+    model_path = rospy.get_param('~mppic/model_path', None)
     model = nnio.ONNXModel(model_path)
-    # model = RosbotKinematic()
 
     optimizer = MPPIController(model, nearest_loss, calc_softmax_seq)
     odom = Odom()

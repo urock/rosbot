@@ -15,8 +15,8 @@ class Odom:
     """
 
     def __init__(self):
-        self.map_frame = rospy.get_param('~map_frame', "odom")
-        self.base_frame = rospy.get_param('~base_frame', "base_link")
+        self.map_frame = rospy.get_param('~robot/map_frame', "odom")
+        self.base_frame = rospy.get_param('~robot/base_frame', "base_link")
 
         self.curr_state = State()
         self.prev_state = State()

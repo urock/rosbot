@@ -1,28 +1,28 @@
-import numpy as np
-from time import perf_counter
-
-import rospy
-from typing import Callable, Type
-
-from utils.dtypes import State, Control, dist_L2, dist_L2_np
-from utils.geometry import quaternion_to_euler
 from utils.visualizations import visualize_trajs, MarkerArray
+from utils.geometry import quaternion_to_euler
+from utils.dtypes import State, Control, dist_L2, dist_L2_np
+import rospy
+from time import perf_counter
+from typing import Callable, Type
+import numpy as np
+import sys
+sys.path.append("..")
 
 
 class MPPIController:
     def __init__(self, model, loss, next_control_policie):
-        self.freq = int(rospy.get_param('~cmd_freq', 30))
+        self.freq = int(rospy.get_param('~mppic/mppi_freq', 30))
         self.dt = 1.0 / self.freq
-        self.batch_size = int(rospy.get_param('~batch_size', 100))
-        self.time_steps = int(rospy.get_param('~time_steps', 50))
-        self.iter_count = int(rospy.get_param('~iter_count', 1))
-        self.v_std = rospy.get_param('~v_std', 0.1)
-        self.w_std = rospy.get_param('~w_std', 0.1)
-        self.limit_v = rospy.get_param('~limit_v', 0.5)
-        self.limit_w = rospy.get_param('~limit_w', 0.7)
-        self.desired_v = rospy.get_param('~desired_v', 0.5)
-        self.traj_lookahead = int(rospy.get_param('~traj_lookahead', 7))
-        self.goals_interval = rospy.get_param('~goals_interval', 0.1)
+        self.batch_size = int(rospy.get_param('~mppic/batch_size', 100))
+        self.time_steps = int(rospy.get_param('~mppic/time_steps', 50))
+        self.iter_count = int(rospy.get_param('~mppic/iter_count', 1))
+        self.v_std = rospy.get_param('~mppic/v_std', 0.1)
+        self.w_std = rospy.get_param('~mppic/w_std', 0.1)
+        self.limit_v = rospy.get_param('~mppic/limit_v', 0.5)
+        self.limit_w = rospy.get_param('~mppic/limit_w', 0.7)
+        self.desired_v = rospy.get_param('~mppic/desired_v', 0.5)
+        self.traj_lookahead = int(rospy.get_param('~mppic/traj_lookahead', 7))
+        self.goals_interval = rospy.get_param('~mppic/goals_interval', 0.1)
 
         self.calc_losses = loss
         self.calc_next_control_seq = next_control_policie
@@ -78,13 +78,10 @@ class MPPIController:
         self.batch_of_seqs[:, 0, 0] = self.curr_state.v
         self.batch_of_seqs[:, 0, 1] = self.curr_state.w
         self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
-
         self.batch_of_seqs[:, :, 2:3] = np.clip(self.batch_of_seqs[:, :, 2:3], -self.limit_v,
                                                 self.limit_v)
-
         self.batch_of_seqs[:, :, 3:4] = np.clip(self.batch_of_seqs[:, :, 3:4], -self.limit_w,
                                                 self.limit_w)
-
         self._update_velocities()
 
     def _generate_noises(self):

@@ -1,27 +1,23 @@
 #!/usr/bin/env python3
 import numpy as np
 from time import time
+from typing import Type
 
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Path
 from visualization_msgs.msg import MarkerArray
 
-from typing import Type
-
 from utils.geometry import quaternion_to_euler
 from utils.dtypes import Control, dist_L2_np
 from utils.visualizations import visualize_reference
 
-from robot import Odom
-from mppic import MPPIController
-
 
 class LocalPlanner:
-    def __init__(self, odom: Type[Odom], optimizer: Type[MPPIController]):
-        self.goal_tolerance = rospy.get_param('~v_std', 0.2)
+    def __init__(self, odom, optimizer):
+        self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
+        self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
 
-        self.controller_freq = rospy.get_param('controller_freq', 90)
         self.rate = rospy.Rate(self.controller_freq)
         self.control_dt = 1.0 / self.controller_freq
 
@@ -40,9 +36,9 @@ class LocalPlanner:
 
         rospy.Timer(rospy.Duration(self.control_dt), self._update_goal_cb)
 
-        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
         self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
-        self.path_pub = rospy.Publisher("/mppi_path", Path, queue_size=5)
+        self.path_pub = rospy.Publisher('/mppi_path', Path, queue_size=5)
 
     def start(self):
         """Starts main loop running mppi controller if got path.

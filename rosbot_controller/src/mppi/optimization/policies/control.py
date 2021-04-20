@@ -1,5 +1,4 @@
 import numpy as np
-from numba import jit
 
 
 def calc_softmax_seq(batch_losses: np.array, control_batch: np.ndarray):
