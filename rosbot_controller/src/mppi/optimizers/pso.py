@@ -4,24 +4,24 @@ import numpy as np
 
 class PSO:
 
-    def __init__(self, batch_size=100, time_steps=100, dim_size=2, 
+    def __init__(self, batch_size=100, time_steps=100, control_size=2, 
                 v_max=1.0, w_max=1.0,
                 w=0.8, c1=1, c2=1, learing_rate=0.5):
 
         self.batch_size = batch_size
         self.time_steps = time_steps
-        self.dim_size = dim_size   # size of state vector U
+        self.control_size = control_size   # size of state vector U
 
         # current batch of controls = batch of current particles position   
-        self.batch_u = np.zeros(shape=(self.batch_size, self.time_steps, self.dim_size))
+        self.batch_u = np.zeros(shape=(self.batch_size, self.time_steps, self.control_size))
         # batch of current particles velocities   
-        self.batch_v = np.zeros(shape=(self.batch_size, self.time_steps, self.dim_size))
+        self.batch_v = np.zeros(shape=(self.batch_size, self.time_steps, self.control_size))
 
         # best batch of controls = batch of best particles position
-        self.batch_p = np.zeros(shape=(self.batch_size, self.time_steps, self.dim_size))
+        self.batch_p = np.zeros(shape=(self.batch_size, self.time_steps, self.control_size))
 
         # best position of best particle
-        self.g = np.zeros(shape=(self.time_steps, self.dim_size))  
+        self.g = np.zeros(shape=(self.time_steps, self.control_size))  
 
         self.best_costs = np.full(self.batch_size, np.inf)
         self.global_best = np.inf      
@@ -33,7 +33,9 @@ class PSO:
     
     def init_control_batch(self):
         """
-            Initilasize batch of controls and returns it
+            Initilasize batch of controls
+
+            Return: np.array of shape (batch_size, time_steps, control_size) 
         """
         self.batch_u[:, :, 0] = np.random.uniform(0, self.v_max, (self.batch_size, self.time_steps, 1))
         self.batch_u[:, :, 1] = np.random.uniform(-self.w_max, self.w_max, (self.batch_size, self.time_steps, 1))
@@ -47,9 +49,11 @@ class PSO:
         """
             Generate next control (particle positions) batch based on current particles position, 
             best position of each particle and best position of all particles
+
+            Return: np.array of shape (batch_size, time_steps, control_size)
         """
 
-        self.update_bests(batch_costs)
+        self._update_bests(batch_costs)
 
         # update particles velocities
         p_r = np.random.uniform(size=(self.batch_size, self.time_steps, 2))
@@ -64,7 +68,11 @@ class PSO:
         return self.batch_u
 
 
-    def update_bests(self, costs):
+    def get_best_control(self):
+        return self.global_best
+
+
+    def _update_bests(self, costs):
         """
             1. For each particle (batch index) select best position, 
             2. select best position of all particles
@@ -73,5 +81,6 @@ class PSO:
 
         mask = costs < self.best_costs
         self.best_costs[mask] = costs[mask]
-        self.batch_p[mask] = self.batch_x[mask]
+        self.batch_p[mask] = self.batch_u[mask]
         self.global_best = self.batch_p[np.argmin(self.best_costs)] 
+

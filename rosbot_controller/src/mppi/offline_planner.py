@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import numpy as np
 from time import time
+import nnio
 
-from typing import Type
+# from typing import Type
+import argparse
 
 from optimizers.pso import PSO
-
+from utils.dtypes import State
 
 
 """
@@ -24,31 +26,40 @@ from optimizers.pso import PSO
 
 class OfflinePlanner:
      
-     def __init__(self, goal, obstacles):
+     def __init__(self, model_path, obstacles = None):
 
         self.batch_size = 100
         self.time_steps = 1000
         self.n_iters = 10
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
+        self.model = nnio.ONNXModel(model_path)
 
-        
+        self.optimizer = PSO(self.batch_size, self.time_steps, self.control_size)
+
+        self.dt = 0.033
 
 
-    def run(self, current_state, goal, constraints):
 
-        self._init_controls()
+    def run(self, current_state, goal, constraints=None):
+        """
+            
+        """
+
+        batch_u = self.optimizer.init_control_batch()
+        batch_x = self._propagate_control_to_states(current_state, batch_u)
+        batch_costs = self._calculate_costs(batch_x, constraints)
 
         for it in range(self.n_iters):
-            
-            batch_x = self._propagate_control_to_states(current_state, self.batch_u)
-            batch_costs = self._calculate_costs(batch_x, constraints)
-            self._pick_best_particles(self.batch_u, batch_costs)
-            self._gen_next_control_batch()
+
+            batch_u = self.optimizer.gen_next_control_batch(batch_costs)            
+            batch_x = self._propagate_control_to_states(current_state, batch_u)
+            batch_costs = self._calculate_costs(batch_x, goal)
+
+        best_contol = self.optimizer.get_best_control() 
+
+        return best_contol
         
-
-
-
 
     def _propagate_control_to_states(self, current_state, batch_u):
         """ 
@@ -57,7 +68,19 @@ class OfflinePlanner:
             Return: batch of state sequencies
 
         """ 
-        batch_x = np.zeros(shape=(self.batch_size, self.time_steps, self.state_size))
+        # batch of sequences of robot states
+        batch_x = np.empty(shape=(self.batch_size, self.time_steps, self.state_size))
+        batch_x[:,0] = current_state
+
+        # 5 for v, w, control_dim and dt
+        model_inp_vector_size = 5
+        batch_model_input_seqs = np.zeros(shape=(self.batch_size, self.time_steps, model_inp_vector_size))
+        self.batch_model_input_seqs[:, :, 4] = self.dt
+
+        # TODO continue here 
+        # also rework _predict_trajectories and implement _calculate_costs
+
+        
 
         return batch_x
 
@@ -87,12 +110,32 @@ class OfflinePlanner:
         return traj_points
 
 
-    def _calculate_costs(self, batch_x, constraints):
+    def _calculate_costs(self, batch_x, goal):
+        """
+            Calculates batch of costs (cost for each predicted seqeunce of robot states)
+            For now takes into account only final goal
+        """
 
         batch_costs = np.zeros(shape=(self.batch_size))
 
         return batch_costs
 
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-m', '--model_path', type=str, required=True,
+                        help='Path to nn model file')
+
+    args = parser.parse_args()
+
+    current_state = np.zeros(5)
+    goal = (1.0, 1.0)   # (x, y)
+
+    planner = OfflinePlanner(args.model_path)
+    control = planner.run(current_state, goal)
+    print(control)
+
+
     
-    
+if __name__ == '__main__':
+    main()
