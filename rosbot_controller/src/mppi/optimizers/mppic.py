@@ -1,16 +1,14 @@
+from optimizers.optimizer import Optimizer
+from utils.dtypes import State, Control, dist_L2, dist_L2_np
+from utils.geometry import quaternion_to_euler
+from utils.visualizations import visualize_trajs, MarkerArray
+import rospy
 from time import perf_counter
 from typing import Callable, Type
 import numpy as np
 import sys
 sys.path.append("..")
 
-import rospy
-
-from utils.visualizations import visualize_trajs, MarkerArray
-from utils.geometry import quaternion_to_euler
-from utils.dtypes import State, Control, dist_L2, dist_L2_np
-
-from optimizers.optimizer import Optimizer
 
 class MPPIController(Optimizer):
     def __init__(self, model, loss, next_control_policie):
@@ -90,7 +88,6 @@ class MPPIController(Optimizer):
                                                 self.limit_w)
         self._update_velocities()
 
-
     def _generate_noises(self):
         v_noises = np.random.normal(0.0, self.v_std, size=(self.batch_size, self.time_steps, 1))
         w_noises = np.random.normal(0.0, self.w_std, size=(self.batch_size, self.time_steps, 1))
@@ -140,8 +137,8 @@ class MPPIController(Optimizer):
             x[:, :, np.newaxis],
             y[:, :, np.newaxis],
             yaw[:, :, np.newaxis],
-            self.batch_of_seqs[:,:, :1], 
-            self.batch_of_seqs[:,:, 1:2]
-            ], axis=2)
+            self.batch_of_seqs[:, :, :1],
+            self.batch_of_seqs[:, :, 1:2]
+        ], axis=2)
 
         return traj_points

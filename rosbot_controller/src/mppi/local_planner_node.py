@@ -27,7 +27,6 @@ def main():
     pr.disable()
 
 
-
 def start_planner():
     rospy.init_node('planner', anonymous=True, disable_signals=True)
     model_path = rospy.get_param('~mppic/model_path', None)
@@ -40,7 +39,6 @@ def start_planner():
 
     mppic.start()
     rospy.spin()
-
 
 
 def handler(signum, frame):
