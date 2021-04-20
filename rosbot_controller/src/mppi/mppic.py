@@ -9,6 +9,23 @@ import sys
 sys.path.append("..")
 
 
+# Alex
+class MonteCarlo:
+
+    def __init__(self, curr_control_seq):
+        # self.batch_u = curr_control_seq  ??? 
+
+    def gen_next_control_batch(self):
+
+        self.batch_u = np.zeros(shape=(self.batch_size, self.time_steps, 2))
+
+        v_noises = np.random.normal(0.0, self.v_std, size=(self.batch_size, self.time_steps, 1))
+        w_noises = np.random.normal(0.0, self.w_std, size=(self.batch_size, self.time_steps, 1))
+        noises = np.concatenate([v_noises, w_noises], axis=2)
+
+        return self.batch_u
+
+
 class MPPIController:
     def __init__(self, model, loss, next_control_policie):
         self.freq = int(rospy.get_param('~mppic/mppi_freq', 30))
@@ -37,6 +54,10 @@ class MPPIController:
         self.curr_state: Type[State]
 
         self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
+
+        # Alex
+        self.control_generator = MonteCarlo()
+
 
     def set_reference_traj(self, ref_traj):
         self.reference_traj = ref_traj
@@ -73,11 +94,19 @@ class MPPIController:
         self.curr_control_seq = next_control_seq
         # visualize_trajs(0, self.trajs_pub, trajs, 0.8)
 
+    
+
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()
         self.batch_of_seqs[:, 0, 0] = self.curr_state.v
         self.batch_of_seqs[:, 0, 1] = self.curr_state.w
-        self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
+        # self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
+
+        # Alex
+        self.batch_of_seqs[:, :, 2:4] = self.control_generator.gen_next_control_batch()
+
+        
+
         self.batch_of_seqs[:, :, 2:3] = np.clip(self.batch_of_seqs[:, :, 2:3], -self.limit_v,
                                                 self.limit_v)
         self.batch_of_seqs[:, :, 3:4] = np.clip(self.batch_of_seqs[:, :, 3:4], -self.limit_w,

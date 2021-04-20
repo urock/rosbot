@@ -31,14 +31,19 @@ class PSO:
         
 
     
-    def init_control_batch(self):
+    def init_control_batch(self, first_run=False):
         """
             Initilasize batch of controls
 
             Return: np.array of shape (batch_size, time_steps, control_size) 
         """
+
+
         self.batch_u[:, :, 0] = np.random.uniform(0, self.v_max, (self.batch_size, self.time_steps, 1))
         self.batch_u[:, :, 1] = np.random.uniform(-self.w_max, self.w_max, (self.batch_size, self.time_steps, 1))
+
+        if current_control_sequence != None:
+            self.batch_u[:, :, 0] 
 
         self.batch_p = self.batch_u
 

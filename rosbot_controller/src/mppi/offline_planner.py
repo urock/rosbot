@@ -35,7 +35,7 @@ class OfflinePlanner:
         self.control_size = 2   # size of state vector U
         self.model = nnio.ONNXModel(model_path)
 
-        self.optimizer = PSO(self.batch_size, self.time_steps, self.control_size)
+        self.control_generator = PSO(self.batch_size, self.time_steps, self.control_size)
 
         self.dt = 0.033
 
