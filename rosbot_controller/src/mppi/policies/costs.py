@@ -1,6 +1,6 @@
 import numpy as np
 
-DESIRED_V_WEIGHT = 1
+DESIRED_V_WEIGHT = 3.0
 YAW_WEIGHT = 0.45
 LAST_GOAL_WEIGHT = 5
 
@@ -8,8 +8,8 @@ LAST_GOAL_WEIGHT = 5
 K_NEAREST = 3
 
 
-def nearest_loss(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
-    """ Loss according to k nearest ref_traj points
+def nearest_cost(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
+    """ Cost according to k nearest ref_traj points
 
     Args:
         state: np.ndarray of shape [batch_size, time_steps, 3] where 3 for x, y, yaw
@@ -20,11 +20,11 @@ def nearest_loss(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_int
         desired_v: float
 
     Return:
-        losses: np.array of shape [batch_size]
+        costs: np.array of shape [batch_size]
     """
     v = state[:, :, 3]
-    losses = DESIRED_V_WEIGHT * (v - desired_v)**2
-    losses = losses.sum(axis=1)
+    costs = DESIRED_V_WEIGHT * (v - desired_v)**2
+    costs = costs.sum(axis=1)
 
     end = goal_idx + traj_lookahead
     end = min(end, len(ref_traj))
@@ -38,17 +38,17 @@ def nearest_loss(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_int
     dist = x_dist + y_dist + YAW_WEIGHT * yaw_dist
 
     k = min(K_NEAREST, len(ref_traj) - goal_idx)
-    dist = np.partition(dist, k - 1, axis=2)[:, :, :k]
+    dist = np.partition(dist, k - 1, axis=2)[:, :, :k] * np.arange(1, k + 1)
 
-    losses += dist.sum(2).sum(1)
-    return losses
+    costs += dist.sum(2).sum(1)
+    return costs
 
 
 # WARN This is the pre-alpha version. Bugs expected
-def triangle_loss(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
+def triangle_cost(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
     v = state[:, :, 3]
-    losses = DESIRED_V_WEIGHT * (v - desired_v)**2
-    losses = losses.sum(axis=1)
+    costs = DESIRED_V_WEIGHT * (v - desired_v)**2
+    costs = costs.sum(axis=1)
 
     end = goal_idx + traj_lookahead
     end = min(end, len(ref_traj))
@@ -60,16 +60,19 @@ def triangle_loss(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_in
     y_dist = (state[:, :, 1:2] - ref[:, 1:2].reshape(1, 1, -1))**2
 
     dist = np.sqrt(x_dist + y_dist)
-    dist = np.partition(dist, 1, axis=2)[:, :, :2]
+    dist_idxs = np.argpartition(dist, 1, axis=2)[:, :, :2]
 
-    a_side = goals_interval
-    b_side = dist[:, :, :1]
-    c_side = dist[:, :, 1:2]
+    b_sides = dist[:, :, dist_idxs[:,0]]
+    c_sides = dist[:, :, dist_idxs[:,1]]
+    a_sides = dist_L2(ref_traj[dist_idxs[0]], ref_traj[dist_idxs[1]])
 
-    p = (a_side + b_side + c_side) / 2.0
-    h = 2.0 / a_side * np.sqrt(p * (p - a_side) * (p - b_side) * (p - c_side))
+    half_perims = (a_sides + b_sides + c_sides) / 2.0
+    height = 2.0 / a_sides * np.sqrt(half_perims * (half_perims - a_sides) * (half_perims - b_sides) * (half_perims - c_sides))
 
-    h = h.squeeze(2).sum(1)
+    height = height.squeeze(2).sum(1)
 
-    losses += h**2
-    return losses
+    costs += height**2
+    return costs
+
+def dist_L2(lhs, rhs):
+    return np.sqrt((lhs[0] - rhs[0]) ** 2 + (lhs[0] - rhs[1])**2)

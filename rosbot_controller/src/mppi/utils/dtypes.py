@@ -10,8 +10,8 @@ class State:
         self.v = v
         self.w = w
 
-    def to_str(self):
-        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}".format(self.x, self.y, self.yaw)
+    def __repr__(self):
+        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}, v -> {:.2f} w -> {:.2f}".format(self.x, self.y, self.yaw, self.v, self.w)
 
 
 class Control:
@@ -19,7 +19,7 @@ class Control:
         self.v = v
         self.w = w
 
-    def to_str(self):
+    def __repr__(self):
         return "v -> {:.2f}, w -> {:.2f}".format(self.v, self.w)
 
 
@@ -28,7 +28,7 @@ class Constraints:
         self.v_max = v_max
         self.w_max = w_max
 
-    def to_str(self):
+    def __repr__(self):
         return "v_max -> {:.2f}, w_max -> {:.2f}".format(self.v_max, self.w_max)
 
 

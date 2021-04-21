@@ -8,12 +8,14 @@ import signal
 
 import rospy
 
-from policies.loss import triangle_loss, nearest_loss
+from policies.costs import triangle_cost, nearest_cost
 from policies.control import calc_softmax_seq, find_min_seq
+from policies.metrics import mean_dist_metric
 from models.rosbot import RosbotKinematic
 from optimizers.mppic import MPPIController
 from local_planner import LocalPlanner
 from robot import Odom
+
 
 
 pr = cProfile.Profile(timeunit=0.00)
@@ -33,9 +35,9 @@ def start_planner():
 
     model = nnio.ONNXModel(model_path)
 
-    optimizer = MPPIController(model, nearest_loss, calc_softmax_seq)
+    optimizer = MPPIController(model, nearest_cost, calc_softmax_seq)
     odom = Odom()
-    mppic = LocalPlanner(odom, optimizer)
+    mppic = LocalPlanner(odom, optimizer, mean_dist_metric)
 
     mppic.start()
     rospy.spin()
@@ -44,7 +46,10 @@ def start_planner():
 def handler(signum, frame):
     rospy.signal_shutdown("Local Planner shutdown")
     rospy.loginfo("***************** Profiling *****************\n")
+    profile()
 
+
+def profile():
     s = io.StringIO()
     sortby = 'cumtime'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)

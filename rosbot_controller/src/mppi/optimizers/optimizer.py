@@ -1,7 +1,14 @@
 from abc import ABC, abstractmethod
+import rospy
 
 
 class Optimizer(ABC):
+    def __init__(self, model, cost, next_control_policy):
+        self.model = model
+        self.calc_costs = cost
+        self.next_control_policy = next_control_policy 
+        self.traj_lookahead = int(rospy.get_param('~optimizer/traj_lookahead', 7))
+
     @abstractmethod
     def set_reference_traj(self, ref_traj):
         """ Set reference traj to this
@@ -9,7 +16,6 @@ class Optimizer(ABC):
         Args:
             ref_traj: np.array 
         """
-        pass
 
     @abstractmethod
     def update_state(self, state):
@@ -18,7 +24,6 @@ class Optimizer(ABC):
         Args:
             state: current state of type State [x, y, yaw] 
         """
-        pass
 
     @abstractmethod
     def next_control(self, goal_idx):
@@ -31,4 +36,3 @@ class Optimizer(ABC):
         Return:
             next control of type Control - [v, w]
         """
-        pass

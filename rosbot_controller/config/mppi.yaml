@@ -12,10 +12,12 @@ mppic:
     model_path: "$(find rosbot_controller)/nets/model_batch_100.onnx"
     mppi_freq: 30
     iter_count: 1
-    traj_lookahead: 7
     goals_interval: 0.1
-    v_std: 0.1
-    w_std: 0.1
+    v_std: 0.2
+    w_std: 0.2
     limit_v: 0.5
     limit_w:  0.7
-    desired_v: 0.5
+    desired_v: 0.2
+
+optimizer:
+    traj_lookahead: 7 

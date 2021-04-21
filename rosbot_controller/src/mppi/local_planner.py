@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
+
 import numpy as np
 from time import time
 from typing import Type
+from copy import copy
 
 import rospy
 from geometry_msgs.msg import Twist
@@ -14,7 +16,7 @@ from utils.visualizations import visualize_reference
 
 
 class LocalPlanner:
-    def __init__(self, odom, optimizer):
+    def __init__(self, odom, optimizer, metric):
         self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
         self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
 
@@ -23,8 +25,11 @@ class LocalPlanner:
 
         self.optimizer = optimizer
         self.odom = odom
+        self.metric = metric
 
         self.path_points = []
+        self.lin_vel = []
+        self.ang_vel = []
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -42,10 +47,11 @@ class LocalPlanner:
     def start(self):
         """Starts main loop running mppi controller if got path.
         """
+        self.optimizer.update_state(self.odom.curr_state)
+
         try:
             while not rospy.is_shutdown():
                 if self.has_path:
-                    self.optimizer.update_state(self.odom.curr_state)
                     control = self.optimizer.next_control(self.curr_goal_idx)
                     self._publish_control(control)
                 else:
@@ -88,9 +94,22 @@ class LocalPlanner:
             self._print_metrics()
             return
 
-        self.path_points.append(self.odom.curr_state)
+        self.path_points.append(copy(self.odom.curr_state))
+        self.lin_vel.append(self.odom.curr_state.v)
+        self.ang_vel.append(self.odom.curr_state.w)
         visualize_reference(2000, self.ref_pub, self.reference_traj,
                             self.curr_goal_idx, self.optimizer.traj_lookahead)
+
+
+    def _print_metrics(self):
+        value = self.metric(self.reference_traj, self.path_points, self.optimizer.traj_lookahead)
+        rospy.loginfo("**************** Path Finished *****************\n")
+        rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
+        rospy.loginfo("Path Error by {}: {:.6f}.".format(self.metric.__name__, value))
+        rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".format(np.sum(self.lin_vel) / len(self.lin_vel), 
+            np.sum(self.ang_vel)/ len(self.ang_vel) ) )
+
+
 
     def _get_nearest_traj_point_and_dist(self):
         min_idx = self.curr_goal_idx

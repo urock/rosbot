@@ -13,7 +13,9 @@ from utils.visualizations import visualize_trajs, MarkerArray
 
 
 class MPPIController(Optimizer):
-    def __init__(self, model, loss, next_control_policy):
+    def __init__(self, model, cost, next_control_policy):
+        super().__init__(model, cost, next_control_policy) 
+
         self.freq = int(rospy.get_param('~mppic/mppi_freq', 30))
         self.dt = 1.0 / self.freq
         self.batch_size = int(rospy.get_param('~mppic/batch_size', 100))
@@ -26,12 +28,7 @@ class MPPIController(Optimizer):
         self.limit_w = rospy.get_param('~mppic/limit_w', 0.7)
         self.desired_v = rospy.get_param('~mppic/desired_v', 0.5)
 
-        self.traj_lookahead = int(rospy.get_param('~mppic/traj_lookahead', 7))
         self.goals_interval = rospy.get_param('~mppic/goals_interval', 0.1)
-
-        self.calc_losses = loss
-        self.calc_next_control_seq = next_control_policy
-        self.model = model
 
         # 5 for v, w, control_dim and dt
         self.batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
@@ -61,8 +58,8 @@ class MPPIController(Optimizer):
 
         control = self._get_control(offset)
 
-        rospy.loginfo_throttle(2, "Offset: {}. Exec Time {}.  [v, w] = [{:.2f} {:.2f}].  \n".format(
-            offset, t, control.v, control.w))
+        rospy.loginfo_throttle(2, "Offset: {}. Exec Time {:.4f}.  Control [v, w] = [{:.2f} {:.2f}]. Odom [v, w] = [{:.2f} {:.2f}] \n".format(
+            offset, t, control.v, control.w, self.curr_state.v, self.curr_state.w))
 
         self._displace_controls(offset)
         return control
@@ -70,10 +67,10 @@ class MPPIController(Optimizer):
     def _optimize(self, goal_idx: int):
         self._update_batch_of_seqs()
         state = self._predict_trajs()
-        losses = self.calc_losses(state, self.reference_traj, self.traj_lookahead,
+        costs = self.calc_costs(state, self.reference_traj, self.traj_lookahead,
                                   goal_idx, self.desired_v, self.goals_interval)
 
-        next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
+        next_control_seq = self.next_control_policy(costs, self.batch_of_seqs[:, :, 2:4])
         self.curr_control_seq = next_control_seq
         visualize_trajs(0, self.trajs_pub, state, 0.8)
 
