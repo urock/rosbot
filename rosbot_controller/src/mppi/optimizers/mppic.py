@@ -1,17 +1,19 @@
-from optimizers.optimizer import Optimizer
-from utils.dtypes import State, Control, dist_L2, dist_L2_np
-from utils.geometry import quaternion_to_euler
-from utils.visualizations import visualize_trajs, MarkerArray
-import rospy
 from time import perf_counter
 from typing import Callable, Type
 import numpy as np
 import sys
 sys.path.append("..")
 
+import rospy
+
+from optimizers.optimizer import Optimizer
+from utils.dtypes import State, Control, dist_L2, dist_L2_np
+from utils.geometry import quaternion_to_euler
+from utils.visualizations import visualize_trajs, MarkerArray
+
 
 class MPPIController(Optimizer):
-    def __init__(self, model, loss, next_control_policie):
+    def __init__(self, model, loss, next_control_policy):
         self.freq = int(rospy.get_param('~mppic/mppi_freq', 30))
         self.dt = 1.0 / self.freq
         self.batch_size = int(rospy.get_param('~mppic/batch_size', 100))
@@ -28,7 +30,7 @@ class MPPIController(Optimizer):
         self.goals_interval = rospy.get_param('~mppic/goals_interval', 0.1)
 
         self.calc_losses = loss
-        self.calc_next_control_seq = next_control_policie
+        self.calc_next_control_seq = next_control_policy
         self.model = model
 
         # 5 for v, w, control_dim and dt

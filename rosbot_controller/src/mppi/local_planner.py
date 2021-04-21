@@ -24,8 +24,7 @@ class LocalPlanner:
         self.optimizer = optimizer
         self.odom = odom
 
-        self.path_error = 0.0
-        self.error_measurments_count = 0
+        self.path_points = []
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -89,19 +88,9 @@ class LocalPlanner:
             self._print_metrics()
             return
 
-        self._update_error(dist)
+        self.path_points.append(self.odom.curr_state)
         visualize_reference(2000, self.ref_pub, self.reference_traj,
                             self.curr_goal_idx, self.optimizer.traj_lookahead)
-
-    def _print_metrics(self):
-        rospy.loginfo("**************** Path Finished *****************\n")
-        rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
-        rospy.loginfo("Path Mean Error: {:.6f}.".format(
-            self.path_error / self.error_measurments_count))
-
-    def _update_error(self, dist):
-        self.path_error += dist
-        self.error_measurments_count += 1
 
     def _get_nearest_traj_point_and_dist(self):
         min_idx = self.curr_goal_idx
@@ -109,7 +98,8 @@ class LocalPlanner:
 
         traj_end = len(self.reference_traj)
         end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
-        for q in range(self.curr_goal_idx, min(end, traj_end)):
+        end = min(end, traj_end)
+        for q in range(self.curr_goal_idx, end):
             curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
             if min_dist >= curr_dist:
                 min_dist = curr_dist

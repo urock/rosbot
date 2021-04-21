@@ -51,6 +51,5 @@ def handler(signum, frame):
     ps.print_stats(20)
     print(s.getvalue())
 
-
 if __name__ == '__main__':
     main()
