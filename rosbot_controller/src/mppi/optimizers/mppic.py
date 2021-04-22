@@ -14,7 +14,9 @@ from utils.visualizations import visualize_trajs, MarkerArray
 
 class MPPIController(Optimizer):
     def __init__(self, model, cost, next_control_policy):
-        super().__init__(model, cost, next_control_policy) 
+        self.model = model
+        self.cost = cost
+        self.next_control_policy = next_control_policy
 
         self.freq = int(rospy.get_param('~mppic/mppi_freq', 30))
         self.dt = 1.0 / self.freq
@@ -68,7 +70,7 @@ class MPPIController(Optimizer):
     def _optimize(self, goal_idx: int):
         self._update_batch_of_seqs()
         state = self._predict_trajs()
-        costs = self.calc_costs(state, self.reference_traj, self.traj_lookahead,
+        costs = self.cost(state, self.reference_traj, self.traj_lookahead,
                                   goal_idx, self.desired_v, self.goals_interval)
 
         next_control_seq = self.next_control_policy(costs, self.batch_of_seqs[:, :, 2:4])

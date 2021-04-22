@@ -3,11 +3,6 @@ import rospy
 
 
 class Optimizer(ABC):
-    def __init__(self, model, cost, next_control_policy):
-        self.model = model
-        self.calc_costs = cost
-        self.next_control_policy = next_control_policy 
-
     @abstractmethod
     def set_reference_traj(self, ref_traj):
         """ Set reference traj to this
