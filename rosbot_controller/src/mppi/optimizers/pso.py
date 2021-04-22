@@ -6,7 +6,7 @@ class PSO:
 
     def __init__(self, batch_size=100, time_steps=100, control_size=2, 
                 v_max=1.0, w_max=1.0,
-                w=0.8, c1=1, c2=1, learing_rate=0.5):
+                w=0.8, c1=0.1, c2=1, learing_rate=0.5):
 
         self.batch_size = batch_size
         self.time_steps = time_steps
@@ -39,11 +39,8 @@ class PSO:
         """
 
 
-        self.batch_u[:, :, 0] = np.random.uniform(0, self.v_max, (self.batch_size, self.time_steps, 1))
-        self.batch_u[:, :, 1] = np.random.uniform(-self.w_max, self.w_max, (self.batch_size, self.time_steps, 1))
-
-        if current_control_sequence != None:
-            self.batch_u[:, :, 0] 
+        self.batch_u[:, :, 0] = np.random.uniform(0, self.v_max, (self.batch_size, self.time_steps))
+        self.batch_u[:, :, 1] = np.random.uniform(-self.w_max, self.w_max, (self.batch_size, self.time_steps))
 
         self.batch_p = self.batch_u
 
