@@ -8,7 +8,7 @@ class Optimizer(ABC):
         """ Set reference traj to this
 
         Args:
-            ref_traj: np.array 
+            ref_traj: np.array of points [x, y, yaw]
         """
 
     @abstractmethod
@@ -16,7 +16,7 @@ class Optimizer(ABC):
         """Set current state to this
 
         Args:
-            state: current state of type State [x, y, yaw] 
+            state: current state of type State [x, y, yaw, v, w] 
         """
 
     @abstractmethod
