@@ -18,6 +18,7 @@ from utils.visualizations import visualize_reference
 class LocalPlanner:
     def __init__(self, odom, optimizer, metric):
         self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
+        self.traj_lookahead = rospy.get_param('~local_planner/traj_lookahead', 7)
         self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
 
         self.rate = rospy.Rate(self.controller_freq)
@@ -28,8 +29,8 @@ class LocalPlanner:
         self.metric = metric
 
         self.path_points = []
-        self.lin_vel = []
-        self.ang_vel = []
+        self.lin_vels = []
+        self.ang_vels = []
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -95,19 +96,17 @@ class LocalPlanner:
             return
 
         self.path_points.append(copy(self.odom.curr_state))
-        self.lin_vel.append(self.odom.curr_state.v)
-        self.ang_vel.append(self.odom.curr_state.w)
-        visualize_reference(2000, self.ref_pub, self.reference_traj,
-                            self.curr_goal_idx, self.optimizer.traj_lookahead)
+        self.lin_vels.append(self.odom.curr_state.v)
+        self.ang_vels.append(self.odom.curr_state.w)
 
 
     def _print_metrics(self):
-        value = self.metric(self.reference_traj, self.path_points, self.optimizer.traj_lookahead)
+        value = self.metric(self.reference_traj, self.path_points)
         rospy.loginfo("**************** Path Finished *****************\n")
         rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
         rospy.loginfo("Path Error by {}: {:.6f}.".format(self.metric.__name__, value))
-        rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".format(np.sum(self.lin_vel) / len(self.lin_vel), 
-            np.sum(self.ang_vel)/ len(self.ang_vel) ) )
+        rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".format(np.sum(self.lin_vels) / len(self.lin_vels), 
+            np.sum(self.ang_vels)/ len(self.ang_vels) ) )
 
 
 
@@ -116,7 +115,7 @@ class LocalPlanner:
         min_dist = 10e18
 
         traj_end = len(self.reference_traj)
-        end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
+        end = self.curr_goal_idx + self.traj_lookahead + 1
         end = min(end, traj_end)
         for q in range(self.curr_goal_idx, end):
             curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])

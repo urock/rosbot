@@ -4,7 +4,7 @@ sys.path.append("..")
 import numpy as np
 from utils.dtypes import dist_L2_np
 
-def mean_dist_metric(ref_traj, path_points, goals_interval):
+def mean_dist_metric(ref_traj, path_points):
     error = 0
     ref_count = len(ref_traj)
     for ref in ref_traj:

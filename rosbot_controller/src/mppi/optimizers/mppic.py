@@ -27,6 +27,7 @@ class MPPIController(Optimizer):
         self.limit_v = rospy.get_param('~mppic/limit_v', 0.5)
         self.limit_w = rospy.get_param('~mppic/limit_w', 0.7)
         self.desired_v = rospy.get_param('~mppic/desired_v', 0.5)
+        self.traj_lookahead = int(rospy.get_param('~mppic/traj_lookahead', 7))
 
         self.goals_interval = rospy.get_param('~mppic/goals_interval', 0.1)
 
@@ -54,7 +55,7 @@ class MPPIController(Optimizer):
         t = perf_counter() - start
 
         offset = round(t / self.dt)
-        offset = offset if offset < self.time_steps else 0
+        offset = min(offset, self.time_steps - 1)
 
         control = self._get_control(offset)
 

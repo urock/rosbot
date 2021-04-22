@@ -7,7 +7,6 @@ class Optimizer(ABC):
         self.model = model
         self.calc_costs = cost
         self.next_control_policy = next_control_policy 
-        self.traj_lookahead = int(rospy.get_param('~optimizer/traj_lookahead', 7))
 
     @abstractmethod
     def set_reference_traj(self, ref_traj):
