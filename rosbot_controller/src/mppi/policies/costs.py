@@ -3,8 +3,6 @@ import rospy
 
 DESIRED_V_WEIGHT = 1.0
 YAW_WEIGHT = 0.45
-LAST_GOAL_WEIGHT = 5
-
 
 K_NEAREST = 3
 
@@ -45,7 +43,6 @@ def nearest_cost(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_int
     return costs
 
 
-# WARN This is the pre-alpha version. Bugs expected
 def triangle_cost(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
     """ Cost according to nearest segment 
 
@@ -65,7 +62,7 @@ def triangle_cost(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_in
     v_costs = DESIRED_V_WEIGHT * (v - desired_v).mean(1)**2
     costs = v_costs
 
-    beg = goal_idx - 1 if goal_idx != 0 else 0
+    beg = goal_idx #- 1 if goal_idx != 0 else 0
     end = goal_idx + traj_lookahead
     end = min(end, len(ref_traj))
 
@@ -73,14 +70,10 @@ def triangle_cost(state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_in
 
     x_dists = state[:, :, :1] - ref[:, 0]
     y_dists = state[:, :, 1:2] - ref[:, 1]
-    yaw_dists = state[:, :, 2:3] - ref[:, 2]
     dists = np.sqrt(x_dists**2 + y_dists**2)
 
-    yaw_cost = yaw_dists**2
-    costs += YAW_WEIGHT * yaw_cost.sum(2).sum(1)
-
     if len(ref) == 1:
-        return (costs + dists.squeeze(2))
+        return (costs + dists.squeeze(2).sum(1))
 
     triangle_costs = np.empty(shape=(state.shape[0], state.shape[1], len(ref) - 1))
     for q in range(len(ref) - 1):

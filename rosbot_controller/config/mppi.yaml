@@ -15,8 +15,8 @@ mppic:
     iter_count: 1
     goals_interval: 0.1
     v_std: 0.2
-    w_std: 0.2
+    w_std: 0.3
     limit_v: 0.5
     limit_w:  0.7
     desired_v: 0.4
-    traj_lookahead: 3
+    traj_lookahead: 6 

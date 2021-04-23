@@ -82,7 +82,7 @@ class LocalPlanner:
         if not self.has_path:
             return
 
-        nearest_pt_idx, dist = self.get_nearest_ref_pt_and_dist()
+        nearest_pt_idx, dist = self._get_nearest_ref_pt_and_dist()
         if not self._is_goal_reached(dist):
             self.curr_goal_idx = nearest_pt_idx
         else:
@@ -104,10 +104,10 @@ class LocalPlanner:
         rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".
                       format(np.mean(self.path_points[:, 3]), np.mean(self.path_points[:, 4])))
 
-    def get_nearest_ref_pt_and_dist(self):
+    def _get_nearest_ref_pt_and_dist(self):
         pt = np.array([self.odom.curr_state.x, self.odom.curr_state.y])
         beg = self.curr_goal_idx
-        end = self.get_last_ref_condisdered_idx()
+        end = self._get_last_ref_considered_idx()
         ref_pts = self.reference_traj[beg:end, :2]
 
         dists = np.sqrt(((pt - ref_pts)**2).sum(1))
@@ -115,7 +115,7 @@ class LocalPlanner:
 
         return idx + self.curr_goal_idx, dists[idx]
 
-    def get_last_ref_condisdered_idx(self):
+    def _get_last_ref_considered_idx(self):
         traj_end = len(self.reference_traj)
         end = self.curr_goal_idx + self.traj_lookahead + 1
         return min(end, traj_end)
