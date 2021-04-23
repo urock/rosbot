@@ -6,7 +6,7 @@ class PSO:
 
     def __init__(self, batch_size=100, time_steps=100, control_size=2, 
                 v_max=1.0, w_max=1.0,
-                w=0.8, c1=0.1, c2=1, learing_rate=0.5):
+                w=0.5, c1=0.1, c2=0.5, learing_rate=0.5):
 
         self.batch_size = batch_size
         self.time_steps = time_steps
@@ -38,9 +38,11 @@ class PSO:
             Return: np.array of shape (batch_size, time_steps, control_size) 
         """
 
-
         self.batch_u[:, :, 0] = np.random.uniform(0, self.v_max, (self.batch_size, self.time_steps))
         self.batch_u[:, :, 1] = np.random.uniform(-self.w_max, self.w_max, (self.batch_size, self.time_steps))
+      
+        self.batch_v[:, :, 0] = np.random.uniform(-self.v_max, self.v_max, (self.batch_size, self.time_steps))
+        self.batch_v[:, :, 1] = np.random.uniform(-2*self.w_max, 2*self.w_max, (self.batch_size, self.time_steps))
 
         self.batch_p = self.batch_u
 
@@ -72,6 +74,11 @@ class PSO:
 
     def get_best_control(self):
         return self.global_best
+
+    def get_best_control_batch(self):
+        best_batch = np.zeros(shape=(self.batch_size, self.time_steps, self.control_size))
+        best_batch[:] = self.global_best
+        return best_batch
 
 
     def _update_bests(self, costs):

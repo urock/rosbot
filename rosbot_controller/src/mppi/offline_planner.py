@@ -34,8 +34,8 @@ class OfflinePlanner:
     def __init__(self, model_path, obstacles = None):
 
         self.batch_size = 100
-        self.time_steps = 100
-        self.n_iters = 10
+        self.time_steps = 1000
+        self.n_iters = 100
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
         self.model = nnio.ONNXModel(model_path)
@@ -70,14 +70,15 @@ class OfflinePlanner:
             print("Run: {} iterartions done. dt = {:.3f} s".format(it, t - start))
 
             best_x = batch_x[np.argmin(batch_costs)] 
-            print(best_x.shape)
-
-            # best_contol = self.optimizer.get_best_control() 
-            # best_x = self._propagate_control_to_states(current_state, best_contol)
             # print(best_x.shape)
 
+            fig, ax = plt.subplots(2)
+            self._visualize_trajectory(best_x, ax[0])
+            self._visualize_costs(batch_costs, ax[1])
+         
 
-            self._visualize_trajectory(best_x)
+            plt.show()   
+            
 
             
         best_contol = self.optimizer.get_best_control() 
@@ -109,11 +110,16 @@ class OfflinePlanner:
         batch_model_input_seqs[:, :, 2:4] = batch_u
         batch_model_input_seqs[:, :, 4] = self.dt
 
+        start = perf_counter() 
+
         # predict velocities
         for t_step in range(self.time_steps - 1):
             curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
             curr_predicted = self.model(curr_batch)
             batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted
+
+        t = perf_counter() 
+        print("Inference time: dt = {:.3f} s".format(t - start))            
 
         batch_v = batch_model_input_seqs[:, :, 0]
         batch_w = batch_model_input_seqs[:, :, 1]
@@ -169,28 +175,50 @@ class OfflinePlanner:
             batch_x: np.array of shape (batch_size, time_steps, state_size) 
             goal (list of 2 elements): coord of main goal 
         Return:
-            batch_costs: batch_x: np.array of shape (batch_size
+            batch_costs: batch_x: np.array of shape (batch_size)
         """
-        x = batch_x[:, 0::100, 0]    # take every 10th element
-        y = batch_x[:, 0::100, 1]    # take every 10th element
+        # x = batch_x[:, 0::10, 0]    # take every 10th element
+        # y = batch_x[:, 0::10, 1]    
+
+        x = batch_x[:, self.time_steps-1, 0]    # take only last element
+        y = batch_x[:, self.time_steps-1, 1]    
+
+        v = np.abs(batch_x[:,:,3])
+        # w = batch_x[:,:,4]
+
 
         L2 = (x-goal[0])**2 + (y-goal[1])**2
 
-        return np.sum(L2, axis=1)        
+        # return np.sum(L2, axis=1)   
+        return L2 #+ 0.1 * np.sum(v,axis=1)
 
-    def _visualize_trajectory(self, best_x):
+
+
+
+    def _visualize_trajectory(self, best_x, ax):
         """
             Args:
                 best_x: np.array of shape (time_steps, state_size)
                         state is [x, y, yaw, v, w]
         """
-        fig4, ax4 = plt.subplots(1)
-        ax4.set_xlabel('X, m')        
-        ax4.set_ylabel('Y, m')
-        ax4.set_title("XY trajectory")
-        plot_xy_data(x=best_x[:,0], y=best_x[:,1], ax=ax4, plot_name="x_y")
+        ax.set_xlabel('X, m')        
+        ax.set_ylabel('Y, m')
+        ax.set_title("XY trajectory")
+        plot_xy_data(x=best_x[:,0], y=best_x[:,1], ax=ax, plot_name="x_y")
 
-        plt.show()
+        # plt.show()
+
+    def _visualize_costs(self, batch_costs, ax):
+        """
+            Args:
+                batch_costs: np.array of shape (batch_size)
+        """
+        ax.set_xlabel('batch_idx')        
+        ax.set_ylabel('cost')
+
+        plot_xy_data(x=[i for i in range(len(batch_costs))], y=batch_costs, ax=ax, plot_name="costs")
+
+        # plt.show()
 
 
 def main():
