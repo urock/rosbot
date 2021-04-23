@@ -11,7 +11,7 @@ from nav_msgs.msg import Path
 from visualization_msgs.msg import MarkerArray
 
 from utils.geometry import quaternion_to_euler
-from utils.dtypes import Control, dist_L2_np
+from utils.dtypes import Control
 from utils.visualizations import visualize_reference
 
 

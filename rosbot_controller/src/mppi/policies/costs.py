@@ -14,7 +14,7 @@ class NearestCost:
             ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
             traj_lookahead: int  
             goal_idx: int
-            goals_interval: gloat
+            goals_interval: float
             desired_v: float
 
         Return:
@@ -55,7 +55,7 @@ class TriangleCost:
             ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
             traj_lookahead: int  
             goal_idx: int
-            goals_interval: gloat
+            goals_interval: float
             desired_v: float
 
         Return:

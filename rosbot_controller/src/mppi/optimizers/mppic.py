@@ -1,6 +1,6 @@
 from utils.visualizations import visualize_trajs, MarkerArray
 from utils.geometry import quaternion_to_euler
-from utils.dtypes import State, Control, dist_L2, dist_L2_np
+from utils.dtypes import State, Control
 from optimizers.optimizer import Optimizer
 import rospy
 from time import perf_counter

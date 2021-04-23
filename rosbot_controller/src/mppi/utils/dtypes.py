@@ -39,11 +39,3 @@ class Constraints:
 
     def __repr__(self):
         return "v_max -> {:.2f}, w_max -> {:.2f}".format(self.v_max, self.w_max)
-
-
-def dist_L2(lhs, rhs):
-    return np.sqrt((lhs.x - rhs.x) ** 2 + (lhs.y - rhs.y)**2)
-
-
-def dist_L2_np(lhs, rhs_np):
-    return np.sqrt((lhs.x - rhs_np[0]) ** 2 + (lhs.y - rhs_np[1])**2)
