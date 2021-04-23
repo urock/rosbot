@@ -5,7 +5,7 @@ robot:
 local_planner:
     goal_tolerance: 0.2 
     controller_freq: 90
-    traj_lookahead: 3 
+    traj_lookahead: 4 
 
 mppic:
     batch_size: 100 
@@ -15,8 +15,8 @@ mppic:
     iter_count: 1
     goals_interval: 0.1
     v_std: 0.2
-    w_std: 0.3
+    w_std: 0.2
     limit_v: 0.5
     limit_w:  0.7
-    desired_v: 0.4
-    traj_lookahead: 6 
+    desired_v: 0.3
+    traj_lookahead: 3 

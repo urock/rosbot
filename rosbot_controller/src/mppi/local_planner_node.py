@@ -8,7 +8,7 @@ import signal
 
 import rospy
 
-from policies.costs import triangle_cost, nearest_cost
+from policies.costs import TriangleCost, NearestCost
 from policies.control import calc_softmax_seq, find_min_seq
 from policies.metrics import mean_dist_metric
 from models.rosbot import RosbotKinematic
@@ -31,11 +31,13 @@ def main():
 
 def start_planner():
     rospy.init_node('planner', anonymous=True, disable_signals=True)
+
     model_path = rospy.get_param('~mppic/model_path', None)
-
     model = nnio.ONNXModel(model_path)
+    # cost = NearestCost(3)
+    cost = TriangleCost()
 
-    optimizer = MPPIController(model, triangle_cost, calc_softmax_seq)
+    optimizer = MPPIController(model, cost, calc_softmax_seq)
     odom = Odom()
     mppic = LocalPlanner(odom, optimizer, mean_dist_metric)
 

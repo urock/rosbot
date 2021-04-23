@@ -73,7 +73,7 @@ class MPPIController(Optimizer):
 
         next_control_seq = self.next_control_policy(costs, self.batch_of_seqs[:, :, 2:4])
         self.curr_control_seq = next_control_seq
-        visualize_trajs(0, self.trajs_pub, state, 0.8)
+        # visualize_trajs(0, self.trajs_pub, state, 0.8)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()
