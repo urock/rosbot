@@ -28,9 +28,7 @@ class LocalPlanner:
         self.odom = odom
         self.metric = metric
 
-        self.path_points = []
-        self.lin_vels = []
-        self.ang_vels = []
+        self.path_points = np.empty(shape=(0, 5))
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -84,7 +82,7 @@ class LocalPlanner:
         if not self.has_path:
             return
 
-        nearest_pt_idx, dist = self._get_nearest_traj_point_and_dist()
+        nearest_pt_idx, dist = self.get_nearest_ref_pt_and_dist()
         if not self._is_goal_reached(dist):
             self.curr_goal_idx = nearest_pt_idx
         else:
@@ -95,35 +93,32 @@ class LocalPlanner:
             self._print_metrics()
             return
 
-        self.path_points.append(copy(self.odom.curr_state))
-        self.lin_vels.append(self.odom.curr_state.v)
-        self.ang_vels.append(self.odom.curr_state.w)
-
+        self.path_points = np.append(
+            self.path_points, self.odom.curr_state.to_numpy()[np.newaxis], axis=0)
 
     def _print_metrics(self):
         value = self.metric(self.reference_traj, self.path_points)
         rospy.loginfo("**************** Path Finished *****************\n")
         rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
         rospy.loginfo("Path Error by {}: {:.6f}.".format(self.metric.__name__, value))
-        rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".format(np.sum(self.lin_vels) / len(self.lin_vels), 
-            np.sum(self.ang_vels)/ len(self.ang_vels) ) )
+        rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".
+                      format(np.mean(self.path_points[:, 3]), np.mean(self.path_points[:, 4])))
 
+    def get_nearest_ref_pt_and_dist(self):
+        pt = np.array([self.odom.curr_state.x, self.odom.curr_state.y])
+        beg = self.curr_goal_idx
+        end = self.get_last_ref_condisdered_idx()
+        ref_pts = self.reference_traj[beg:end, :2]
 
+        dists = np.sqrt(((pt - ref_pts)**2).sum(1))
+        idx = np.argmin(dists)
 
-    def _get_nearest_traj_point_and_dist(self):
-        min_idx = self.curr_goal_idx
-        min_dist = 10e18
+        return idx + self.curr_goal_idx, dists[idx]
 
+    def get_last_ref_condisdered_idx(self):
         traj_end = len(self.reference_traj)
         end = self.curr_goal_idx + self.traj_lookahead + 1
-        end = min(end, traj_end)
-        for q in range(self.curr_goal_idx, end):
-            curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
-            if min_dist >= curr_dist:
-                min_dist = curr_dist
-                min_idx = q
-
-        return min_idx, min_dist
+        return min(end, traj_end)
 
     def _is_goal_reached(self, dist):
         return dist < self.goal_tolerance

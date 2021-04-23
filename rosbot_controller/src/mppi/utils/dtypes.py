@@ -10,6 +10,9 @@ class State:
         self.v = v
         self.w = w
 
+    def to_numpy(self):
+        return np.array([self.x, self.y, self.yaw, self.v, self.w])
+
     def __repr__(self):
         return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}, v -> {:.2f} w -> {:.2f}".format(self.x, self.y, self.yaw, self.v, self.w)
 
@@ -19,12 +22,18 @@ class Control:
         self.v = v
         self.w = w
 
+    def to_numpy(self):
+        return np.array([self.v, self.w])
+
     def __repr__(self):
         return "v -> {:.2f}, w -> {:.2f}".format(self.v, self.w)
 
 
 class Constraints:
     def __init__(self, v_max=0, w_max=0):
+        self.v_min = v_max
+        self.w_min = w_max
+
         self.v_max = v_max
         self.w_max = w_max
 

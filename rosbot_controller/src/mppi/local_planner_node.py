@@ -17,8 +17,8 @@ from local_planner import LocalPlanner
 from robot import Odom
 
 
-
 pr = cProfile.Profile(timeunit=0.00)
+FUNCTION_PRINT_COUNT = 40
 
 
 def main():
@@ -35,7 +35,7 @@ def start_planner():
 
     model = nnio.ONNXModel(model_path)
 
-    optimizer = MPPIController(model, nearest_cost, calc_softmax_seq)
+    optimizer = MPPIController(model, triangle_cost, calc_softmax_seq)
     odom = Odom()
     mppic = LocalPlanner(odom, optimizer, mean_dist_metric)
 
@@ -53,8 +53,9 @@ def profile():
     s = io.StringIO()
     sortby = 'cumtime'
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
-    ps.print_stats(20)
+    ps.print_stats(FUNCTION_PRINT_COUNT)
     print(s.getvalue())
+
 
 if __name__ == '__main__':
     main()

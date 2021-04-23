@@ -1,15 +1,13 @@
+from utils.visualizations import visualize_trajs, MarkerArray
+from utils.geometry import quaternion_to_euler
+from utils.dtypes import State, Control, dist_L2, dist_L2_np
+from optimizers.optimizer import Optimizer
+import rospy
 from time import perf_counter
 from typing import Callable, Type
 import numpy as np
 import sys
 sys.path.append("..")
-
-import rospy
-
-from optimizers.optimizer import Optimizer
-from utils.dtypes import State, Control, dist_L2, dist_L2_np
-from utils.geometry import quaternion_to_euler
-from utils.visualizations import visualize_trajs, MarkerArray
 
 
 class MPPIController(Optimizer):
@@ -61,8 +59,8 @@ class MPPIController(Optimizer):
 
         control = self._get_control(offset)
 
-        rospy.loginfo_throttle(2, "Offset: {}. Exec Time {:.4f}.  Control [v, w] = [{:.2f} {:.2f}]. Odom [v, w] = [{:.2f} {:.2f}] \n".format(
-            offset, t, control.v, control.w, self.curr_state.v, self.curr_state.w))
+        rospy.loginfo_throttle(2, "Offset: {}. Goal: {}. Exec Time {:.4f}.  \nControl [v, w] = [{:.2f} {:.2f}]. \nOdom    [v, w] = [{:.2f} {:.2f}] \n".format(
+            offset, goal_idx, t, control.v, control.w, self.curr_state.v, self.curr_state.w))
 
         self._displace_controls(offset)
         return control
@@ -71,19 +69,17 @@ class MPPIController(Optimizer):
         self._update_batch_of_seqs()
         state = self._predict_trajs()
         costs = self.cost(state, self.reference_traj, self.traj_lookahead,
-                                  goal_idx, self.desired_v, self.goals_interval)
+                          goal_idx, self.desired_v, self.goals_interval)
 
         next_control_seq = self.next_control_policy(costs, self.batch_of_seqs[:, :, 2:4])
         self.curr_control_seq = next_control_seq
-        visualize_trajs(0, self.trajs_pub, state, 0.8)
+        # visualize_trajs(0, self.trajs_pub, state, 0.8)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()
         self.batch_of_seqs[:, 0, 0] = self.curr_state.v
         self.batch_of_seqs[:, 0, 1] = self.curr_state.w
-
         self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
-
         self.batch_of_seqs[:, :, 2:3] = np.clip(self.batch_of_seqs[:, :, 2:3], -self.limit_v,
                                                 self.limit_v)
         self.batch_of_seqs[:, :, 3:4] = np.clip(self.batch_of_seqs[:, :, 3:4], -self.limit_w,
