@@ -89,7 +89,7 @@ class TriangleCost:
             opposite_sides = goals_interval
             triangle_costs[:, :, q] = self.triangle_cost_segment(opposite_sides, first_sides, second_sides)
 
-        return triangle_costs.sum(2).sum(1)
+        return triangle_costs.min(2).sum(1)
 
 
     def triangle_cost_segment(self, opposite_side, first_sides, second_sides):

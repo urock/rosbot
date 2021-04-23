@@ -30,7 +30,7 @@ class LocalPlanner:
         self.odom = odom
         self.metric = metric
 
-        self.path_points = np.empty(shape=(0, 5))
+        self.controls = np.empty(shape=(0, 2))
 
         self.reference_traj = np.empty(shape=(0, 3))
         self.curr_goal_idx = - 1
@@ -55,8 +55,12 @@ class LocalPlanner:
                 if self.has_path:
                     control = self.optimizer.next_control(self.curr_goal_idx)
                     self._publish_control(control)
+
+                    self.controls = np.append(
+                        self.controls, control.to_numpy()[np.newaxis], axis=0)
                 else:
                     self._publish_stop_control()
+
                 self.rate.sleep()
 
         except KeyboardInterrupt:
@@ -103,26 +107,46 @@ class LocalPlanner:
         lin_vels = self.odom.path[:-offset, 3]
         ang_vels = self.odom.path[:-offset, 4]
 
-        value = self.metric(self.reference_traj, self.path_points)
+        value = self.metric(self.reference_traj, self.odom.path)
         rospy.loginfo("**************** Path Finished *****************\n")
         rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
         rospy.loginfo("Path Error by {}: {:.6f}.".format(self.metric.__name__, value))
         rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".
                       format(np.mean(lin_vels), np.mean(ang_vels)))
 
-        rng = np.arange(path_len)
+        path_rng = np.arange(path_len)
         plt.figure(1)
-        plt.subplot(121)
-        plt.plot(rng, lin_vels)
+        plt.subplot(221)
+        plt.plot(path_rng, lin_vels)
         plt.yscale('linear')
-        plt.title('Linear')
+        plt.title('Linear velocitie')
         plt.xlabel('point')
-        plt.ylabel('Linera vel')
+        plt.ylabel('Linear vel')
 
-        plt.subplot(122)
-        plt.plot(rng, self.odom.path[: -offset, 4])
+        plt.subplot(222)
+        plt.plot(path_rng, ang_vels)
         plt.yscale('linear')
         plt.title('Angular')
+        plt.xlabel('point')
+        plt.ylabel('Angular vel')
+
+
+        control_len = len(self.controls)
+        control_rng = np.arange(control_len)
+        lin_controls = self.controls[:, 0]
+        ang_controls = self.controls[:, 1]
+
+        plt.subplot(223)
+        plt.plot(control_rng, lin_controls)
+        plt.yscale('linear')
+        plt.title('Linear Control')
+        plt.xlabel('point')
+        plt.ylabel('Linear vel')
+
+        plt.subplot(224)
+        plt.plot(control_rng, ang_controls)
+        plt.yscale('linear')
+        plt.title('Angular Control')
         plt.xlabel('point')
         plt.ylabel('Angular vel')
         plt.show()
