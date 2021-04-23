@@ -14,6 +14,8 @@ from utils.geometry import quaternion_to_euler
 from utils.dtypes import Control
 from utils.visualizations import visualize_reference
 
+import matplotlib.pyplot as plt
+
 
 class LocalPlanner:
     def __init__(self, odom, optimizer, metric):
@@ -90,19 +92,40 @@ class LocalPlanner:
 
         if self.curr_goal_idx == len(self.reference_traj):
             self.has_path = False
-            self._print_metrics()
+            self._show_metrics()
             return
 
-        self.path_points = np.append(
-            self.path_points, self.odom.curr_state.to_numpy()[np.newaxis], axis=0)
+    def _show_metrics(self):
+        self.odom.tf_sub.unregister()
 
-    def _print_metrics(self):
+        offset = 1
+        path_len = len(self.odom.path) - offset 
+        lin_vels = self.odom.path[:-offset, 3]
+        ang_vels = self.odom.path[:-offset, 4]
+
         value = self.metric(self.reference_traj, self.path_points)
         rospy.loginfo("**************** Path Finished *****************\n")
         rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
         rospy.loginfo("Path Error by {}: {:.6f}.".format(self.metric.__name__, value))
         rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".
-                      format(np.mean(self.path_points[:, 3]), np.mean(self.path_points[:, 4])))
+                      format(np.mean(lin_vels), np.mean(ang_vels)))
+
+        rng = np.arange(path_len)
+        plt.figure(1)
+        plt.subplot(121)
+        plt.plot(rng, lin_vels)
+        plt.yscale('linear')
+        plt.title('Linear')
+        plt.xlabel('point')
+        plt.ylabel('Linera vel')
+
+        plt.subplot(122)
+        plt.plot(rng, self.odom.path[: -offset, 4])
+        plt.yscale('linear')
+        plt.title('Angular')
+        plt.xlabel('point')
+        plt.ylabel('Angular vel')
+        plt.show()
 
     def _get_nearest_ref_pt_and_dist(self):
         pt = np.array([self.odom.curr_state.x, self.odom.curr_state.y])
