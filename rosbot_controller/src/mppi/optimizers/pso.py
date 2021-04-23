@@ -6,7 +6,7 @@ class PSO:
 
     def __init__(self, batch_size=100, time_steps=100, control_size=2, 
                 v_max=1.0, w_max=1.0,
-                w=0.5, c1=0.1, c2=0.5, learing_rate=0.5):
+                w=0.7, c1=0.15, c2=0.85, learing_rate=1):
 
         self.batch_size = batch_size
         self.time_steps = time_steps

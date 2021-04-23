@@ -31,14 +31,15 @@ from utils.logger_tools import plot_xy_data, save_plot
 
 class OfflinePlanner:
      
-    def __init__(self, model_path, obstacles = None):
+    def __init__(self, model_path_1, model_path_100, obstacles = None):
 
         self.batch_size = 100
         self.time_steps = 1000
-        self.n_iters = 100
+        self.n_iters = 10
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
-        self.model = nnio.ONNXModel(model_path)
+        self.model_1 = nnio.ONNXModel(model_path_1)
+        self.model_100 = nnio.ONNXModel(model_path_100)
 
         self.optimizer = PSO(self.batch_size, self.time_steps, self.control_size)
 
@@ -67,16 +68,17 @@ class OfflinePlanner:
             batch_costs = self._calculate_costs(batch_x, goal)
 
             t = perf_counter() 
-            print("Run: {} iterartions done. dt = {:.3f} s".format(it, t - start))
+            print("Run: {} iterartions done. dt = {:.3f} s. Cost = {:.3f}".
+                        format(it, t - start, np.min(batch_costs)))
 
-            best_x = batch_x[np.argmin(batch_costs)] 
-            # print(best_x.shape)
-
+            # best_x = batch_x[np.argmin(batch_costs)] 
+            best_contol = self.optimizer.get_best_control() 
+            best_x = self._propagate_control_to_states(current_state, best_contol[None])
+    
             fig, ax = plt.subplots(2)
             self._visualize_trajectory(best_x, ax[0])
             self._visualize_costs(batch_costs, ax[1])
          
-
             plt.show()   
             
 
@@ -113,13 +115,19 @@ class OfflinePlanner:
         start = perf_counter() 
 
         # predict velocities
-        for t_step in range(self.time_steps - 1):
-            curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
-            curr_predicted = self.model(curr_batch)
-            batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted
+        if batch_u.shape[0] == 100:
+            for t_step in range(self.time_steps - 1):
+                curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
+                curr_predicted = self.model_100(curr_batch)
+                batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted
+        else:
+            for t_step in range(self.time_steps - 1):
+                curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
+                curr_predicted = self.model_1(curr_batch)
+                batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted            
 
         t = perf_counter() 
-        print("Inference time: dt = {:.3f} s".format(t - start))            
+        # print("Inference time: dt = {:.3f} s".format(t - start))            
 
         batch_v = batch_model_input_seqs[:, :, 0]
         batch_w = batch_model_input_seqs[:, :, 1]
@@ -129,7 +137,10 @@ class OfflinePlanner:
         batch_x[:,:,3] = batch_v
         batch_x[:,:,4] = batch_w
 
-        return batch_x
+        if batch_u.shape[0] == 100:
+            return batch_x
+        else:
+            return batch_x[0]
 
     def _calc_trajectories(self, current_state, batch_v, batch_w, dt):
         """ Propagetes trajectories using control matrix velocities and current state
@@ -190,7 +201,7 @@ class OfflinePlanner:
         L2 = (x-goal[0])**2 + (y-goal[1])**2
 
         # return np.sum(L2, axis=1)   
-        return L2 #+ 0.1 * np.sum(v,axis=1)
+        return L2 + np.sum(v,axis=1)
 
 
 
@@ -203,7 +214,7 @@ class OfflinePlanner:
         """
         ax.set_xlabel('X, m')        
         ax.set_ylabel('Y, m')
-        ax.set_title("XY trajectory")
+        ax.set_title("Best XY trajectory")
         plot_xy_data(x=best_x[:,0], y=best_x[:,1], ax=ax, plot_name="x_y")
 
         # plt.show()
@@ -213,6 +224,7 @@ class OfflinePlanner:
             Args:
                 batch_costs: np.array of shape (batch_size)
         """
+        ax.set_title("Current batch of costs")
         ax.set_xlabel('batch_idx')        
         ax.set_ylabel('cost')
 
@@ -223,15 +235,17 @@ class OfflinePlanner:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model_path', type=str, required=True,
-                        help='Path to nn model file')
+    parser.add_argument('-m100', '--model_path_100', type=str, required=True,
+                        help='Path to nn model file with batch size 100')
+    parser.add_argument('-m1', '--model_path_1', type=str, required=True,
+                        help='Path to nn model file with batch size 1')
 
     args = parser.parse_args()
 
     current_state = np.zeros(5)
     goal = [1.0, 1.0]   # (x, y)
 
-    planner = OfflinePlanner(args.model_path)
+    planner = OfflinePlanner(args.model_path_1, args.model_path_100)
     control = planner.run(current_state, goal)
     
 if __name__ == '__main__':
