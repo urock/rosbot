@@ -4,7 +4,6 @@ from abc import ABC, abstractmethod
 
 
 class Cost(ABC):
-
     @abstractmethod
     def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
         """Calculate cost.
@@ -15,7 +14,6 @@ class Cost(ABC):
 
 
 class NearestCost(Cost):
-
     def __init__(self, k_nearest):
         self.k_nearest = k_nearest
 
@@ -25,7 +23,7 @@ class NearestCost(Cost):
         Args:
             state: np.ndarray of shape [batch_size, time_steps, 3] where 5 for x, y, yaw, v, w
             ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
-            traj_lookahead: int  
+            traj_lookahead: int
             goal_idx: int
             goals_interval: float
             desired_v: float
@@ -57,7 +55,7 @@ class NearestCost(Cost):
         """
         x_dists = state[:, :, :1] - ref[:, 0]
         y_dists = state[:, :, 1:2] - ref[:, 1]
-        dists = x_dists**2 + y_dists**2
+        dists = x_dists ** 2 + y_dists ** 2
 
         k = min(self.k_nearest, len(ref))
         dists = np.partition(dists, k - 1, axis=2)[:, :, :k] * np.arange(1, k + 1)
@@ -66,7 +64,6 @@ class NearestCost(Cost):
 
 
 class TriangleCost(Cost):
-
     def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
         """Cost according to nearest segment.
 
@@ -105,17 +102,19 @@ class TriangleCost(Cost):
         """
         x_dists = state[:, :, :1] - ref[:, 0]
         y_dists = state[:, :, 1:2] - ref[:, 1]
-        dists = np.sqrt(x_dists**2 + y_dists**2)
+        dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
         triangle_costs = np.empty(shape=(dists.shape[0], dists.shape[1], len(ref) - 1))
 
         if len(ref) == 1:
-            return (dists.squeeze(2).sum(1))
+            return dists.squeeze(2).sum(1)
 
         for q in range(len(ref) - 1):
             first_sides = dists[:, :, q]
             second_sides = dists[:, :, q + 1]
             opposite_sides = goals_interval
-            triangle_costs[:, :, q] = self.triangle_cost_segment(opposite_sides, first_sides, second_sides)
+            triangle_costs[:, :, q] = self.triangle_cost_segment(
+                opposite_sides, first_sides, second_sides
+            )
 
         return triangle_costs.min(2).sum(1)
 
@@ -140,8 +139,7 @@ class TriangleCost(Cost):
         return costs
 
     def is_angle_obtuse(self, opposite_side, b, c):
-        return opposite_side**2 > (b**2 + c**2)
-
+        return opposite_side ** 2 > (b ** 2 + c ** 2)
 
     def heron(self, opposite_side, b, c):
         p = (opposite_side + b + c) / 2.0
@@ -151,11 +149,11 @@ class TriangleCost(Cost):
 
 def lin_vel_cost(v, desired_v):
     DESIRED_V_WEIGHT = 1.0
-    v_costs = DESIRED_V_WEIGHT * (v - desired_v).mean(1)**2
+    v_costs = DESIRED_V_WEIGHT * (v - desired_v).mean(1) ** 2
     return v_costs
 
 
 def ang_cost(yaw, ref_yaw):
     YAW_WEIGHT = 0.45
-    yaw_cost = YAW_WEIGHT * ((yaw - ref_yaw)**2).sum(2).sum(1)
+    yaw_cost = YAW_WEIGHT * ((yaw - ref_yaw) ** 2).sum(2).sum(1)
     return yaw_cost

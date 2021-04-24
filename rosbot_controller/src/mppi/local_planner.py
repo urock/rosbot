@@ -21,11 +21,10 @@ import matplotlib.pyplot as plt
 
 
 class LocalPlanner:
-
     def __init__(self, optimizer: Type[Optimizer], metric):
-        self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
-        self.traj_lookahead = rospy.get_param('~local_planner/traj_lookahead', 7)
-        self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
+        self.goal_tolerance = rospy.get_param("~local_planner/goal_tolerance", 0.2)
+        self.traj_lookahead = rospy.get_param("~local_planner/traj_lookahead", 7)
+        self.controller_freq = rospy.get_param("~local_planner/controller_freq", 90)
 
         self.rate = rospy.Rate(self.controller_freq)
         self.control_dt = 1.0 / self.controller_freq
@@ -37,7 +36,7 @@ class LocalPlanner:
         self.controls = np.empty(shape=(0, 2))
 
         self.reference_traj = np.empty(shape=(0, 3))
-        self.curr_goal_idx = - 1
+        self.curr_goal_idx = -1
 
         self.has_path = False
         self.path_arrive_time: float
@@ -45,13 +44,12 @@ class LocalPlanner:
 
         rospy.Timer(rospy.Duration(self.control_dt), self._update_goal_cb)
 
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-        self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
-        self.path_pub = rospy.Publisher('/mppi_path', Path, queue_size=5)
+        self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
+        self.ref_pub = rospy.Publisher("/ref_trajs", MarkerArray, queue_size=10)
+        self.path_pub = rospy.Publisher("/mppi_path", Path, queue_size=5)
 
     def start(self):
-        """Starts main loop running mppi controller if got path.
-        """
+        """Starts main loop running mppi controller if got path."""
         self.optimizer.update_state(self.odom.curr_state)
 
         try:
@@ -60,8 +58,7 @@ class LocalPlanner:
                     control = self.optimizer.next_control(self.curr_goal_idx)
                     self._publish_control(control)
 
-                    self.controls = np.append(
-                        self.controls, control.to_numpy()[np.newaxis], axis=0)
+                    self.controls = np.append(self.controls, control.to_numpy()[np.newaxis], axis=0)
                 else:
                     self._publish_stop_control()
 
@@ -71,7 +68,7 @@ class LocalPlanner:
             rospy.loginfo("Interrupted")
 
     def _publish_control(self, control):
-        """ Publishes controls for the rosbot
+        """Publishes controls for the rosbot
 
         Args:
             control: control vector of Control type
@@ -107,7 +104,7 @@ class LocalPlanner:
         self.odom.tf_sub.unregister()
 
         offset = 1
-        path_len = len(self.odom.path) - offset 
+        path_len = len(self.odom.path) - offset
         lin_vels = self.odom.path[:-offset, 3]
         ang_vels = self.odom.path[:-offset, 4]
 
@@ -115,25 +112,25 @@ class LocalPlanner:
         rospy.loginfo("**************** Path Finished *****************\n")
         rospy.loginfo("Path Total Time: {:.6f}.".format(time() - self.path_arrive_time))
         rospy.loginfo("Path Error by {}: {:.6f}.".format(self.metric.__name__, value))
-        rospy.loginfo("Mean velocities v = {:.6f}, w = {:.6f}.".
-                      format(np.mean(lin_vels), np.mean(ang_vels)))
+        rospy.loginfo(
+            "Mean velocities v = {:.6f}, w = {:.6f}.".format(np.mean(lin_vels), np.mean(ang_vels))
+        )
 
         path_rng = np.arange(path_len)
         plt.figure(1)
         plt.subplot(221)
         plt.plot(path_rng, lin_vels)
-        plt.yscale('linear')
-        plt.title('Linear velocitie')
-        plt.xlabel('point')
-        plt.ylabel('Linear vel')
+        plt.yscale("linear")
+        plt.title("Linear velocitie")
+        plt.xlabel("point")
+        plt.ylabel("Linear vel")
 
         plt.subplot(222)
         plt.plot(path_rng, ang_vels)
-        plt.yscale('linear')
-        plt.title('Angular')
-        plt.xlabel('point')
-        plt.ylabel('Angular vel')
-
+        plt.yscale("linear")
+        plt.title("Angular")
+        plt.xlabel("point")
+        plt.ylabel("Angular vel")
 
         control_len = len(self.controls)
         control_rng = np.arange(control_len)
@@ -142,17 +139,17 @@ class LocalPlanner:
 
         plt.subplot(223)
         plt.plot(control_rng, lin_controls)
-        plt.yscale('linear')
-        plt.title('Linear Control')
-        plt.xlabel('point')
-        plt.ylabel('Linear vel')
+        plt.yscale("linear")
+        plt.title("Linear Control")
+        plt.xlabel("point")
+        plt.ylabel("Linear vel")
 
         plt.subplot(224)
         plt.plot(control_rng, ang_controls)
-        plt.yscale('linear')
-        plt.title('Angular Control')
-        plt.xlabel('point')
-        plt.ylabel('Angular vel')
+        plt.yscale("linear")
+        plt.title("Angular Control")
+        plt.xlabel("point")
+        plt.ylabel("Angular vel")
         plt.show()
 
     def _get_nearest_ref_pt_and_dist(self):
@@ -161,7 +158,7 @@ class LocalPlanner:
         end = self._get_last_ref_considered_idx()
         ref_pts = self.reference_traj[beg:end, :2]
 
-        dists = np.sqrt(((pt - ref_pts)**2).sum(1))
+        dists = np.sqrt(((pt - ref_pts) ** 2).sum(1))
         idx = np.argmin(dists)
 
         return idx + self.curr_goal_idx, dists[idx]

@@ -16,10 +16,10 @@ class Odom:
     """
 
     def __init__(self):
-        self.map_frame = rospy.get_param('~robot/map_frame', "odom")
-        self.base_frame = rospy.get_param('~robot/base_frame', "base_link")
+        self.map_frame = rospy.get_param("~robot/map_frame", "odom")
+        self.base_frame = rospy.get_param("~robot/base_frame", "base_link")
 
-        self.path = np.zeros(shape = (0, 5))
+        self.path = np.zeros(shape=(0, 5))
 
         self.curr_state = State()
         self.prev_state = State()
@@ -35,14 +35,15 @@ class Odom:
         dt = self._get_diff_time()
         self._update_state(odom, dt)
 
-        self.path = np.append(
-            self.path, self.curr_state.to_numpy()[np.newaxis], axis=0)
+        self.path = np.append(self.path, self.curr_state.to_numpy()[np.newaxis], axis=0)
 
     def _get_odom_tf(self, msg):
         odom = None
         for transform in msg.transforms:
-            if (transform.header.frame_id == self.map_frame
-                    and transform.child_frame_id == self.base_frame):
+            if (
+                transform.header.frame_id == self.map_frame
+                and transform.child_frame_id == self.base_frame
+            ):
                 odom = transform
                 break
         return odom
@@ -67,7 +68,7 @@ class Odom:
         alpha = math.atan2(v_y, v_x)
         v = v_linear * math.cos(alpha - self.curr_state.yaw)
 
-        d_yaw = (self.curr_state.yaw - self.prev_state.yaw)
+        d_yaw = self.curr_state.yaw - self.prev_state.yaw
         d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
         w = d_yaw / dt
 

@@ -8,7 +8,7 @@ def visualize_trajs(id_start, publisher, trajectories, point_coeff=0.3):
     marker_array = MarkerArray()
     i = id_start
     for traj in trajectories:
-        step = int(len(traj)*point_coeff)
+        step = int(len(traj) * point_coeff)
         for p in traj[::step]:
             marker = create_marker(i, p)
             marker_array.markers.append(marker)

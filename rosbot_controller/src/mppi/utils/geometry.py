@@ -12,13 +12,17 @@ def euler_to_quaternion(yaw, pitch, roll):
         quaternion [qx, qy, qz, qw]
     """
     qx = np.sin(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) - np.cos(roll / 2) * np.sin(
-        pitch / 2) * np.sin(yaw / 2)
+        pitch / 2
+    ) * np.sin(yaw / 2)
     qy = np.cos(roll / 2) * np.sin(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.cos(
-        pitch / 2) * np.sin(yaw / 2)
+        pitch / 2
+    ) * np.sin(yaw / 2)
     qz = np.cos(roll / 2) * np.cos(pitch / 2) * np.sin(yaw / 2) - np.sin(roll / 2) * np.sin(
-        pitch / 2) * np.cos(yaw / 2)
+        pitch / 2
+    ) * np.cos(yaw / 2)
     qw = np.cos(roll / 2) * np.cos(pitch / 2) * np.cos(yaw / 2) + np.sin(roll / 2) * np.sin(
-        pitch / 2) * np.sin(yaw / 2)
+        pitch / 2
+    ) * np.sin(yaw / 2)
 
     return [qx, qy, qz, qw]
 
@@ -30,7 +34,7 @@ def quaternion_to_euler(quaternion):
     Return:
         Angles [yaw, pitch, roll]
     """
-    x,  y,  z,  w = quaternion.x, quaternion.y, quaternion.z, quaternion.w
+    x, y, z, w = quaternion.x, quaternion.y, quaternion.z, quaternion.w
     t0 = +2.0 * (w * x + y * z)
     t1 = +1.0 - 2.0 * (x * x + y * y)
     roll = math.atan2(t0, t1)

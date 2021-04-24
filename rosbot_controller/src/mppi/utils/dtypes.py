@@ -14,7 +14,9 @@ class State:
         return np.array([self.x, self.y, self.yaw, self.v, self.w])
 
     def __repr__(self):
-        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}, v -> {:.2f} w -> {:.2f}".format(self.x, self.y, self.yaw, self.v, self.w)
+        return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}, v -> {:.2f} w -> {:.2f}".format(
+            self.x, self.y, self.yaw, self.v, self.w
+        )
 
 
 class Control:

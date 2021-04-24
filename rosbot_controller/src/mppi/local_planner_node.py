@@ -30,9 +30,9 @@ def main():
 
 
 def start_planner():
-    rospy.init_node('planner', anonymous=True, disable_signals=True)
+    rospy.init_node("planner", anonymous=True, disable_signals=True)
 
-    model_path = rospy.get_param('~mppic/model_path', None)
+    model_path = rospy.get_param("~mppic/model_path", None)
     model = nnio.ONNXModel(model_path)
     cost = NearestCost(3)
     # cost = TriangleCost()
@@ -52,11 +52,11 @@ def handler(signum, frame):
 
 def profile():
     s = io.StringIO()
-    sortby = 'cumtime'
+    sortby = "cumtime"
     ps = pstats.Stats(pr, stream=s).sort_stats(sortby)
     ps.print_stats(FUNCTION_PRINT_COUNT)
     print(s.getvalue())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
