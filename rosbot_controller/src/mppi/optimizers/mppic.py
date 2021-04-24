@@ -11,7 +11,17 @@ sys.path.append("..")
 
 
 class MPPIController(Optimizer):
+
     def __init__(self, model, cost, next_control_policy):
+        """[TODO:summary].
+
+        [TODO:description]
+
+        Args:
+            model: [TODO:description]
+            cost: [TODO:description]
+            next_control_policy: [TODO:description]
+        """
         self.model = model
         self.cost = cost
         self.next_control_policy = next_control_policy
@@ -42,9 +52,23 @@ class MPPIController(Optimizer):
         self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
     def set_reference_traj(self, ref_traj):
+        """[TODO:summary].
+
+        [TODO:description]
+
+        Args:
+            ref_traj: [TODO:description]
+        """
         self.reference_traj = ref_traj
 
-    def update_state(self, state: Type[State]):
+    def update_state(self, state):
+        """[TODO:summary].
+
+        [TODO:description]
+
+        Args:
+            state: [TODO:description]
+        """
         self.curr_state = state
 
     def next_control(self, goal_idx):
@@ -114,12 +138,11 @@ class MPPIController(Optimizer):
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
     def _predict_trajs(self):
-        """ Propagetes trajectories using control matrix velocities and current state
+        """Propagetes trajectories using control matrix velocities and current state.
 
         Return:
             trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
         """
-
         v, w = self.batch_of_seqs[:, :, 0], self.batch_of_seqs[:, :, 1]
         current_yaw = self.curr_state.yaw
         yaw = np.cumsum(w * self.dt, axis=1)

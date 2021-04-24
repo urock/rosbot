@@ -14,11 +14,15 @@ from utils.geometry import quaternion_to_euler
 from utils.dtypes import Control
 from utils.visualizations import visualize_reference
 
+from optimizers.optimizer import Optimizer
+from robot import Odom
+
 import matplotlib.pyplot as plt
 
 
 class LocalPlanner:
-    def __init__(self, odom, optimizer, metric):
+
+    def __init__(self, optimizer, metric):
         self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
         self.traj_lookahead = rospy.get_param('~local_planner/traj_lookahead', 7)
         self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
@@ -27,7 +31,7 @@ class LocalPlanner:
         self.control_dt = 1.0 / self.controller_freq
 
         self.optimizer = optimizer
-        self.odom = odom
+        self.odom = Odom()
         self.metric = metric
 
         self.controls = np.empty(shape=(0, 2))
