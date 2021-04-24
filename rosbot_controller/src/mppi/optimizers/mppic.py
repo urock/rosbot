@@ -9,10 +9,11 @@ import numpy as np
 import sys
 sys.path.append("..")
 
+from policies.costs import Cost
 
 class MPPIController(Optimizer):
 
-    def __init__(self, model, cost, next_control_policy):
+    def __init__(self, model, cost: Type[Cost], next_control_policy):
         """[TODO:summary].
 
         [TODO:description]

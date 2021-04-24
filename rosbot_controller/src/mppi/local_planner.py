@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 
 class LocalPlanner:
 
-    def __init__(self, optimizer, metric):
+    def __init__(self, optimizer: Type[Optimizer], metric):
         self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
         self.traj_lookahead = rospy.get_param('~local_planner/traj_lookahead', 7)
         self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
