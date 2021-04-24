@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 class Cost(ABC):
 
     @abstractmethod
-    def __call__(self, ref_traj):
+    def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
         """Calculate cost.
 
         Return:
