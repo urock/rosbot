@@ -1,7 +1,7 @@
 import rospy
 import numpy as np
 
-class MetricHandler()
+class MetricHandler():
     def __init__(self, metric):
         self.metric = metric
 

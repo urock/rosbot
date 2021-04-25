@@ -1,5 +1,9 @@
 import rospy
 from geometry_msgs.msg import Twist
+
+import sys
+sys.path.append("..")
+
 from utils.dtypes import Control
 
 class Controller:

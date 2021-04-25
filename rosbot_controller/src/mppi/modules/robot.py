@@ -6,6 +6,8 @@ import numpy as np
 import rospy
 from tf2_msgs.msg import TFMessage
 
+import sys
+sys.path.append("..")
 from utils.dtypes import State
 from utils.geometry import quaternion_to_euler
 
