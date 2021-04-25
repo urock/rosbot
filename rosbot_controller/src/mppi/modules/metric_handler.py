@@ -1,6 +1,7 @@
 import rospy
 import numpy as np
 
+
 class MetricHandler():
     def __init__(self, metric):
         self.metric = metric
@@ -16,7 +17,6 @@ class MetricHandler():
         rospy.loginfo(
             "Mean velocities v = {:.6f}, w = {:.6f}.".format(np.mean(lin_vels), np.mean(ang_vels))
         )
-
 
     # path_rng = np.arange(path_len)
     # plt.figure(1)

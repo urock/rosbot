@@ -1,3 +1,4 @@
+from utils.geometry import quaternion_to_euler
 import rospy
 from time import time
 import numpy as np
@@ -5,7 +6,7 @@ from nav_msgs.msg import Path
 
 import sys
 sys.path.append("..")
-from utils.geometry import quaternion_to_euler
+
 
 class PathHandler():
     """Class for keeping and managing incoming trajectories"""

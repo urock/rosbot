@@ -4,6 +4,7 @@ import rospy
 from time import time
 import numpy as np
 
+
 class LocalPlanner:
     def __init__(self, optimizer, odom, controller, goal_handler, path_handler, metric_handler):
         self.optimizer = optimizer
@@ -33,12 +34,11 @@ class LocalPlanner:
                         control = self.optimizer.get_next_control(goal_idx)
                         self.controller.publish_control(control)
                     else:
-                        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time, 
-                                self.odom.path, 
-                                self.reference_trajectory, 2)
+                        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
+                                                         self.odom.path,
+                                                         self.reference_trajectory, 2)
                 else:
                     self.controller.publish_stop_control()
-
 
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")

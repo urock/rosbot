@@ -1,13 +1,14 @@
 import rospy
 import numpy as np
 
+
 class GoalHandler:
     def __init__(self):
-        self.goal_idx = 0 
+        self.goal_idx = 0
         self.has_path = False
         self.path_finished = True
 
-        self._reference_trajectory: np.array 
+        self._reference_trajectory: np.array
         self._state = None
         self._trajectory_lookahead = rospy.get_param("~goal_handler/traj_lookahead", 7)
         self._goal_tolerance = rospy.get_param("~goal_handler/goal_tolerance", 0.2)
@@ -36,7 +37,7 @@ class GoalHandler:
             self.path_finished = True
             self.has_path = False
 
-        return self.goal_idx 
+        return self.goal_idx
 
     def _get_distances_to_trajectory_points(self):
         point = self._state.to_numpy()[: 2]
@@ -46,7 +47,6 @@ class GoalHandler:
 
         return dists
 
-
     def _get_last_considered_trajectory_idx(self):
         traj_end = len(self._reference_trajectory)
         end = self.goal_idx + self._trajectory_lookahead + 1
@@ -54,4 +54,3 @@ class GoalHandler:
 
     def _is_goal_reached(self, dist):
         return dist < self._goal_tolerance
-

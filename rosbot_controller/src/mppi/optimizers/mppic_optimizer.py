@@ -52,5 +52,6 @@ class MPPICOptimizer():
             self._goals_interval,
         )
 
-        next_control_seq = self.next_control_policy(costs, self.control_generator.get_controls_batch())
+        next_control_seq = self.next_control_policy(
+            costs, self.control_generator.get_controls_batch())
         self.control_generator.set_control_seq(next_control_seq)

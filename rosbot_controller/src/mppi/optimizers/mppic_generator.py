@@ -33,15 +33,14 @@ class MPPICGenerator():
         self._batch_of_seqs[:, :, 4] = self._dt
         self._curr_control_seq = np.zeros(shape=(self._time_steps, 2))
 
-
     def set_control_seq(self, control_seq):
         self._curr_control_seq = control_seq
 
     def get_velocities_batch(self):
-        return self._batch_of_seqs[:,:, :2]
+        return self._batch_of_seqs[:, :, :2]
 
     def get_controls_batch(self):
-        return self._batch_of_seqs[:,:,2:4]
+        return self._batch_of_seqs[:, :, 2:4]
 
     def get_control(self, offset: int):
         offset = min(offset, self._time_steps - 1)
@@ -52,11 +51,11 @@ class MPPICGenerator():
     def generate_trajectories(self):
         self._update_batch_of_seqs()
         trajectories = self._propagete_trajectories()
-        trajectories = self._insert_velocities(trajectories) 
+        trajectories = self._insert_velocities(trajectories)
         return trajectories
 
     def _insert_velocities(self, trajectories):
-        return np.concatenate([trajectories, self.get_velocities_batch()], axis = 2)
+        return np.concatenate([trajectories, self.get_velocities_batch()], axis=2)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()

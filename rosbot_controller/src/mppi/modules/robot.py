@@ -1,3 +1,5 @@
+from utils.geometry import quaternion_to_euler
+from utils.dtypes import State
 import time
 import math
 from copy import copy
@@ -8,8 +10,6 @@ from tf2_msgs.msg import TFMessage
 
 import sys
 sys.path.append("..")
-from utils.dtypes import State
-from utils.geometry import quaternion_to_euler
 
 
 class Odom:
