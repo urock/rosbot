@@ -3,6 +3,7 @@
 import rospy
 from time import time
 import numpy as np
+from utils.visualizations import visualize_trajs, MarkerArray
 
 
 class LocalPlanner:
@@ -14,7 +15,12 @@ class LocalPlanner:
         self.path_handler = path_handler
         self.metric_handler = metric_handler
 
-        self.reference_trajectory: np.ndarray
+        self._reference_trajectory: np.ndarray
+        self._control = None
+
+        self._is_visualize_trajs = True
+
+        self._trajectories_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
     def start(self):
         self.optimizer.set_state(self.odom.curr_state)
@@ -24,19 +30,24 @@ class LocalPlanner:
             while not rospy.is_shutdown():
 
                 if self.path_handler.has_path:
-                    self.reference_trajectory = self.path_handler.get_path()
-                    self.optimizer.set_reference_trajectory(self.reference_trajectory)
-                    self.goal_handler.set_reference_trajectory(self.reference_trajectory)
+                    self._reference_trajectory = self.path_handler.get_path()
+                    self.optimizer.set_reference_trajectory(self._reference_trajectory)
+                    self.goal_handler.set_reference_trajectory(self._reference_trajectory)
 
-                if self.goal_handler.has_path:
+                elif not self.goal_handler.path_finished:
                     goal_idx = self.goal_handler.update_goal()
                     if not self.goal_handler.path_finished:
-                        control = self.optimizer.get_next_control(goal_idx)
+                        control = self.optimizer.calc_next_control(goal_idx)
                         self.controller.publish_control(control)
+
+                        if self._is_visualize_trajs:
+                            visualize_trajs(0, self._trajectories_pub,
+                                            self.optimizer.get_curr_trajectories())
+
                     else:
                         self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
                                                          self.odom.path,
-                                                         self.reference_trajectory, 2)
+                                                         self._reference_trajectory, 2)
                 else:
                     self.controller.publish_stop_control()
 

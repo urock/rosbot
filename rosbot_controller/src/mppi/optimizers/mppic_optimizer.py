@@ -20,6 +20,10 @@ class MPPICOptimizer():
         self._goals_interval = rospy.get_param("~mppic/goals_interval", 0.1)
 
         self._reference_trajectory: np.ndarray
+        self._curr_trajectories: np.ndarray
+
+    def get_curr_trajectories(self):
+        return self._curr_trajectories
 
     def set_reference_trajectory(self, trajectory):
         self._reference_trajectory = trajectory
@@ -27,7 +31,7 @@ class MPPICOptimizer():
     def set_state(self, state):
         self.control_generator.state = state
 
-    def get_next_control(self, goal_idx):
+    def calc_next_control(self, goal_idx):
         start = perf_counter()
         for _ in range(self._iter_count):
             self._optimize(goal_idx)
@@ -41,10 +45,10 @@ class MPPICOptimizer():
         return control
 
     def _optimize(self, goal_idx: int):
-        trajectories = self.control_generator.generate_trajectories()
+        self._curr_trajectories = self.control_generator.generate_trajectories()
 
         costs = self.cost(
-            trajectories,
+            self._curr_trajectories,
             self._reference_trajectory,
             self._trajectory_lookahead,
             goal_idx,

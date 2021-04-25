@@ -24,7 +24,6 @@ class MPPICGenerator():
         self._v_std = rospy.get_param("~mppic/v_std", 0.1)
         self._w_std = rospy.get_param("~mppic/w_std", 0.1)
 
-        # Constraints
         self._limit_v = rospy.get_param("~mppic/limit_v", 0.5)
         self._limit_w = rospy.get_param("~mppic/limit_w", 0.7)
 

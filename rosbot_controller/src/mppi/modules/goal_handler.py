@@ -5,7 +5,6 @@ import numpy as np
 class GoalHandler:
     def __init__(self):
         self.goal_idx = 0
-        self.has_path = False
         self.path_finished = True
 
         self._reference_trajectory: np.array
@@ -18,7 +17,6 @@ class GoalHandler:
 
     def set_reference_trajectory(self, trajectory):
         self._reference_trajectory = trajectory
-        self.has_path = True
         self.path_finished = False
         self.goal_idx = 0
 
@@ -35,7 +33,6 @@ class GoalHandler:
 
         if self.goal_idx == len(self._reference_trajectory):
             self.path_finished = True
-            self.has_path = False
 
         return self.goal_idx
 
