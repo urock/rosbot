@@ -34,8 +34,8 @@ class OfflinePlanner:
     def __init__(self, model_path_1, model_path_100, obstacles = None):
 
         self.batch_size = 100
-        self.time_steps = 1000
-        self.n_iters = 10
+        self.time_steps = 100
+        self.n_iters = 100
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
         self.model_1 = nnio.ONNXModel(model_path_1)
@@ -43,7 +43,25 @@ class OfflinePlanner:
 
         self.optimizer = PSO(self.batch_size, self.time_steps, self.control_size)
 
-        self.dt = 0.033
+        self.dt = 0.33
+
+
+    def test(self, current_state, goal):
+
+        print("Test started")
+
+        u = np.zeros(shape=(self.time_steps, self.control_size))
+        u[:,0] = 0.1
+        u[:,1] = 5
+
+        x = self._propagate_control_to_states_no_nn(current_state, u[None])
+
+        fig, ax = plt.subplots(3)
+        self._visualize_trajectory(x, ax[0])
+        self._visualize_u(u, ax[1], ax[2])
+        
+        plt.show()   
+
 
 
 
@@ -52,8 +70,9 @@ class OfflinePlanner:
         print("Run started")
 
         batch_u = self.optimizer.init_control_batch()
-        batch_x = self._propagate_control_to_states(current_state, batch_u)
+        batch_x = self._propagate_control_to_states_no_nn(current_state, batch_u)
         batch_costs = self._calculate_costs(batch_x, goal)
+        self.optimizer.update_bests(batch_costs)
 
         print("Run: init ok")
 
@@ -63,27 +82,50 @@ class OfflinePlanner:
 
             start = perf_counter() 
 
-            batch_u = self.optimizer.gen_next_control_batch(batch_costs)            
-            batch_x = self._propagate_control_to_states(current_state, batch_u)
+            batch_u = self.optimizer.gen_next_control_batch()            
+            batch_x = self._propagate_control_to_states_no_nn(current_state, batch_u)
             batch_costs = self._calculate_costs(batch_x, goal)
+            self.optimizer.update_bests(batch_costs)
 
             t = perf_counter() 
-            print("Run: {} iterartions done. dt = {:.3f} s. Cost = {:.3f}".
-                        format(it, t - start, np.min(batch_costs)))
+          
 
-            # best_x = batch_x[np.argmin(batch_costs)] 
-            best_contol = self.optimizer.get_best_control() 
-            best_x = self._propagate_control_to_states(current_state, best_contol[None])
+            best_contol, best_cost = self.optimizer.get_best_control() 
+
+            print("Run: {} iterartions done. dt = {:.3f} s. Cost = {:.10f}".
+                        format(it, t - start, best_cost))
+            
+
+            # TODO: I see that best_costs is not moving, but best control changes 
+
+            # best_x = self._propagate_control_to_states_no_nn(current_state, best_contol[None])
     
-            fig, ax = plt.subplots(2)
-            self._visualize_trajectory(best_x, ax[0])
-            self._visualize_costs(batch_costs, ax[1])
+            # fig, ax = plt.subplots(3)
+            # self._visualize_trajectory(best_x, ax[0])
+            # self._visualize_u(best_contol, ax[1], ax[2])
          
-            plt.show()   
+            # plt.show()   
             
 
             
-        best_contol = self.optimizer.get_best_control() 
+        # best_x = batch_x[np.argmin(batch_costs)] 
+        best_contol, best_cost = self.optimizer.get_best_control() 
+        best_x = self._propagate_control_to_states_no_nn(current_state, best_contol[None])
+
+        print(best_x.shape)
+
+
+        x = best_x[self.time_steps-1, 0]    # take only last element
+        y = best_x[self.time_steps-1, 1]    
+        L2 = (x-goal[0])**2 + (y-goal[1])**2
+
+        print("Last point ({:.4f},{:.4f}) Cost = {:.10f}".format(x, y, L2))
+
+        fig, ax = plt.subplots(3)
+        self._visualize_trajectory(best_x, ax[0])
+        self._visualize_u(best_contol, ax[1], ax[2])
+        
+        plt.show()   
 
         return best_contol
         
@@ -141,6 +183,33 @@ class OfflinePlanner:
             return batch_x
         else:
             return batch_x[0]
+
+    def _propagate_control_to_states_no_nn(self, current_state, batch_u):
+        """ 
+            Calulates batch of sequences of states based on inputs:
+            Inputs: 
+                current state: np.array of shape (state_size) [x, y, yaw, v, w]
+                batch_u: np.array of shape (batch_size, time_steps, control_size)
+            Return: 
+                batch_x: np.array of shape (batch_size, time_steps, state_size)
+
+        """ 
+        # batch of sequences of robot states
+        batch_x = np.empty(shape=(batch_u.shape[0], self.time_steps, self.state_size))
+          
+
+        batch_v = batch_u[:,:,0]
+        batch_w = batch_u[:,:,1]
+        batch_trajectories = self._calc_trajectories(current_state, batch_v, batch_w, self.dt)
+
+        batch_x[:,:,:3] = batch_trajectories
+        batch_x[:,:,3] = batch_v
+        batch_x[:,:,4] = batch_w
+
+        if batch_u.shape[0] == 100:
+            return batch_x
+        else:
+            return batch_x[0]            
 
     def _calc_trajectories(self, current_state, batch_v, batch_w, dt):
         """ Propagetes trajectories using control matrix velocities and current state
@@ -200,22 +269,22 @@ class OfflinePlanner:
 
         L2 = (x-goal[0])**2 + (y-goal[1])**2
 
-        # return np.sum(L2, axis=1)   
-        return L2 + np.sum(v,axis=1)
+        # return np.sum(L2, axis=1) + 0.01 * np.sum(v,axis=1)
+        # return L2 + np.sum(v,axis=1)
+        return L2
 
 
 
-
-    def _visualize_trajectory(self, best_x, ax):
+    def _visualize_trajectory(self, x, ax):
         """
             Args:
-                best_x: np.array of shape (time_steps, state_size)
+                x: np.array of shape (time_steps, state_size)
                         state is [x, y, yaw, v, w]
         """
         ax.set_xlabel('X, m')        
         ax.set_ylabel('Y, m')
         ax.set_title("Best XY trajectory")
-        plot_xy_data(x=best_x[:,0], y=best_x[:,1], ax=ax, plot_name="x_y")
+        plot_xy_data(x=x[:,0], y=x[:,1], ax=ax, plot_name="x_y")
 
         # plt.show()
 
@@ -232,6 +301,19 @@ class OfflinePlanner:
 
         # plt.show()
 
+    def _visualize_u(self, u, ax1, ax2):
+        """
+            Args:
+                u: np.array of shape (time_steps, control_size)
+        """
+        ax1.set_title("Control")
+        ax1.set_xlabel('t, s')        
+        ax1.set_ylabel('u')
+
+        t = [i*self.dt for i in range(u.shape[0])]
+
+        plot_xy_data(x=t, y=u[:,0], ax=ax1, plot_name="linear")
+        plot_xy_data(x=t, y=u[:,1], ax=ax2, plot_name="anglular")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -243,10 +325,11 @@ def main():
     args = parser.parse_args()
 
     current_state = np.zeros(5)
-    goal = [1.0, 1.0]   # (x, y)
+    goal = [1.0, 0.0]   # (x, y)
 
     planner = OfflinePlanner(args.model_path_1, args.model_path_100)
     control = planner.run(current_state, goal)
+    # control = planner.test(current_state, goal)
     
 if __name__ == '__main__':
     main()
