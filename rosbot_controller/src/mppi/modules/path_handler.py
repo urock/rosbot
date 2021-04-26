@@ -9,7 +9,8 @@ sys.path.append("..")
 
 
 class PathHandler():
-    """Class for keeping and managing incoming trajectories"""
+    """Class for keeping and managing incoming trajectories
+    """
 
     def __init__(self):
         self.path = np.empty(shape=(0, 3))

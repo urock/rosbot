@@ -15,6 +15,9 @@ class MetricHandler():
         lin_vels = self.path[:, 3]
         ang_vels = self.path[:, 4]
 
+        lin_vels = np.clip(lin_vels, -5, 5)
+        ang_vels = np.clip(ang_vels, -5, 5)
+
         lin_controls = controls[:, 0]
         ang_controls = controls[:, 1]
 
@@ -33,17 +36,18 @@ class MetricHandler():
         rospy.loginfo(tag + " Var: v {:.6f}, w = {:.6f}.\n".format(np.var(lin), np.var(ang)))
 
     def show_graphs(self, lin_vels, ang_vels, controls):
-        path_rng = np.arange(len(lin_vels))
+        lin_rng = np.arange(len(lin_vels))
         plt.figure(1)
         plt.subplot(221)
-        plt.plot(path_rng, lin_vels)
+        plt.plot(lin_rng, lin_vels)
         plt.yscale("linear")
         plt.title("Linear velocitie")
         plt.xlabel("point")
         plt.ylabel("Linear vel")
 
+        ang_rng = np.arange(len(lin_vels))
         plt.subplot(222)
-        plt.plot(path_rng, ang_vels)
+        plt.plot(ang_rng , ang_vels)
         plt.yscale("linear")
         plt.title("Angular")
         plt.xlabel("point")
