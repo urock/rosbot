@@ -81,8 +81,13 @@ class PSO:
             3. Save best positions to global class memory
         """
 
-        mask = costs < self.best_costs
-        self.best_costs[mask] = costs[mask]
-        self.batch_p[mask] = self.batch_u[mask]
-        self.global_best = self.batch_p[np.argmin(self.best_costs)] 
+        best_costs = self.best_costs
 
+        mask = costs < self.best_costs
+
+        self.best_costs[mask] = costs[mask]
+        # self.batch_p[mask] = self.batch_u[mask]
+        # self.global_best = self.batch_p[np.argmin(self.best_costs)] 
+        mask = mask[:, None, None]
+        self.batch_p = self.batch_u * mask + self.batch_p * (1 - mask)
+        self.global_best = self.batch_p[np.argmin(self.best_costs)]
