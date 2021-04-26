@@ -8,7 +8,7 @@ import signal
 
 import rospy
 
-from policies.costs import TriangleCost, NearestCost
+from policies.costs import TriangleCost
 from policies.control import calc_softmax_seq, find_min_seq
 from policies.metrics import mean_dist_metric
 

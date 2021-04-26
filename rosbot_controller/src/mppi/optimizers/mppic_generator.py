@@ -62,7 +62,7 @@ class MPPICGenerator():
         self._curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
     def _insert_velocities(self, trajectories):
-        return np.concatenate([trajectories, self.get_velocities_batch()], axis=2)
+        return np.concatenate([trajectories, self.get_velocities_batch(), self.get_controls_batch()], axis=2)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()

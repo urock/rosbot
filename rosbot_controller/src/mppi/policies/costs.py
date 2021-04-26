@@ -13,54 +13,12 @@ class Cost(ABC):
         """
 
 
-class NearestCost(Cost):
-    def __init__(self, k_nearest):
-        self.k_nearest = k_nearest
-
-    def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
-        """Cost according to k nearest ref_traj points.
-
-        Args:
-            state: np.ndarray of shape [batch_size, time_steps, 3] where 5 for x, y, yaw, v, w
-            ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
-            traj_lookahead: int
-            goal_idx: int
-            goals_interval: float
-            desired_v: float
-
-        Return:
-            costs: np.array of shape [batch_size]
-        """
-        v = state[:, :, 3]
-
-        beg = goal_idx - 1 if goal_idx != 0 else 0
-        end = goal_idx + traj_lookahead
-        end = min(end, len(ref_traj))
-        ref = ref_traj[beg:end, :3]
-
-        costs = lin_vel_cost(v, desired_v)
-        # costs += ang_cost(state[:, :, 2:3], ref[:, 2])
-        costs += self._nearest_cost_for_k_ellements(state, ref)
-
-        return costs
-
-    def _nearest_cost_for_k_ellements(self, state, ref):
-        x_dists = state[:, :, :1] - ref[:, 0]
-        y_dists = state[:, :, 1:2] - ref[:, 1]
-        dists = x_dists ** 2 + y_dists ** 2
-
-        k = min(self.k_nearest, len(ref))
-        dists = np.partition(dists, k - 1, axis=2)[:, :, :k] * np.arange(1, k + 1)
-
-        return dists.sum(2).sum(1)
-
-
 class TriangleCost(Cost):
     def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
         """Cost according to nearest segment.
 
         Args:
-            state: np.ndarray of shape [batch_size, time_steps, 5] where 3 for x, y, yaw, v, w
+            state: np.ndarray of shape [batch_size, time_steps, 7] where 3 for x, y, yaw, v, w, v_control, w_control
             ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
             traj_lookahead: int
             goal_idx: int
@@ -71,12 +29,18 @@ class TriangleCost(Cost):
             costs: np.array of shape [batch_size]
         """
         v = state[:, :, 3]
+        w = state[:, :, 5]
+
+        v_control = state[:, :, 5]
+        w_control = state[:, :, 6]
 
         beg = goal_idx - 1 if goal_idx != 0 else 0
         end = min(goal_idx + traj_lookahead, len(ref_traj))
         ref = ref_traj[beg:end, :3]
 
         costs = lin_vel_cost(v, desired_v)
+        costs += vel_diff_cost(v, v_control, 0.15)
+        costs += vel_diff_cost(w, w_control, 0.15)
         # costs += ang_cost(state[:, :, 2:3], ref[:, 2])
         costs += self._triangle_cost_segments(state, ref, goals_interval)
 
@@ -123,7 +87,7 @@ class TriangleCost(Cost):
 
 
 def lin_vel_cost(v, desired_v):
-    DESIRED_V_WEIGHT = 1.0
+    DESIRED_V_WEIGHT = 4.0
     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
     return v_costs
 
@@ -132,3 +96,8 @@ def ang_cost(yaw, ref_yaw):
     YAW_WEIGHT = 0.25
     yaw_cost = YAW_WEIGHT * ((yaw - ref_yaw) ** 2).sum(2).sum(1)
     return yaw_cost
+
+
+def vel_diff_cost(curr_vels, control_vels, weight):
+    diff_cost = weight * ((curr_vels - control_vels) ** 2).sum(1)
+    return diff_cost
