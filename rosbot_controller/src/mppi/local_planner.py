@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
+from copy import copy
 import rospy
-from time import time
+from time import time, perf_counter
 import numpy as np
 from utils.visualizations import visualize_trajs, MarkerArray
 
@@ -18,7 +19,7 @@ class LocalPlanner:
         self._reference_trajectory: np.ndarray
         self._control = None
 
-        self._is_visualize_trajs = True
+        self._is_visualize_trajs = rospy.get_param('~local_planner/is_visualize_trajs', False)
 
         self._trajectories_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
@@ -28,28 +29,30 @@ class LocalPlanner:
 
         try:
             while not rospy.is_shutdown():
-
                 if self.path_handler.has_path:
                     self._reference_trajectory = self.path_handler.get_path()
                     self.optimizer.set_reference_trajectory(self._reference_trajectory)
                     self.goal_handler.set_reference_trajectory(self._reference_trajectory)
 
                 elif not self.goal_handler.path_finished:
+                    start = perf_counter()
                     goal_idx = self.goal_handler.update_goal()
                     if not self.goal_handler.path_finished:
                         control = self.optimizer.calc_next_control(goal_idx)
                         self.controller.publish_control(control)
-
                         if self._is_visualize_trajs:
                             visualize_trajs(0, self._trajectories_pub,
-                                            self.optimizer.get_curr_trajectories())
+                                            self.optimizer.get_curr_trajectories(), 0.9)
+
+                        t = perf_counter() - start
+                        self.metric_handler.add_state(copy(self.odom.curr_state))
+                        rospy.sleep(self.optimizer.get_offset_time() - t)
 
                     else:
+                        self.controller.publish_stop_control()
                         self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
-                                                         self.odom.path,
-                                                         self._reference_trajectory, 2)
-                else:
-                    self.controller.publish_stop_control()
+                                                         self.optimizer.control_generator.get_controls_batch(),
+                                                         self._reference_trajectory)
 
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")

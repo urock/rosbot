@@ -6,17 +6,18 @@ local_planner:
     goal_tolerance: 0.2 
     controller_freq: 90
     traj_lookahead: 10
+    is_visualize_trajs: True
 
 mppic:
-    batch_size: 100 
+    batch_size: 200 
     time_steps: 50
-    model_path: "$(find rosbot_controller)/nets/model_batch_100.onnx"
-    mppi_freq: 30
-    iter_count: 1
+    model_path: "$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx"
+    mppi_freq: 10
+    iter_count: 4
     goals_interval: 0.1
-    v_std: 0.2
-    w_std: 0.2
+    v_std: 0.10
+    w_std: 0.10
     limit_v: 0.5
     limit_w:  0.7
     desired_v: 0.3
-    traj_lookahead: 3 
+    traj_lookahead: 12 

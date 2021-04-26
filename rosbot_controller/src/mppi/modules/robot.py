@@ -21,8 +21,6 @@ class Odom:
         self.map_frame = rospy.get_param("~robot/map_frame", "odom")
         self.base_frame = rospy.get_param("~robot/base_frame", "base_link")
 
-        self.path = np.zeros(shape=(0, 5))
-
         self.curr_state = State()
         self.prev_state = State()
 
@@ -36,8 +34,6 @@ class Odom:
 
         dt = self._get_diff_time()
         self._update_state(odom, dt)
-
-        self.path = np.append(self.path, self.curr_state.to_numpy()[np.newaxis], axis=0)
 
     def _get_odom_tf(self, msg):
         odom = None

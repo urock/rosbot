@@ -39,20 +39,12 @@ class NearestCost(Cost):
         ref = ref_traj[beg:end, :3]
 
         costs = lin_vel_cost(v, desired_v)
-        costs += ang_cost(state[:, :, 2:3], ref[:, 2])
-        costs += self.nearest_cost_k_ellements(state, ref)
+        # costs += ang_cost(state[:, :, 2:3], ref[:, 2])
+        costs += self._nearest_cost_for_k_ellements(state, ref)
 
         return costs
 
-    def nearest_cost_k_ellements(self, state, ref):
-        """[TODO:summary]
-
-        [TODO:description]
-
-        Args:
-            state: [TODO:description]
-            ref: [TODO:description]
-        """
+    def _nearest_cost_for_k_ellements(self, state, ref):
         x_dists = state[:, :, :1] - ref[:, 0]
         y_dists = state[:, :, 1:2] - ref[:, 1]
         dists = x_dists ** 2 + y_dists ** 2
@@ -85,21 +77,12 @@ class TriangleCost(Cost):
         ref = ref_traj[beg:end, :3]
 
         costs = lin_vel_cost(v, desired_v)
-        costs += ang_cost(state[:, :, 2:3], ref[:, 2])
-        costs += self.triangle_cost_segments(state, ref, goals_interval)
+        # costs += ang_cost(state[:, :, 2:3], ref[:, 2])
+        costs += self._triangle_cost_segments(state, ref, goals_interval)
 
         return costs
 
-    def triangle_cost_segments(self, state, ref, goals_interval):
-        """[TODO:summary].
-
-        [TODO:description]
-
-        Args:
-            state: [TODO:description]
-            ref: [TODO:description]
-            goals_interval: [TODO:description]
-        """
+    def _triangle_cost_segments(self, state, ref, goals_interval):
         x_dists = state[:, :, :1] - ref[:, 0]
         y_dists = state[:, :, 1:2] - ref[:, 1]
         dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
@@ -112,36 +95,28 @@ class TriangleCost(Cost):
             first_sides = dists[:, :, q]
             second_sides = dists[:, :, q + 1]
             opposite_sides = goals_interval
-            triangle_costs[:, :, q] = self.triangle_cost_segment(
+            triangle_costs[:, :, q] = self._triangle_cost_segment(
                 opposite_sides, first_sides, second_sides
             )
 
         return triangle_costs.min(2).sum(1)
 
-    def triangle_cost_segment(self, opposite_side, first_sides, second_sides):
-        """[TODO:summary].
-
-        [TODO:description]
-
-        Args:
-            opposite_side: [TODO:description]
-            first_sides: [TODO:description]
-            second_sides: [TODO:description]
-        """
+    def _triangle_cost_segment(self, opposite_side, first_sides, second_sides):
         costs = np.empty(shape=first_sides.shape)
-        first_obtuse_mask = self.is_angle_obtuse(first_sides, second_sides, opposite_side)
-        second_obtuse_mask = self.is_angle_obtuse(second_sides, first_sides, opposite_side)
+        first_obtuse_mask = self._is_angle_obtuse(first_sides, second_sides, opposite_side)
+        second_obtuse_mask = self._is_angle_obtuse(second_sides, first_sides, opposite_side)
         h_mask = (~first_obtuse_mask) & (~second_obtuse_mask)
+
         costs[first_obtuse_mask] = second_sides[first_obtuse_mask]
         costs[second_obtuse_mask] = first_sides[second_obtuse_mask]
-        costs[h_mask] = self.heron(opposite_side, first_sides[h_mask], second_sides[h_mask])
+        costs[h_mask] = self._heron(opposite_side, first_sides[h_mask], second_sides[h_mask])
 
         return costs
 
-    def is_angle_obtuse(self, opposite_side, b, c):
+    def _is_angle_obtuse(self, opposite_side, b, c):
         return opposite_side ** 2 > (b ** 2 + c ** 2)
 
-    def heron(self, opposite_side, b, c):
+    def _heron(self, opposite_side, b, c):
         p = (opposite_side + b + c) / 2.0
         h = 2.0 / opposite_side * np.sqrt(p * (p - opposite_side) * (p - b) * (p - c))
         return h
@@ -149,11 +124,11 @@ class TriangleCost(Cost):
 
 def lin_vel_cost(v, desired_v):
     DESIRED_V_WEIGHT = 1.0
-    v_costs = DESIRED_V_WEIGHT * (v - desired_v).mean(1) ** 2
+    v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
     return v_costs
 
 
 def ang_cost(yaw, ref_yaw):
-    YAW_WEIGHT = 0.45
+    YAW_WEIGHT = 0.25
     yaw_cost = YAW_WEIGHT * ((yaw - ref_yaw) ** 2).sum(2).sum(1)
     return yaw_cost
