@@ -57,11 +57,13 @@ class MPPICOptimizer():
     def _optimize(self, goal_idx: int):
         self._curr_trajectories = self.control_generator.generate_trajectories()
 
+        beg = goal_idx - 1 if goal_idx != 0 else 0
+        end = self._get_last_considered_trajectory_idx(goal_idx)
+        reference_considered = self._reference_trajectory[beg:end, :3]
+
         costs = self.cost(
             self._curr_trajectories,
-            self._reference_trajectory,
-            self._trajectory_lookahead,
-            goal_idx,
+            reference_considered,
             self._desired_v,
             self._goals_interval,
         )
@@ -69,3 +71,8 @@ class MPPICOptimizer():
         next_control_seq = self.next_control_policy(costs,
                                                     self.control_generator.get_controls_batch())
         self.control_generator.set_control_seq(next_control_seq)
+
+    def _get_last_considered_trajectory_idx(self, goal_idx):
+        traj_end = len(self._reference_trajectory)
+        end = goal_idx + self._trajectory_lookahead + 1
+        return min(end, traj_end)

@@ -5,8 +5,16 @@ from abc import ABC, abstractmethod
 
 class Cost(ABC):
     @abstractmethod
-    def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
-        """Calculate cost.
+    def __call__(self, state, reference_trajectory, desired_v, goals_interval):
+        """Calculate cost 
+
+        Args:
+            state: np.ndarray of shape [batch_size, time_steps, 7] where 3 for x, y, yaw, v, w, v_control, w_control
+            ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
+            traj_lookahead: int
+            goal_idx: int
+            goals_interval: float
+            desired_v: float
 
         Return:
             costs: np.array of shape [batch_size]
@@ -14,7 +22,7 @@ class Cost(ABC):
 
 
 class TriangleCost(Cost):
-    def __call__(self, state, ref_traj, traj_lookahead, goal_idx, desired_v, goals_interval):
+    def __call__(self, state, reference_trajectory, desired_v, goals_interval):
         """Cost according to nearest segment.
 
         Args:
@@ -34,15 +42,11 @@ class TriangleCost(Cost):
         v_control = state[:, :, 5]
         w_control = state[:, :, 6]
 
-        beg = goal_idx - 1 if goal_idx != 0 else 0
-        end = min(goal_idx + traj_lookahead, len(ref_traj))
-        ref = ref_traj[beg:end, :3]
-
         costs = lin_vel_cost(v, desired_v)
         costs += vel_diff_cost(v, v_control, 0.15)
         costs += vel_diff_cost(w, w_control, 0.15)
         # costs += ang_cost(state[:, :, 2:3], ref[:, 2])
-        costs += self._triangle_cost_segments(state, ref, goals_interval)
+        costs += self._triangle_cost_segments(state, reference_trajectory, goals_interval)
 
         return costs
 
