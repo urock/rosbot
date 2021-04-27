@@ -19,7 +19,8 @@ class LocalPlanner:
         self._reference_trajectory: np.ndarray
         self._control = None
 
-        self._is_visualize_trajs = rospy.get_param('~local_planner/is_visualize_trajs', False)
+        self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
+        self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
         self._trajectories_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
@@ -39,20 +40,22 @@ class LocalPlanner:
                     goal_idx = self.goal_handler.update_goal()
                     if not self.goal_handler.path_finished:
                         control = self.optimizer.calc_next_control(goal_idx)
+                        self.metric_handler.add_control(copy(control))
                         self.controller.publish_control(control)
-                        if self._is_visualize_trajs:
+                        if self._visualize_trajs:
                             visualize_trajs(0, self._trajectories_pub,
                                             self.optimizer.get_curr_trajectories(), 0.9)
 
                         t = perf_counter() - start
                         self.metric_handler.add_state(copy(self.odom.curr_state))
-                        rospy.sleep(self.optimizer.get_offset_time() - t)
+
+                        if self._wait_full_step:
+                            rospy.sleep(self.optimizer.get_offset_time() - t)
 
                     else:
                         self.controller.publish_stop_control()
-                        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
-                                                         self.optimizer.control_generator.get_controls_batch(),
-                                                         self._reference_trajectory)
+                        self.metric_handler.show_metrics(
+                            time() - self.path_handler.path_come_time, self._reference_trajectory)
 
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")

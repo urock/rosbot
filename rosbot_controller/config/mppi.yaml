@@ -6,7 +6,9 @@ local_planner:
     goal_tolerance: 0.2 
     controller_freq: 90
     traj_lookahead: 10
-    is_visualize_trajs: True 
+
+    wait_full_step: False 
+    visualize_trajs: True
 
 mppic:
     batch_size: 300 

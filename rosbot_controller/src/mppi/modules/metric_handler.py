@@ -7,28 +7,24 @@ class MetricHandler():
     def __init__(self, metric):
         self.metric = metric
         self.path = np.zeros(shape=(0, 5))
+        self.controls = np.zeros(shape=(0, 2))
 
     def add_state(self, state):
         self.path = np.append(self.path, state.to_numpy()[np.newaxis], axis=0)
 
-    def show_metrics(self, time, controls, reference_trajectory):
+    def add_control(self, control):
+        self.controls = np.append(self.controls, control.to_numpy()[np.newaxis], axis=0)
+
+    def show_metrics(self, time, reference_trajectory):
         lin_vels = self.path[:, 3]
         ang_vels = self.path[:, 4]
-
-        lin_vels = np.clip(lin_vels, -5, 5)
-        ang_vels = np.clip(ang_vels, -5, 5)
-
-        lin_controls = controls[:, 0]
-        ang_controls = controls[:, 1]
-
-        value = self.metric(reference_trajectory, self.path)
         rospy.loginfo("Path Total Time: {:.6f}.".format(time))
         rospy.loginfo("Path Error by {}: {:.6f}.\n".format(self.metric.__name__, value))
 
         self.show_statistics('Vels', lin_vels, ang_vels)
         self.show_statistics('Controls', lin_controls, ang_controls)
 
-        self.show_graphs(lin_vels, ang_vels, controls)
+        self.show_graphs(lin_vels, ang_vels, self.controls)
 
     def show_statistics(self, tag, lin, ang):
         rospy.loginfo(tag + " Mean: v {:.6f}, w = {:.6f}.".format(np.mean(lin), np.mean(ang)))
@@ -47,7 +43,7 @@ class MetricHandler():
 
         ang_rng = np.arange(len(lin_vels))
         plt.subplot(222)
-        plt.plot(ang_rng , ang_vels)
+        plt.plot(ang_rng, ang_vels)
         plt.yscale("linear")
         plt.title("Angular")
         plt.xlabel("point")
