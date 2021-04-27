@@ -17,6 +17,7 @@ class MPPICOptimizer():
 
         self._iter_count = int(rospy.get_param("~mppic/iter_count", 1))
         self._desired_v = rospy.get_param("~mppic/desired_v", 0.5)
+
         self._trajectory_lookahead = int(rospy.get_param("~mppic/traj_lookahead", 7))
         self._goals_interval = rospy.get_param("~mppic/goals_interval", 0.1)
 

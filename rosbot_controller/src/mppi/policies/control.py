@@ -8,7 +8,7 @@ def calc_softmax_seq(batch_costs: np.array, control_batch: np.ndarray):
         control_batch: np.ndarray of shape [batch_size, time_steps, 2]
         costs: np.array of shape [batch_size]
     """
-    T = 0.15  # Temperature
+    T = 0.25  # Temperature
 
     batch_costs = batch_costs - np.min(batch_costs)
     exponents = np.exp(-1 / T * (batch_costs))

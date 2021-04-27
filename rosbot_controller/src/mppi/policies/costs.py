@@ -1,4 +1,7 @@
+from numba import jit
+from numba.experimental import jitclass
 import numpy as np
+
 
 from abc import ABC, abstractmethod
 
@@ -19,14 +22,12 @@ class Cost(ABC):
         Return:
             costs: np.array of shape [batch_size]
         """
-
-
-class TriangleCost(Cost):
+class TriangleCost():
     def __call__(self, state, reference_trajectory, desired_v, goals_interval):
         """Cost according to nearest segment.
 
         Args:
-            state: np.ndarray of shape [batch_size, time_steps, 7] where 3 for x, y, yaw, v, w, v_control, w_control
+            state: np.ndarray of shape [batch_size, time_steps, 8] where 3 for x, y, yaw, v, w, v_control, w_control, dts
             ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
             traj_lookahead: int
             goal_idx: int
@@ -43,9 +44,6 @@ class TriangleCost(Cost):
         w_control = state[:, :, 6]
 
         costs = lin_vel_cost(v, desired_v)
-        costs += vel_diff_cost(v, v_control, 0.15)
-        costs += vel_diff_cost(w, w_control, 0.15)
-        # costs += ang_cost(state[:, :, 2:3], ref[:, 2])
         costs += self._triangle_cost_segments(state, reference_trajectory, goals_interval)
 
         return costs
@@ -94,14 +92,3 @@ def lin_vel_cost(v, desired_v):
     DESIRED_V_WEIGHT = 4.0
     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
     return v_costs
-
-
-def ang_cost(yaw, ref_yaw):
-    YAW_WEIGHT = 0.25
-    yaw_cost = YAW_WEIGHT * ((yaw - ref_yaw) ** 2).sum(2).sum(1)
-    return yaw_cost
-
-
-def vel_diff_cost(curr_vels, control_vels, weight):
-    diff_cost = weight * ((curr_vels - control_vels) ** 2).sum(1)
-    return diff_cost
