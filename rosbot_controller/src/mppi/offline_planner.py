@@ -34,8 +34,8 @@ class OfflinePlanner:
     def __init__(self, model_path_1, model_path_100, obstacles = None):
 
         self.batch_size = 100
-        self.time_steps = 100
-        self.n_iters = 100
+        self.time_steps = 1000
+        self.n_iters = 20
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
         self.model_1 = nnio.ONNXModel(model_path_1)
@@ -43,7 +43,7 @@ class OfflinePlanner:
 
         self.optimizer = PSO(self.batch_size, self.time_steps, self.control_size)
 
-        self.dt = 0.33
+        self.dt = 0.033
 
 
     def test(self, current_state, goal):
@@ -52,9 +52,10 @@ class OfflinePlanner:
 
         u = np.zeros(shape=(self.time_steps, self.control_size))
         u[:,0] = 0.1
-        u[:,1] = 5
+        u[:,1] = 0.2
 
-        x = self._propagate_control_to_states_no_nn(current_state, u[None])
+        # x = self._propagate_control_to_states_no_nn(current_state, u[None])
+        x = self._propagate_control_to_states(current_state, u[None])
 
         fig, ax = plt.subplots(3)
         self._visualize_trajectory(x, ax[0])
@@ -71,6 +72,7 @@ class OfflinePlanner:
 
         batch_u = self.optimizer.init_control_batch()
         batch_x = self._propagate_control_to_states_no_nn(current_state, batch_u)
+        # batch_x = self._propagate_control_to_states(current_state, batch_u)
         batch_costs = self._calculate_costs(batch_x, goal)
         self.optimizer.update_bests(batch_costs)
 
@@ -84,6 +86,7 @@ class OfflinePlanner:
 
             batch_u = self.optimizer.gen_next_control_batch()            
             batch_x = self._propagate_control_to_states_no_nn(current_state, batch_u)
+            # batch_x = self._propagate_control_to_states(current_state, batch_u)
             batch_costs = self._calculate_costs(batch_x, goal)
             self.optimizer.update_bests(batch_costs)
 
@@ -111,15 +114,17 @@ class OfflinePlanner:
         # best_x = batch_x[np.argmin(batch_costs)] 
         best_contol, best_cost = self.optimizer.get_best_control() 
         best_x = self._propagate_control_to_states_no_nn(current_state, best_contol[None])
+        # best_x = self._propagate_control_to_states(current_state, best_contol[None])
 
         print(best_x.shape)
 
 
         x = best_x[self.time_steps-1, 0]    # take only last element
-        y = best_x[self.time_steps-1, 1]    
-        L2 = (x-goal[0])**2 + (y-goal[1])**2
+        y = best_x[self.time_steps-1, 1]
+        yaw = best_x[self.time_steps-1, 2]    
+        # L2 = (x-goal[0])**2 + (y-goal[1])**2
 
-        print("Last point ({:.4f},{:.4f}) Cost = {:.10f}".format(x, y, L2))
+        print("Last point ({:.4f},{:.4f}, {:.4f}) Cost = {:.10f}".format(x, y, yaw, best_cost))
 
         fig, ax = plt.subplots(3)
         self._visualize_trajectory(best_x, ax[0])
@@ -257,21 +262,36 @@ class OfflinePlanner:
         Return:
             batch_costs: batch_x: np.array of shape (batch_size)
         """
-        # x = batch_x[:, 0::10, 0]    # take every 10th element
-        # y = batch_x[:, 0::10, 1]    
+
 
         x = batch_x[:, self.time_steps-1, 0]    # take only last element
         y = batch_x[:, self.time_steps-1, 1]    
 
-        v = np.abs(batch_x[:,:,3])
+        # v = np.abs(batch_x[:,:,3])
         # w = batch_x[:,:,4]
 
 
         L2 = (x-goal[0])**2 + (y-goal[1])**2
 
-        # return np.sum(L2, axis=1) + 0.01 * np.sum(v,axis=1)
-        # return L2 + np.sum(v,axis=1)
-        return L2
+        x = batch_x[:, 0::10, 0]    # take every 10th element
+        y = batch_x[:, 0::10, 1]    
+
+
+        delta_x = x[:, 1:] - x[:, :-1]
+        delta_y = y[:, 1:] - y[:, :-1]
+
+
+        dl = delta_x**2 + delta_y**2
+
+        dl_sum = np.sum(dl, axis=1)
+
+        dl_y = np.abs(np.sum(y, axis=1))
+        # dl_sum = np.concatenate(dl_sum, 0)
+
+        # return np.sum(L2, axis=1)
+        # return L2 + 0.1 * np.sum(v,axis=1)
+        return L2 + 0.1 * dl_sum
+        # return L2 + dl_y + dl_sum
 
 
 
@@ -325,7 +345,8 @@ def main():
     args = parser.parse_args()
 
     current_state = np.zeros(5)
-    goal = [1.0, 0.0]   # (x, y)
+    current_state = [0.0, 0.0, 1.57, 0.0, 0.0]
+    goal = [0.0, 1.0]   # (x, y)
 
     planner = OfflinePlanner(args.model_path_1, args.model_path_100)
     control = planner.run(current_state, goal)
