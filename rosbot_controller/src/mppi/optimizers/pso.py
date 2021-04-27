@@ -6,7 +6,7 @@ class PSO:
 
     def __init__(self, batch_size=100, time_steps=100, control_size=2, 
                 v_max=1.0, w_max=1.0,
-                w=0.2, c1=0.15, c2=0.85, learing_rate=0.1):
+                w=0.8, c1=0.15, c2=0.85, learing_rate=1):
 
         self.batch_size = batch_size
         self.time_steps = time_steps
@@ -81,13 +81,10 @@ class PSO:
             3. Save best positions to global class memory
         """
 
-        best_costs = self.best_costs
-
         mask = costs < self.best_costs
 
         self.best_costs[mask] = costs[mask]
-        # self.batch_p[mask] = self.batch_u[mask]
-        # self.global_best = self.batch_p[np.argmin(self.best_costs)] 
+
         mask = mask[:, None, None]
         self.batch_p = self.batch_u * mask + self.batch_p * (1 - mask)
         self.global_best = self.batch_p[np.argmin(self.best_costs)]
