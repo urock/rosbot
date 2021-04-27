@@ -1,0 +1,18 @@
+<launch>
+
+    <!-- parameters for gui/rviz visualization  -->
+    <arg name="gui"             default="false" />
+    <arg name="rviz"            default="true" />
+
+    <!-- spawn rosbot -->
+    <include file="$(find rosbot2_gazebo)/launch/spawn_rosbot.launch">
+        <arg name="rviz"        value="$(arg rviz)" />
+        <arg name="gui"         value="$(arg gui)" />
+    </include>
+
+    <!-- MPPI controller node -->
+    <node pkg="rosbot_controller" type="local_planner_node.py" name="mppic" output="screen">
+        <rosparam command="load" file="$(find rosbot_controller)/config/mppi.yaml" subst_value="true" />
+    </node>
+
+</launch>
