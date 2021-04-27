@@ -89,6 +89,6 @@ class TriangleCost():
 
 
 def lin_vel_cost(v, desired_v):
-    DESIRED_V_WEIGHT = 4.0
+    DESIRED_V_WEIGHT = 3.0
     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
     return v_costs

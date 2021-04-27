@@ -19,9 +19,8 @@ class MPPICGenerator():
         self.time_steps = int(rospy.get_param("~mppic/time_steps", 50))
         self.batch_size = int(rospy.get_param("~mppic/batch_size", 100))
 
-        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
-
         self._model = model
+
         self._v_std = rospy.get_param("~mppic/v_std", 0.1)
         self._w_std = rospy.get_param("~mppic/w_std", 0.1)
 
@@ -31,42 +30,52 @@ class MPPICGenerator():
         # 5 for v, w, control_dim and dt
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt
+        self._curr_control_seq = np.zeros(shape=(self.time_steps, 2))
 
-    
-    @property
-    def velocities_batch(self):
+    def set_control_seq(self, control_seq):
+        self._curr_control_seq = control_seq
+
+    def get_control_seq(self):
+        return self._curr_control_seq 
+
+    def get_control_trajectory(self):
+        return self._propagete_trajectory(self._curr_control_seq)
+
+
+    def get_velocities_batch(self):
         return self._batch_of_seqs[:, :, :2]
 
-    @property
-    def controls_batch(self):
+    def get_controls_batch(self):
         return self._batch_of_seqs[:, :, 2:4]
-
-    def generate_trajectories(self):
-        self._update_batch_of_seqs()
-        trajectories = self._propagate_trajectories()
-        trajectories = self._insert_velocities(trajectories)
-        return trajectories
 
     def get_control(self, offset: int):
         offset = min(offset, self.time_steps - 1)
-        v_best = self.curr_control_seq[0 + offset, 0]
-        w_best = self.curr_control_seq[0 + offset, 1]
+        v_best = self._curr_control_seq[0 + offset, 0]
+        w_best = self._curr_control_seq[0 + offset, 1]
         return Control(v_best, w_best)
 
+    def generate_trajectories(self):
+        self._update_batch_of_seqs()
+        trajectories = self._propagete_trajectories()
+        trajectories = self._insert_velocities(trajectories)
+        return trajectories
 
     def displace_controls(self, offset: int):
         if offset == 0:
             return
 
-        control_cropped = self.curr_control_seq[offset:]
-        end_part = np.array([self.curr_control_seq[-1]] * offset)
-        self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
+        control_cropped = self._curr_control_seq[offset:]
+        end_part = np.array([self._curr_control_seq[-1]] * offset)
+        self._curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
+
+    def _insert_velocities(self, trajectories):
+        return np.concatenate([trajectories, self.get_velocities_batch(), self.get_controls_batch()], axis=2)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()
         self._batch_of_seqs[:, 0, 0] = self.state.v
         self._batch_of_seqs[:, 0, 1] = self.state.w
-        self._batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
+        self._batch_of_seqs[:, :, 2:4] = self._curr_control_seq[None] + noises
         self._batch_of_seqs[:, :, 2:3] = np.clip(
             self._batch_of_seqs[:, :, 2:3], -self._limit_v, self._limit_v
         )
@@ -82,32 +91,27 @@ class MPPICGenerator():
 
         return noises
 
-    def _insert_velocities(self, trajectories):
-        return np.concatenate([trajectories, self.velocities_batch, self.controls_batch], axis=2)
-
     def _update_velocities(self):
         for t_step in range(self.time_steps - 1):
             curr_batch = self._batch_of_seqs[:, t_step].astype(np.float32)
             curr_predicted = self._model(curr_batch)
             self._batch_of_seqs[:, t_step + 1, :2] = curr_predicted
 
-    def _propagate_trajectories(self):
+    # todo separate methods for this
+    def _propagete_trajectories(self):
         """propagetes trajectories using control matrix velocities and current state.
 
-        Return:
+        return:
             trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
         """
         v, w = self._batch_of_seqs[:, :, 0], self._batch_of_seqs[:, :, 1]
-
         current_yaw = self.state.yaw
         yaw = np.cumsum(w * self.dt, axis=1)
         yaw += current_yaw - yaw[:, :1]
-
         v_x = v * np.cos(yaw)
         v_y = v * np.sin(yaw)
         x = np.cumsum(v_x * self.dt, axis=1)
         y = np.cumsum(v_y * self.dt, axis=1)
-
         x += self.state.x - x[:, :1]
         y += self.state.y - y[:, :1]
 
@@ -122,20 +126,22 @@ class MPPICGenerator():
 
         return trajectory_points
 
-    def propagete_curr_trajectory(self):
-        v, w = self.curr_control_seq[:, 0], self.curr_control_seq[:, 1]
+    def _propagete_trajectory(self, trajectory):
+        """propagetes trajectories using control matrix velocities and current state.
 
+        return:
+            trajectory points - np.array of shape [batch_size, time_steps, 3] where 3 is for x, y, yaw respectively
+        """
+        v, w = trajectory[:, 0], trajectory[:, 1]
         current_yaw = self.state.yaw
-        yaw = np.cumsum(w * self.dt, axis=0)
-        yaw += current_yaw - yaw[:1]
-
+        yaw = np.cumsum(w * self.dt, axis=1)
+        yaw += current_yaw - yaw[:, :1]
         v_x = v * np.cos(yaw)
         v_y = v * np.sin(yaw)
-        x = np.cumsum(v_x * self.dt, axis=0)
-        y = np.cumsum(v_y * self.dt, axis=0)
-
-        x += self.state.x - x[:1]
-        y += self.state.y - y[:1]
+        x = np.cumsum(v_x * self.dt, axis=1)
+        y = np.cumsum(v_y * self.dt, axis=1)
+        x += self.state.x - x[:, :1]
+        y += self.state.y - y[:, :1]
 
         trajectory_points = np.concatenate(
             [
@@ -143,7 +149,7 @@ class MPPICGenerator():
                 y[:, np.newaxis],
                 yaw[:, np.newaxis],
             ],
-            axis=1,
+            axis=2,
         )
 
         return trajectory_points

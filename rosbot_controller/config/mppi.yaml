@@ -1,13 +1,11 @@
 robot:
-    map_frame: "odom" 
-    base_frame: "base_link"
+    odom_topic: "odom" 
 
 local_planner:
     goal_tolerance: 0.2 
-    controller_freq: 90
     traj_lookahead: 10
 
-    wait_full_step: False 
+    wait_full_step: True 
     visualize_trajs: True
 
 mppic:
@@ -22,4 +20,4 @@ mppic:
     limit_v: 0.5
     limit_w:  0.7
     desired_v: 0.3
-    traj_lookahead: 12 
+    traj_lookahead: 15

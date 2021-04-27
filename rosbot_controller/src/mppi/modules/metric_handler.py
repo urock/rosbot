@@ -42,7 +42,7 @@ class MetricHandler():
         plt.subplot(221)
         plt.plot(lin_rng, lin_vels)
         plt.yscale("linear")
-        plt.title("Linear velocitie")
+        plt.title("Linear velocity")
         plt.xlabel("point")
         plt.ylabel("Linear vel")
 
@@ -50,7 +50,7 @@ class MetricHandler():
         plt.subplot(222)
         plt.plot(ang_rng, ang_vels)
         plt.yscale("linear")
-        plt.title("Angular")
+        plt.title("Angular velocity")
         plt.xlabel("point")
         plt.ylabel("Angular vel")
 
