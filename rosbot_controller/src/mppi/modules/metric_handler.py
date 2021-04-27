@@ -18,6 +18,11 @@ class MetricHandler():
     def show_metrics(self, time, reference_trajectory):
         lin_vels = self.path[:, 3]
         ang_vels = self.path[:, 4]
+
+        lin_controls = self.controls[:, 0]
+        ang_controls = self.controls[:, 1]
+
+        value = self.metric(reference_trajectory, self.path)
         rospy.loginfo("Path Total Time: {:.6f}.".format(time))
         rospy.loginfo("Path Error by {}: {:.6f}.\n".format(self.metric.__name__, value))
 
