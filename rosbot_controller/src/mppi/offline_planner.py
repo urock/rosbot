@@ -12,6 +12,7 @@ from utils.dtypes import State
 
 import matplotlib.pyplot as plt
 from utils.logger_tools import plot_xy_data, save_plot
+from utils.logger_tools import visualize_trajectory, visualize_control, visualize_costs 
 
 
 """
@@ -58,8 +59,8 @@ class OfflinePlanner:
         x = self._propagate_control_to_states(current_state, u[None])
 
         fig, ax = plt.subplots(3)
-        self._visualize_trajectory(x, ax[0])
-        self._visualize_u(u, ax[1], ax[2])
+        visualize_trajectory(x, ax[0])
+        visualize_control(u, self.dt, ax[1], ax[2])
         
         plt.show()   
 
@@ -73,7 +74,7 @@ class OfflinePlanner:
         batch_u = self.optimizer.init_control_batch()
         batch_x = self._propagate_control_to_states_no_nn(current_state, batch_u)
         # batch_x = self._propagate_control_to_states(current_state, batch_u)
-        batch_costs = self._calculate_costs(batch_x, goal)
+        batch_costs = self._cost_for_goal_and_time(batch_x, goal)
         self.optimizer.update_bests(batch_costs)
 
         print("Run: init ok")
@@ -87,7 +88,7 @@ class OfflinePlanner:
             batch_u = self.optimizer.gen_next_control_batch()            
             batch_x = self._propagate_control_to_states_no_nn(current_state, batch_u)
             # batch_x = self._propagate_control_to_states(current_state, batch_u)
-            batch_costs = self._calculate_costs(batch_x, goal)
+            batch_costs = self._cost_for_goal_and_time(batch_x, goal)
             self.optimizer.update_bests(batch_costs)
 
             t = perf_counter() 
@@ -104,8 +105,8 @@ class OfflinePlanner:
             # best_x = self._propagate_control_to_states_no_nn(current_state, best_contol[None])
     
             # fig, ax = plt.subplots(3)
-            # self._visualize_trajectory(best_x, ax[0])
-            # self._visualize_u(best_contol, ax[1], ax[2])
+            # visualize_trajectory(best_x, ax[0])
+            # visualize_control(best_contol, self.dt, ax[1], ax[2])
          
             # plt.show()   
             
@@ -127,8 +128,8 @@ class OfflinePlanner:
         print("Last point ({:.4f},{:.4f}, {:.4f}) Cost = {:.10f}".format(x, y, yaw, best_cost))
 
         fig, ax = plt.subplots(3)
-        self._visualize_trajectory(best_x, ax[0])
-        self._visualize_u(best_contol, ax[1], ax[2])
+        visualize_trajectory(best_x, ax[0])
+        visualize_control(best_contol, self.dt, ax[1], ax[2])
         
         plt.show()   
 
@@ -267,8 +268,6 @@ class OfflinePlanner:
         x = batch_x[:, self.time_steps-1, 0]    # take only last element
         y = batch_x[:, self.time_steps-1, 1]    
 
-        # v = np.abs(batch_x[:,:,3])
-        # w = batch_x[:,:,4]
 
 
         L2 = (x-goal[0])**2 + (y-goal[1])**2
@@ -290,50 +289,43 @@ class OfflinePlanner:
 
         # return np.sum(L2, axis=1)
         # return L2 + 0.1 * np.sum(v,axis=1)
-        return L2 + 0.1 * dl_sum
+        return L2
+        # return L2 + 0.1 * dl_sum
         # return L2 + dl_y + dl_sum
 
-
-
-    def _visualize_trajectory(self, x, ax):
+    def _cost_for_goal_and_time(self, batch_x, goal):
         """
-            Args:
-                x: np.array of shape (time_steps, state_size)
-                        state is [x, y, yaw, v, w]
+        Args:
+            batch_x: np.array of shape (batch_size, time_steps, state_size) 
+            goal (list of 2 elements): coord of main goal 
+        Return:
+            batch_costs: batch_x: np.array of shape (batch_size)
         """
-        ax.set_xlabel('X, m')        
-        ax.set_ylabel('Y, m')
-        ax.set_title("Best XY trajectory")
-        plot_xy_data(x=x[:,0], y=x[:,1], ax=ax, plot_name="x_y")
 
-        # plt.show()
+        eps = 0.1
+        Tmax = 3.0
 
-    def _visualize_costs(self, batch_costs, ax):
-        """
-            Args:
-                batch_costs: np.array of shape (batch_size)
-        """
-        ax.set_title("Current batch of costs")
-        ax.set_xlabel('batch_idx')        
-        ax.set_ylabel('cost')
+        x = batch_x[:, :, 0]    # take every point
+        y = batch_x[:, :, 1]
 
-        plot_xy_data(x=[i for i in range(len(batch_costs))], y=batch_costs, ax=ax, plot_name="costs")
+        L2 = (x-goal[0])**2 + (y-goal[1])**2
 
-        # plt.show()
 
-    def _visualize_u(self, u, ax1, ax2):
-        """
-            Args:
-                u: np.array of shape (time_steps, control_size)
-        """
-        ax1.set_title("Control")
-        ax1.set_xlabel('t, s')        
-        ax1.set_ylabel('u')
+        # t_min = np.empty(L2.shape[0])
+        # for i in range(L2.shape[0]):
+        #     aw = np.argwhere(L2[i] < eps)
+        #     if aw.shape[0] != 0:
+        #         t_min[i] = self.dt*(np.argwhere(L2[i] < eps)[0])
+        #         if t_min[i] > Tmax:
+        #             t_min[i] = Tmax
+        #     else:
+        #         t_min[i] = Tmax
 
-        t = [i*self.dt for i in range(u.shape[0])]
+        # return t_min
+        return np.sum(L2, axis=1)
+   
 
-        plot_xy_data(x=t, y=u[:,0], ax=ax1, plot_name="linear")
-        plot_xy_data(x=t, y=u[:,1], ax=ax2, plot_name="anglular")
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -344,9 +336,8 @@ def main():
 
     args = parser.parse_args()
 
-    current_state = np.zeros(5)
-    current_state = [0.0, 0.0, 1.57, 0.0, 0.0]
-    goal = [0.0, 1.0]   # (x, y)
+    current_state = np.array([0.0, 0.0, 1, 0.0, 0.0])   # (x, y, yaw, v, w)
+    goal = [1.0, 1.0]                                   # (x, y)
 
     planner = OfflinePlanner(args.model_path_1, args.model_path_100)
     control = planner.run(current_state, goal)
