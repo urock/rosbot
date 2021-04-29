@@ -134,7 +134,6 @@ class Rosbot:
 
     def update_state_by_nn_model(self, model, control_vector, dt):
         """
-
         c : control vector of RobotControl type
         dt : time period in seconds
         """
@@ -190,5 +189,3 @@ def quaternion_to_euler(quaternion):
     t4 = +1.0 - 2.0 * (y * y + z * z)
     yaw = math.atan2(t3, t4)
     return [yaw, pitch, roll]
-
-
