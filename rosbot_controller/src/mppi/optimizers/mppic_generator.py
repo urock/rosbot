@@ -32,7 +32,6 @@ class MPPICGenerator():
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt
 
-    
     @property
     def velocities_batch(self):
         return self._batch_of_seqs[:, :, :2]
@@ -53,7 +52,6 @@ class MPPICGenerator():
         w_best = self.curr_control_seq[0 + offset, 1]
         return Control(v_best, w_best)
 
-
     def displace_controls(self, offset: int):
         if offset == 0:
             return
@@ -63,10 +61,14 @@ class MPPICGenerator():
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
     def _update_batch_of_seqs(self):
-        noises = self._generate_noises()
+        noises = self._generate_noises(int(self.time_steps / 2))
+        noises = np.repeat(noises, 2, axis=1)
+
         self._batch_of_seqs[:, 0, 0] = self.state.v
         self._batch_of_seqs[:, 0, 1] = self.state.w
+
         self._batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
+
         self._batch_of_seqs[:, :, 2:3] = np.clip(
             self._batch_of_seqs[:, :, 2:3], -self._limit_v, self._limit_v
         )
@@ -75,9 +77,9 @@ class MPPICGenerator():
         )
         self._update_velocities()
 
-    def _generate_noises(self):
-        v_noises = np.random.normal(0.0, self._v_std, size=(self.batch_size, self.time_steps, 1))
-        w_noises = np.random.normal(0.0, self._w_std, size=(self.batch_size, self.time_steps, 1))
+    def _generate_noises(self, time_steps):
+        v_noises = np.random.normal(0.0, self._v_std, size=(self.batch_size, time_steps, 1))
+        w_noises = np.random.normal(0.0, self._w_std, size=(self.batch_size, time_steps, 1))
         noises = np.concatenate([v_noises, w_noises], axis=2)
 
         return noises

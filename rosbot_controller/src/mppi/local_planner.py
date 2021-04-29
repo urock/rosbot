@@ -30,6 +30,7 @@ class LocalPlanner:
                 if self.path_handler.has_path:
                     self.goal_handler.reference_trajectory = self.path_handler.path
                     self.optimizer.reference_trajectory = self.path_handler.path
+                    self.optimizer.reference_intervals = self.path_handler.path_intervals
                 elif not self.goal_handler.path_finished:
                     start = perf_counter()
                     goal_idx = self.goal_handler.update_goal()
@@ -37,6 +38,7 @@ class LocalPlanner:
                         control = self.optimizer.calc_next_control(goal_idx)
                         self.metric_handler.add_control(copy(control))
                         self.controller.publish_control(control)
+
                         if self._visualize_trajs:
                             visualize_trajs(0, self._trajectories_pub,
                                             self.optimizer.curr_trajectories, 0.1)
@@ -50,7 +52,6 @@ class LocalPlanner:
                             rospy.sleep(self.optimizer.get_offset_time() - t)
 
                     else:
-                        print(4)
                         self.controller.publish_stop_control()
                         self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
                                                          self.optimizer.reference_trajectory)

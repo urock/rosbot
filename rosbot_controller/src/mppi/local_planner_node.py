@@ -8,7 +8,7 @@ import signal
 
 import rospy
 
-from policies.costs import TriangleCost
+from policies.costs import nearest_cost, triangle_cost 
 from policies.control import calc_softmax_seq, find_min_seq
 from policies.metrics import mean_dist_metric
 
@@ -24,7 +24,7 @@ from modules.metric_handler import MetricHandler
 
 
 pr = cProfile.Profile(timeunit=0.00)
-FUNCTION_PRINT_COUNT = 40
+FUNCTION_PRINT_COUNT = 200
 
 
 def main():
@@ -40,9 +40,8 @@ def start_planner():
 
     model_path = rospy.get_param("~mppic/model_path", None)
     model = nnio.ONNXModel(model_path)
-    cost = TriangleCost()
     control_generator = MPPICGenerator(model)
-    optimizer = MPPICOptimizer(control_generator, cost, calc_softmax_seq)
+    optimizer = MPPICOptimizer(control_generator, triangle_cost, calc_softmax_seq)
     odom = Odom()
     controller = Controller()
     goal_handler = GoalHandler()

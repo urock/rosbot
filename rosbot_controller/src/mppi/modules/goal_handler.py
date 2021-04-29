@@ -9,7 +9,7 @@ class GoalHandler:
         self.goal_idx = 0
 
         self._reference_trajectory: np.array
-        self._trajectory_lookahead = rospy.get_param("~goal_handler/traj_lookahead", 7)
+        self._trajectory_lookahed_count = rospy.get_param("~goal_handler/trajectory_lookahed_count", 7)
         self._goal_tolerance = rospy.get_param("~goal_handler/goal_tolerance", 0.2)
 
 
@@ -49,7 +49,7 @@ class GoalHandler:
 
     def _get_last_considered_trajectory_idx(self):
         traj_end = len(self._reference_trajectory)
-        end = self.goal_idx + self._trajectory_lookahead + 1
+        end = self.goal_idx + self._trajectory_lookahed_count + 1
         return min(end, traj_end)
 
     def _is_goal_reached(self, dist):

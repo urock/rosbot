@@ -1,93 +1,124 @@
-from numba import jit
-from numba.experimental import jitclass
 import numpy as np
+from numba import njit
 
 
-from abc import ABC, abstractmethod
+def nearest_cost(state, reference_trajectory, reference_intervals, desired_v):
+    """Cost according to k nearest points.
+
+    Args:
+        state: np.ndarray of shape [batch_size, time_steps, 8] where 3 for x, y, yaw, v, w, v_control, w_control, dts
+        ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
+        traj_lookahead: int
+        goal_idx: int
+        goals_interval: float
+        desired_v: float
+
+    Return:
+        costs: np.array of shape [batch_size]
+    """
+    v = state[:, :, 3]
+
+    costs = lin_vel_cost(v, desired_v)
+    costs += nearest_cost_for_k_ellements(state, reference_trajectory, 3)
+    print(costs.shape)
+
+    return costs
 
 
-class Cost(ABC):
-    @abstractmethod
-    def __call__(self, state, reference_trajectory, desired_v, goals_interval):
-        """Calculate cost 
+def nearest_cost_for_k_ellements(state, reference_trajectory, k_idx):
+    x_dists = state[:, :, :1] - reference_trajectory[:, 0]
+    y_dists = state[:, :, 1:2] - reference_trajectory[:, 1]
+    dists = x_dists ** 2 + y_dists ** 2
 
-        Args:
-            state: np.ndarray of shape [batch_size, time_steps, 7] where 3 for x, y, yaw, v, w, v_control, w_control
-            ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
-            traj_lookahead: int
-            goal_idx: int
-            goals_interval: float
-            desired_v: float
+    k = min(k_idx, len(reference_trajectory))
+    dists = np.partition(dists, k - 1, axis=2)[:, :, :k] * np.arange(1, k + 1)
 
-        Return:
-            costs: np.array of shape [batch_size]
-        """
-class TriangleCost():
-    def __call__(self, state, reference_trajectory, desired_v, goals_interval):
-        """Cost according to nearest segment.
+    return dists.min(2).sum(1)
 
-        Args:
-            state: np.ndarray of shape [batch_size, time_steps, 8] where 3 for x, y, yaw, v, w, v_control, w_control, dts
-            ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
-            traj_lookahead: int
-            goal_idx: int
-            goals_interval: float
-            desired_v: float
+@njit
+def triangle_cost(state, reference_trajectory, reference_intervals, desired_v):
+    """Cost according to nearest segment.
 
-        Return:
-            costs: np.array of shape [batch_size]
-        """
-        v = state[:, :, 3]
-        w = state[:, :, 5]
+    Args:
+        state: np.ndarray of shape [batch_size, time_steps, 8] where 3 for x, y, yaw, v, w, v_control, w_control, dts
+        ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
+        desired_v: float
 
-        v_control = state[:, :, 5]
-        w_control = state[:, :, 6]
+    Return:
+        costs: np.array of shape [batch_size]
+    """
+    v = state[:, :, 3]
+    costs = lin_vel_cost(v, desired_v)
+    costs = costs + triangle_cost_segments(state, reference_trajectory, reference_intervals)
 
-        costs = lin_vel_cost(v, desired_v)
-        costs += self._triangle_cost_segments(state, reference_trajectory, goals_interval)
-
-        return costs
-
-    def _triangle_cost_segments(self, state, ref, goals_interval):
-        x_dists = state[:, :, :1] - ref[:, 0]
-        y_dists = state[:, :, 1:2] - ref[:, 1]
-        dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
-        triangle_costs = np.empty(shape=(dists.shape[0], dists.shape[1], len(ref) - 1))
-
-        if len(ref) == 1:
-            return dists.squeeze(2).sum(1)
-
-        for q in range(len(ref) - 1):
-            first_sides = dists[:, :, q]
-            second_sides = dists[:, :, q + 1]
-            opposite_sides = goals_interval
-            triangle_costs[:, :, q] = self._triangle_cost_segment(
-                opposite_sides, first_sides, second_sides
-            )
-
-        return triangle_costs.min(2).sum(1)
-
-    def _triangle_cost_segment(self, opposite_side, first_sides, second_sides):
-        costs = np.empty(shape=first_sides.shape)
-        first_obtuse_mask = self._is_angle_obtuse(first_sides, second_sides, opposite_side)
-        second_obtuse_mask = self._is_angle_obtuse(second_sides, first_sides, opposite_side)
-        h_mask = (~first_obtuse_mask) & (~second_obtuse_mask)
-
-        costs[first_obtuse_mask] = second_sides[first_obtuse_mask]
-        costs[second_obtuse_mask] = first_sides[second_obtuse_mask]
-        costs[h_mask] = self._heron(opposite_side, first_sides[h_mask], second_sides[h_mask])
-
-        return costs
-
-    def _is_angle_obtuse(self, opposite_side, b, c):
-        return opposite_side ** 2 > (b ** 2 + c ** 2)
-
-    def _heron(self, opposite_side, b, c):
-        p = (opposite_side + b + c) / 2.0
-        h = 2.0 / opposite_side * np.sqrt(p * (p - opposite_side) * (p - b) * (p - c))
-        return h
+    return costs
 
 
+@njit
+def triangle_cost_segments(state, reference_trajectory, reference_intervals):
+    x_dists = state[:, :, :1] - reference_trajectory[:, 0]
+    y_dists = state[:, :, 1:2] - reference_trajectory[:, 1]
+    dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
+    
+    if len(reference_trajectory) == 1:
+        return dists.sum(2).sum(1)
+
+    first_sides = dists[:, :, :-1]
+    second_sides = dists[:, :, 1:]
+    opposite_sides = reference_intervals
+
+
+    first_obtuse_mask = is_angle_obtuse(first_sides, second_sides, opposite_sides)
+    second_obtuse_mask = is_angle_obtuse(second_sides, first_sides, opposite_sides)
+
+    cost = np.zeros(shape=(dists.shape[0]))
+    for i in range(dists.shape[0]):
+        for j in range(dists.shape[1]):
+            dists_to_segments = np.empty(len(reference_intervals))
+            for k in range(len(reference_intervals)):
+                first_side = first_sides[i, j, k]
+                second_side = second_sides[i, j, k]
+                opposite_side = opposite_sides[k]
+                if is_angle_obtuse(first_side, second_side, opposite_side):
+                    dists_to_segments[k] = first_side
+                elif is_angle_obtuse(second_side, first_side, opposite_side):
+                    dists_to_segments[k] = second_side
+                else:
+                    dists_to_segments[k] = heron(
+                        opposite_side,
+                        first_side,
+                        second_side
+                    )
+            cost[i] += dists_to_segments.min()
+
+    return cost
+
+@njit
+def min_costs_2dim(costs):
+    min_costs = np.empty(shape = (costs.shape[0], costs.shape[1]))
+    
+    for q in range(costs.shape[0]):
+        for w in range(costs.shape[1]):
+            min_costs[q][w]= costs[q][w].min()
+
+    return min_costs
+
+
+
+@njit
+def is_angle_obtuse(opposite_side, b, c):
+    return opposite_side ** 2 > (b ** 2 + c ** 2)
+
+
+
+@njit
+def heron(opposite_side, b, c):
+    p = (opposite_side + b + c) / 2.0
+    h = 2.0 / opposite_side * np.sqrt(p * (p - opposite_side) * (p - b) * (p - c))
+    return h
+
+
+@njit
 def lin_vel_cost(v, desired_v):
     DESIRED_V_WEIGHT = 3.0
     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
