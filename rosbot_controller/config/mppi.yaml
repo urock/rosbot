@@ -3,7 +3,7 @@ robot:
 
 local_planner:
     goal_tolerance: 0.05 
-    trajectory_lookahed_count: 10
+    trajectory_lookahed_count: 4
 
     wait_full_step: False
     visualize_trajs: True
@@ -15,9 +15,9 @@ mppic:
     model_path: "$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx"
     mppi_freq: 10
     iter_count: 3
-    v_std: 0.15
-    w_std: 0.40
+    v_std: 0.10
+    w_std: 0.25
     limit_v: 0.5
     limit_w:  1.0
     desired_v: 0.3
-    traj_lookahead: 3.5
+    traj_lookahead: 1.5

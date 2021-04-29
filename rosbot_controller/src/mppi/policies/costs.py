@@ -95,17 +95,6 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals):
 
 
 @njit
-def min_costs_2dim(costs):
-    min_costs = np.empty(shape=(costs.shape[0], costs.shape[1]))
-
-    for q in range(costs.shape[0]):
-        for w in range(costs.shape[1]):
-            min_costs[q][w] = costs[q][w].min()
-
-    return min_costs
-
-
-@njit
 def is_angle_obtuse(opposite_side, b, c):
     return opposite_side ** 2 > (b ** 2 + c ** 2)
 
@@ -119,6 +108,6 @@ def heron(opposite_side, b, c):
 
 @njit
 def lin_vel_cost(v, desired_v):
-    DESIRED_V_WEIGHT = 1.0
+    DESIRED_V_WEIGHT = 2.0
     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
     return v_costs

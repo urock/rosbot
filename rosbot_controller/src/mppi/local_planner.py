@@ -16,13 +16,13 @@ class LocalPlanner:
         self.path_handler = path_handler
         self.metric_handler = metric_handler
 
-        self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', True)
+        self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
         self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
         self._trajectories_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
 
     def start(self):
-        self.optimizer.control_generator.state = self.odom.state
+        self.optimizer.generator.state = self.odom.state
         self.goal_handler.state = self.odom.state
 
         try:
@@ -43,7 +43,7 @@ class LocalPlanner:
                             visualize_trajs(0, self._trajectories_pub,
                                             self.optimizer.curr_trajectories, 0.1)
                             visualize_traj(99999, self._trajectories_pub,
-                                           self.optimizer.control_generator.propagete_curr_trajectory(), 0.05)
+                                           self.optimizer.generator.propagete_curr_trajectory(), 0.05)
 
                         self.metric_handler.add_state(copy(self.odom.state))
                         t = perf_counter() - start
