@@ -9,10 +9,13 @@ from gazebo_msgs.srv import SetModelState
 from gazebo_msgs.msg import ModelState
 
 
-
-os.popen("roslaunch rosbot_controller run_simulation.launch rviz:=true")
+# UPDATE_RATE = np.random.randint(10, 34)
+DT_MAX = 0.2
+DT_MIN = 0.03
+UPDATE_RATE = np.random.uniform(1/DT_MIN, 1/DT_MAX)
+T = 1
+os.popen("roslaunch rosbot_controller run_simulation.launch rviz:=false update_rate:={} cmd_freq:={}".format(UPDATE_RATE, UPDATE_RATE))
 rospy.sleep(7)
-T = 1 # sec
 rospy.init_node("data_collector", anonymous=True)
 cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
 
@@ -40,9 +43,6 @@ def ResetPose():
     except:
         pass
 
-
-
-
 def run_control_gen(
 	output_folder,
 	Tmax,
@@ -57,7 +57,7 @@ def run_control_gen(
 	os.popen("roslaunch rosbot_controller spawn_kinematic_model.launch")
 	rospy.sleep(5)
 	os.popen(
-		f"roslaunch rosbot_controller control_gen.launch output_folder:=/{output_folder} Tmax:={Tmax} v_max:={v_max} w_max:={w_max} a_lin:={a_lin} a_ang:={a_ang} period_lin:={period_lin} period_ang:={period_ang} v_min:={-v_max} w_min:={-w_max}"
+		f"roslaunch rosbot_controller control_gen.launch output_folder:=/{output_folder} Tmax:={Tmax} v_max:={v_max} w_max:={w_max} a_lin:={a_lin} a_ang:={a_ang} period_lin:={period_lin} period_ang:={period_ang} v_min:={0} w_min:={0}"
 		)
 
 	rospy.sleep(3)
@@ -72,19 +72,25 @@ def run_control_gen(
 
 
 
-for _ in range(50):
-	Tmax = 50
-	v_max = round(np.random.uniform(low=0.2, high=1.5), 2) # TODO find high=0.5
-	w_max = round(np.random.uniform(low=0.2, high=1.5), 2)
-	a_lin = round(np.random.uniform(low=0.1, high=0.5), 2) # TODO find high=0.5
-	a_ang = round(np.random.uniform(low=-0.2, high=0.2), 2)
-	period_lin = np.random.randint(5, Tmax)
-	period_ang = np.random.randint(5, Tmax) 
 
-	output_folder = "control_gen_Tmax={}_v_max={}_w_max={}_a_lin={}_a_ang={}_per_lin={}_per_ang={}".format(Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+Tmax = 50
+v_max = round(np.random.uniform(low=0.5, high=1.5), 2)   
+w_max = round(np.random.uniform(low=1.5, high=2.5), 2)
+a_lin = round(np.random.uniform(low=-0.5, high=0.5), 4)
+a_ang = round(np.random.uniform(low=-0.5, high=0.5), 4)
+period_lin = np.random.randint(10, int(Tmax/2))
+period_ang = np.random.randint(10, int(Tmax/2)) 
 
-	run_control_gen(output_folder, Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
-	ResetPose()
+output_folder = "control_gen_dt_{}_Tmax={}_v_max={}_w_max={}_a_lin={}_a_ang={}_per_lin={}_per_ang={}".format(round(1/UPDATE_RATE, 3), Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+
+run_control_gen(output_folder, Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+ResetPose()
+
+a_ang = -a_ang
+output_folder = "control_gen_dt_{}_Tmax={}_v_max={}_w_max={}_a_lin={}_a_ang={}_per_lin={}_per_ang={}".format(round(1/UPDATE_RATE, 3), Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+
+run_control_gen(output_folder, Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+ResetPose()
 
 
 os.popen("rosnode kill -a")
