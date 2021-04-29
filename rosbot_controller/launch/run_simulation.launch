@@ -13,11 +13,13 @@
     <arg name="parent_frame"    default="odom"/>
     <arg name="robot_frame"     default="nn_model_link"/>
     <arg name="cmd_freq"        default="30"/>
+    <arg name="update_rate"     default="30"/>
 
     <!-- spawn rosbot -->
     <include file="$(find rosbot2_gazebo)/launch/spawn_rosbot.launch">
-        <arg name="rviz"    value="$(arg rviz)" />
-        <arg name="gui"     value="$(arg gui)" />
+        <arg name="rviz"            value="$(arg rviz)" />
+        <arg name="gui"             value="$(arg gui)" />
+        <arg name="update_rate"     value="$(arg update_rate)" />
     </include>
 
     <!-- spawn rosbot kinetic model -->
