@@ -103,7 +103,7 @@ class Logger:
                 self.time['t'].append(current_time - self.init_time)
                 # To calculate speed, but not for predict in the NN model
                 self.delta_time['dt'].append(current_time - self.prev_time) 
-                # print(self.delta_time['dt'][-1])
+                # print(self.delta_time['dt'])
                 self.control['x'].append(self.current_control[0])
                 self.control['yaw'].append(self.current_control[1])
 
