@@ -9,9 +9,9 @@ class GoalHandler:
         self.goal_idx = 0
 
         self._reference_trajectory: np.array
-        self._trajectory_lookahed_count = rospy.get_param("~goal_handler/trajectory_lookahed_count", 7)
+        self._trajectory_lookahed_count = rospy.get_param(
+            "~goal_handler/trajectory_lookahed_count", 7)
         self._goal_tolerance = rospy.get_param("~goal_handler/goal_tolerance", 0.2)
-
 
     @property
     def reference_trajectory(self):

@@ -31,9 +31,7 @@ class PathHandler():
             yaw = quaternion_to_euler(pose.pose.orientation)[0]
             self._path = np.append(self.path, [[x, y, yaw]], axis=0)
 
-
         self.path_intervals = np.linalg.norm(self._path[1:, :2] - self._path[:-1, :2], axis=1)
-
 
         self.has_path = True
         self.path_come_time = time()

@@ -31,8 +31,8 @@ class MPPICOptimizer():
             self._optimize(goal_idx)
 
         self.curr_exec_time = perf_counter() - start
-        self.curr_offset = min(math.ceil(self.curr_exec_time / self.control_generator.dt), 
-                len(self.control_generator.curr_control_seq) - 1)
+        self.curr_offset = min(math.ceil(self.curr_exec_time / self.control_generator.dt),
+                               len(self.control_generator.curr_control_seq) - 1)
 
         control = self.control_generator.get_control(self.curr_offset)
         self.control_generator.displace_controls(self.curr_offset)
@@ -80,6 +80,3 @@ class MPPICOptimizer():
                 break
 
         return count
-
-
-

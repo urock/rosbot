@@ -35,6 +35,7 @@ def nearest_cost_for_k_ellements(state, reference_trajectory, k_idx):
 
     return dists.min(2).sum(1)
 
+
 @njit
 def triangle_cost(state, reference_trajectory, reference_intervals, desired_v):
     """Cost according to nearest segment.
@@ -59,14 +60,13 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals):
     x_dists = state[:, :, :1] - reference_trajectory[:, 0]
     y_dists = state[:, :, 1:2] - reference_trajectory[:, 1]
     dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
-    
+
     if len(reference_trajectory) == 1:
         return dists.sum(2).sum(1)
 
     first_sides = dists[:, :, :-1]
     second_sides = dists[:, :, 1:]
     opposite_sides = reference_intervals
-
 
     first_obtuse_mask = is_angle_obtuse(first_sides, second_sides, opposite_sides)
     second_obtuse_mask = is_angle_obtuse(second_sides, first_sides, opposite_sides)
@@ -93,22 +93,21 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals):
 
     return cost
 
+
 @njit
 def min_costs_2dim(costs):
-    min_costs = np.empty(shape = (costs.shape[0], costs.shape[1]))
-    
+    min_costs = np.empty(shape=(costs.shape[0], costs.shape[1]))
+
     for q in range(costs.shape[0]):
         for w in range(costs.shape[1]):
-            min_costs[q][w]= costs[q][w].min()
+            min_costs[q][w] = costs[q][w].min()
 
     return min_costs
-
 
 
 @njit
 def is_angle_obtuse(opposite_side, b, c):
     return opposite_side ** 2 > (b ** 2 + c ** 2)
-
 
 
 @njit
@@ -120,6 +119,6 @@ def heron(opposite_side, b, c):
 
 @njit
 def lin_vel_cost(v, desired_v):
-    DESIRED_V_WEIGHT = 3.0
+    DESIRED_V_WEIGHT = 1.0
     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
     return v_costs

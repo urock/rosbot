@@ -16,7 +16,7 @@ class LocalPlanner:
         self.path_handler = path_handler
         self.metric_handler = metric_handler
 
-        self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
+        self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', True)
         self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
         self._trajectories_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)

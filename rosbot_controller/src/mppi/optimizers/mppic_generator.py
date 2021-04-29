@@ -28,6 +28,8 @@ class MPPICGenerator():
         self._limit_v = rospy.get_param("~mppic/limit_v", 0.5)
         self._limit_w = rospy.get_param("~mppic/limit_w", 0.7)
 
+        self._noise_repeat_factor = rospy.get_param("~mppic/noise_repeat_factor", 2)
+
         # 5 for v, w, control_dim and dt
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt
@@ -61,8 +63,9 @@ class MPPICGenerator():
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
     def _update_batch_of_seqs(self):
-        noises = self._generate_noises(int(self.time_steps / 2))
-        noises = np.repeat(noises, 2, axis=1)
+        noises = self._generate_noises(int(self.time_steps / self._noise_repeat_factor))
+
+        noises = np.repeat(noises, self._noise_repeat_factor, axis=1)
 
         self._batch_of_seqs[:, 0, 0] = self.state.v
         self._batch_of_seqs[:, 0, 1] = self.state.w
