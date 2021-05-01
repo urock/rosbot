@@ -16,7 +16,7 @@ class Colors:
 class ReferenceVisualizer:
     def __init__(self, topic):
         self._reference_id = 0
-        self._reference_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
+        self._reference_pub = rospy.Publisher(topic, MarkerArray, queue_size=10)
 
     def visualize(self, reference_trajectory, color, scale):
         self._reference_id = 0
