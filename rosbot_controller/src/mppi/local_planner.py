@@ -18,6 +18,8 @@ class LocalPlanner:
         self.metric_handler = metric_handler
 
         self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
+        self._visualize_state = rospy.get_param('~local_planner/visualize_state', True)
+
         self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
         self._state_visualizer = StateVisualizer('/mppi_path')
@@ -36,9 +38,12 @@ class LocalPlanner:
             rospy.loginfo("Interrupted")
 
     def _path_handle(self):
-        self._state_visualizer.reset()
-        self._ref_visualizer.reset()
-        self._trajs_visualizer.reset()
+        if self._visualize_trajs:
+            self._ref_visualizer.reset()
+            self._trajs_visualizer.reset()
+        if self._visualize_state:
+            self._state_visualizer.reset()
+
         self.optimizer.generator.reset()
         self.optimizer.generator.state = self.odom.state
         self.goal_handler.state = self.odom.state
@@ -52,8 +57,7 @@ class LocalPlanner:
         goal_idx = self.goal_handler.update_goal()
         if not self.goal_handler.path_finished:
             self._control(goal_idx)
-            if self._visualize_trajs:
-                self._visualizations_handle()
+            self._visualizations_handle()
             t = perf_counter() - start
             if self._wait_full_step:
                 rospy.sleep(self.optimizer.get_offset_time() - t)
@@ -71,17 +75,18 @@ class LocalPlanner:
                                          self.optimizer.reference_trajectory)
 
     def _visualizations_handle(self):
+        if self._visualize_trajs:
+            self._trajs_visualizer.add(self.optimizer.curr_trajectories,
+                                    Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
+            self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
+                                    Colors.red, scale=Vector3(0.05, 0.05, 0.05))
 
-        self._trajs_visualizer.add(self.optimizer.curr_trajectories,
-                                   Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
-        self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
-                                   Colors.red, scale=Vector3(0.05, 0.05, 0.05))
+            self._trajs_visualizer.visualize()
+            self._ref_visualizer.visualize(self.optimizer.reference_considered,
+                                        Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
 
-        self._trajs_visualizer.visualize()
-        self._ref_visualizer.visualize(self.optimizer.reference_considered,
-                                       Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
-
-        self._state_visualizer.visualize(self.odom.state, Colors.blue, scale = Vector3(0.025, 0.025, 0.025))
+        if self._visualize_state:
+            self._state_visualizer.visualize(self.odom.state, Colors.blue, scale = Vector3(0.025, 0.025, 0.025))
 
     def _update_metrics(self, control):
         self.metric_handler.add_state(copy(self.odom.state))
