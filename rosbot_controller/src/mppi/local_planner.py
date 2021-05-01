@@ -28,14 +28,14 @@ class LocalPlanner:
         try:
             while not rospy.is_shutdown():
                 if self.path_handler.has_path:
-                    self._handle_new_path()
+                    self._path_handle()
                 elif not self.goal_handler.path_finished:
-                    self._next_goal_handle()
+                    self._goal_handle()
 
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")
 
-    def _handle_new_path(self):
+    def _path_handle(self):
         self._state_visualizer.reset()
         self._ref_visualizer.reset()
         self._trajs_visualizer.reset()
@@ -47,30 +47,30 @@ class LocalPlanner:
         self.optimizer.reference_trajectory = self.path_handler.path
         self.optimizer.reference_intervals = self.path_handler.path_intervals
 
-    def _next_goal_handle(self):
+    def _goal_handle(self):
         start = perf_counter()
         goal_idx = self.goal_handler.update_goal()
         if not self.goal_handler.path_finished:
-            self._next_control(goal_idx)
+            self._control(goal_idx)
             if self._visualize_trajs:
-                self._handle_visualizations()
+                self._visualizations_handle()
             t = perf_counter() - start
             if self._wait_full_step:
                 rospy.sleep(self.optimizer.get_offset_time() - t)
         else:
-            self._handle_path_finished()
+            self._path_finished_handle()
 
-    def _next_control(self, goal_idx):
+    def _control(self, goal_idx):
         control = self.optimizer.calc_next_control(goal_idx)
         self.controller.publish_control(control)
         self._update_metrics(control)
 
-    def _handle_path_finished(self):
+    def _path_finished_handle(self):
         self.controller.publish_stop_control()
         self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
                                          self.optimizer.reference_trajectory)
 
-    def _handle_visualizations(self):
+    def _visualizations_handle(self):
 
         self._trajs_visualizer.add(self.optimizer.curr_trajectories,
                                    Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
