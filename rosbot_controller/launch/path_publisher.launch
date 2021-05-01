@@ -3,7 +3,7 @@
     <arg name="map_frame"       default="/odom"/>
     <arg name="path_topic"       default="/path"/>
 
-    <node pkg="rosbot_controller" type="path_publisher.py" name="path_pub" output="screen">
+    <node pkg="rosbot_controller" type="path_publisher_node.py" name="path_pub" output="screen">
         <param name="map_frame"     value="$(arg map_frame)" />
         <param name="path_topic"     value="$(arg path_topic)" />
 
