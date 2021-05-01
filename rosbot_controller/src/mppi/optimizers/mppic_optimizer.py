@@ -7,28 +7,26 @@ import math
 import rospy
 sys.path.append("..")
 
-
 class MPPICOptimizer():
     def __init__(self, control_generator, cost, next_control_policy):
         self.cost = cost
         self.generator = control_generator
         self.next_control_policy = next_control_policy
 
-        self.reference_trajectory: np.ndarray
-        self.reference_intervals: np.array
-
-        self.curr_trajectories: np.ndarray
-        self.curr_offset = 0
-
         self._iter_count = int(rospy.get_param("~mppic/iter_count", 1))
         self._desired_v = rospy.get_param("~mppic/desired_v", 0.5)
+        self._trajectory_lookahead = int(rospy.get_param("~mppic/traj_lookahead", 2))
 
-        self._trajectory_lookahead = int(rospy.get_param("~mppic/traj_lookahead", 7))
+        self.reference_trajectory: np.ndarray
+        self.reference_intervals: np.array
+        self.curr_trajectories: np.ndarray
+        self.curr_offset = 0
 
     def calc_next_control(self, goal_idx):
         start = perf_counter()
         for _ in range(self._iter_count):
-            self._optimize(goal_idx)
+            count = self._calc_considered_point_count(goal_idx)
+            self._optimize(goal_idx, count)
 
         self.curr_exec_time = perf_counter() - start
         self.curr_offset = min(math.ceil(self.curr_exec_time / self.generator.dt),
@@ -38,8 +36,7 @@ class MPPICOptimizer():
         self.generator.displace_controls(self.curr_offset)
 
         rospy.loginfo_throttle(2, "Offset: {} Goal: {}. Exec Time {:.4f},\
-                Offset Time: {:.4f} .  \nControl [v, w] = [{:.2f} {:.2f}]. \nOdom    \
-                [v, w] = [{:.2f} {:.2f}] \n".format(
+                Offset Time: {:.4f} .  \n Control [v, w] = [{:.2f} {:.2f}]. \n Odom    [v, w] = [{:.2f} {:.2f}] \n".format(
             self.curr_offset, goal_idx, self.curr_exec_time, self.get_offset_time(), 
             control.v, control.w, self.generator.state.v, self.generator.state.w))
 
@@ -49,27 +46,24 @@ class MPPICOptimizer():
     def get_offset_time(self):
         return self.curr_offset * self.generator.dt
 
-    def _optimize(self, goal_idx: int):
+    def _optimize(self, goal_idx: int, ref_considered_pt_count: int):
         self.curr_trajectories = self.generator.generate_trajectories()
 
-        count = self._calc_considered_point_count(goal_idx)
+        beg = max(0, goal_idx - ref_considered_pt_count)
+        end = min(goal_idx + ref_considered_pt_count, len(self.reference_trajectory) - 1) + 1
 
-        beg = max(0, goal_idx - count)
-        end = min(goal_idx + count, len(self.reference_trajectory) - 1) + 1
-
-        reference_considered = self.reference_trajectory[beg:end, :3]
-        intervals_considered = self.reference_intervals[beg:end - 1]
+        self.reference_considered = self.reference_trajectory[beg:end, :3]
+        self.intervals_considered = self.reference_intervals[beg:end - 1]
 
         costs = self.cost(
             self.curr_trajectories,
-            reference_considered,
-            intervals_considered,
+            self.reference_considered,
+            self.intervals_considered,
             self._desired_v
         )
 
         next_control_seq = self.next_control_policy(costs, self.generator.controls_batch)
         self.generator.curr_control_seq = next_control_seq
-        # print(self.control_generator.curr_control_seq.shape)
 
     def _calc_considered_point_count(self, goal_idx):
         count = 0

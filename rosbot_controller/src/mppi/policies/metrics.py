@@ -1,8 +1,4 @@
 import numpy as np
-import sys
-
-sys.path.append("..")
-
 
 def mean_dist_metric(ref_traj, path_points):
     error = 0

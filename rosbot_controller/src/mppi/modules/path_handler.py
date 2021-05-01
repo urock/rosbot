@@ -26,6 +26,7 @@ class PathHandler():
         return self._path
 
     def _path_cb(self, msg):
+        self._path = np.empty(shape=(0, 3))
         for pose in msg.poses:
             x, y = pose.pose.position.x, pose.pose.position.y
             yaw = quaternion_to_euler(pose.pose.orientation)[0]

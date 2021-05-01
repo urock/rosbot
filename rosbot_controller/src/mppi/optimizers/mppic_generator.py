@@ -1,10 +1,7 @@
-from utils.visualizations import visualize_trajs, MarkerArray
 from utils.geometry import quaternion_to_euler
 from utils.dtypes import State, Control
 
 import rospy
-from time import perf_counter
-from typing import Callable, Type
 import numpy as np
 import sys
 
@@ -13,13 +10,11 @@ sys.path.append("..")
 
 class MPPICGenerator():
     def __init__(self, model):
-        self.state = State()
         self.freq = int(rospy.get_param("~mppic/mppi_freq", 30))
         self.dt = 1.0 / self.freq
         self.time_steps = int(rospy.get_param("~mppic/time_steps", 50))
         self.batch_size = int(rospy.get_param("~mppic/batch_size", 100))
 
-        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
 
         self._model = model
         self._v_std = rospy.get_param("~mppic/v_std", 0.1)
@@ -30,9 +25,12 @@ class MPPICGenerator():
 
         self._noise_repeat_factor = rospy.get_param("~mppic/noise_repeat_factor", 2)
 
+        self.state = State()
         # 5 for v, w, control_dim and dt
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt
+
+        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
 
     @property
     def velocities_batch(self):
@@ -62,22 +60,30 @@ class MPPICGenerator():
         end_part = np.array([self.curr_control_seq[-1]] * offset)
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
+    def reset(self):
+        self.state = State()
+        # 5 for v, w, control_dim and dt
+        self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
+        self._batch_of_seqs[:, :, 4] = self.dt
+
+        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
+
+
     def _update_batch_of_seqs(self):
         noises = self._generate_noises(int(self.time_steps / self._noise_repeat_factor))
-
         noises = np.repeat(noises, self._noise_repeat_factor, axis=1)
 
         self._batch_of_seqs[:, 0, 0] = self.state.v
         self._batch_of_seqs[:, 0, 1] = self.state.w
-
         self._batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
-
         self._batch_of_seqs[:, :, 2:3] = np.clip(
             self._batch_of_seqs[:, :, 2:3], -self._limit_v, self._limit_v
         )
+
         self._batch_of_seqs[:, :, 3:4] = np.clip(
             self._batch_of_seqs[:, :, 3:4], -self._limit_w, self._limit_w
         )
+
         self._update_velocities()
 
     def _generate_noises(self, time_steps):

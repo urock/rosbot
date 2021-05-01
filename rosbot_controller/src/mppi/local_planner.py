@@ -3,8 +3,9 @@
 from copy import copy
 import rospy
 from time import time, perf_counter
-import numpy as np
-from utils.visualizations import visualize_trajs, visualize_traj, MarkerArray
+from utils.visualizations import StateVisualizer, TrajectoriesVisualizer, ReferenceVisualizer, Colors
+
+from geometry_msgs.msg import Vector3
 
 
 class LocalPlanner:
@@ -19,42 +20,69 @@ class LocalPlanner:
         self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
         self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
-        self._trajectories_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
+        self._state_visualizer = StateVisualizer('/mppi_path')
+        self._trajs_visualizer = TrajectoriesVisualizer('/mppi_trajs')
+        self._ref_visualizer = ReferenceVisualizer('/ref_trajs')
 
     def start(self):
-        self.optimizer.generator.state = self.odom.state
-        self.goal_handler.state = self.odom.state
-
         try:
             while not rospy.is_shutdown():
                 if self.path_handler.has_path:
-                    self.goal_handler.reference_trajectory = self.path_handler.path
-                    self.optimizer.reference_trajectory = self.path_handler.path
-                    self.optimizer.reference_intervals = self.path_handler.path_intervals
+                    self._handle_new_path()
                 elif not self.goal_handler.path_finished:
-                    start = perf_counter()
-                    goal_idx = self.goal_handler.update_goal()
-                    if not self.goal_handler.path_finished:
-                        control = self.optimizer.calc_next_control(goal_idx)
-                        self.metric_handler.add_control(copy(control))
-                        self.controller.publish_control(control)
-
-                        if self._visualize_trajs:
-                            visualize_trajs(0, self._trajectories_pub,
-                                            self.optimizer.curr_trajectories, 0.1)
-                            visualize_traj(99999, self._trajectories_pub,
-                                           self.optimizer.generator.propagete_curr_trajectory(), 0.05)
-
-                        self.metric_handler.add_state(copy(self.odom.state))
-                        t = perf_counter() - start
-
-                        if self._wait_full_step:
-                            rospy.sleep(self.optimizer.get_offset_time() - t)
-
-                    else:
-                        self.controller.publish_stop_control()
-                        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
-                                                         self.optimizer.reference_trajectory)
+                    self._next_goal_handle()
 
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")
+
+    def _handle_new_path(self):
+        self._state_visualizer.reset()
+        self._ref_visualizer.reset()
+        self._trajs_visualizer.reset()
+        self.optimizer.generator.reset()
+        self.optimizer.generator.state = self.odom.state
+        self.goal_handler.state = self.odom.state
+
+        self.goal_handler.reference_trajectory = self.path_handler.path
+        self.optimizer.reference_trajectory = self.path_handler.path
+        self.optimizer.reference_intervals = self.path_handler.path_intervals
+
+    def _next_goal_handle(self):
+        start = perf_counter()
+        goal_idx = self.goal_handler.update_goal()
+        if not self.goal_handler.path_finished:
+            self._next_control(goal_idx)
+            if self._visualize_trajs:
+                self._handle_visualizations()
+            t = perf_counter() - start
+            if self._wait_full_step:
+                rospy.sleep(self.optimizer.get_offset_time() - t)
+        else:
+            self._handle_path_finished()
+
+    def _next_control(self, goal_idx):
+        control = self.optimizer.calc_next_control(goal_idx)
+        self.controller.publish_control(control)
+        self._update_metrics(control)
+
+    def _handle_path_finished(self):
+        self.controller.publish_stop_control()
+        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
+                                         self.optimizer.reference_trajectory)
+
+    def _handle_visualizations(self):
+
+        self._trajs_visualizer.add(self.optimizer.curr_trajectories,
+                                   Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
+        self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
+                                   Colors.red, scale=Vector3(0.05, 0.05, 0.05))
+
+        self._trajs_visualizer.visualize()
+        self._ref_visualizer.visualize(self.optimizer.reference_considered,
+                                       Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
+
+        self._state_visualizer.visualize(self.odom.state, Colors.blue, scale = Vector3(0.025, 0.025, 0.025))
+
+    def _update_metrics(self, control):
+        self.metric_handler.add_state(copy(self.odom.state))
+        self.metric_handler.add_control(copy(control))

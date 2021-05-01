@@ -1,0 +1,7 @@
+paths : [
+        { 'type': 'sin', 'step': 0.1, 'amplitude': 1.0, 'freq' : 1.0 },
+        { 'type': 'sin', 'step': 0.1, 'amplitude': 3.0, 'freq' : 1.0 },
+        { 'type': 'sin', 'step': 0.1, 'amplitude': 1.0, 'freq' : 3.0 },
+        { 'type': 'polygon', 'step': 0.1, 'edges': [[0, 0], [0, 1], [1, 1], [1, 0]] },
+        { 'type': 'polygon', 'step': 0.1, 'edges': [[0, 0], [0, 2], [2, 2], [2, 0]] },
+    ]

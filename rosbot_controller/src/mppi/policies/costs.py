@@ -20,7 +20,6 @@ def nearest_cost(state, reference_trajectory, reference_intervals, desired_v):
 
     costs = lin_vel_cost(v, desired_v)
     costs += nearest_cost_for_k_ellements(state, reference_trajectory, 3)
-    print(costs.shape)
 
     return costs
 
@@ -50,7 +49,7 @@ def triangle_cost(state, reference_trajectory, reference_intervals, desired_v):
     """
     v = state[:, :, 3]
     costs = lin_vel_cost(v, desired_v)
-    costs = costs + triangle_cost_segments(state, reference_trajectory, reference_intervals)
+    costs += triangle_cost_segments(state, reference_trajectory, reference_intervals)
 
     return costs
 
@@ -101,6 +100,10 @@ def is_angle_obtuse(opposite_side, b, c):
 
 @njit
 def heron(opposite_side, b, c):
+    eps = 0.00001
+    if abs(opposite_side) < eps:
+        return min(b, c) 
+
     p = (opposite_side + b + c) / 2.0
     h = 2.0 / opposite_side * np.sqrt(p * (p - opposite_side) * (p - b) * (p - c))
     return h
