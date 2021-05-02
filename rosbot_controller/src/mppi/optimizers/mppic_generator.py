@@ -15,7 +15,6 @@ class MPPICGenerator():
         self.time_steps = int(rospy.get_param("~mppic/time_steps", 50))
         self.batch_size = int(rospy.get_param("~mppic/batch_size", 100))
 
-
         self._model = model
         self._v_std = rospy.get_param("~mppic/v_std", 0.1)
         self._w_std = rospy.get_param("~mppic/w_std", 0.1)
@@ -67,7 +66,6 @@ class MPPICGenerator():
         self._batch_of_seqs[:, :, 4] = self.dt
 
         self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
-
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises(int(self.time_steps / self._noise_repeat_factor))

@@ -77,16 +77,17 @@ class LocalPlanner:
     def _visualizations_handle(self):
         if self._visualize_trajs:
             self._trajs_visualizer.add(self.optimizer.curr_trajectories,
-                                    Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
+                                       Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
             self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
-                                    Colors.red, scale=Vector3(0.05, 0.05, 0.05))
+                                       Colors.red, scale=Vector3(0.05, 0.05, 0.05))
 
             self._trajs_visualizer.visualize()
             self._ref_visualizer.visualize(self.optimizer.reference_considered,
-                                        Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
+                                           Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
 
         if self._visualize_state:
-            self._state_visualizer.visualize(self.odom.state, Colors.blue, scale = Vector3(0.025, 0.025, 0.025))
+            self._state_visualizer.visualize(
+                self.odom.state, Colors.blue, scale=Vector3(0.025, 0.025, 0.025))
 
     def _update_metrics(self, control):
         self.metric_handler.add_state(copy(self.odom.state))

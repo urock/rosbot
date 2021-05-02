@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def mean_dist_metric(ref_traj, path_points):
     error = 0
     ref_count = len(ref_traj)

@@ -102,7 +102,7 @@ def is_angle_obtuse(opposite_side, b, c):
 def heron(opposite_side, b, c):
     eps = 0.00001
     if abs(opposite_side) < eps:
-        return min(b, c) 
+        return min(b, c)
 
     p = (opposite_side + b + c) / 2.0
     h = 2.0 / opposite_side * np.sqrt(p * (p - opposite_side) * (p - b) * (p - c))

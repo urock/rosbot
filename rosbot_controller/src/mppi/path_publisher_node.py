@@ -23,7 +23,10 @@ class PathPublisher:
 
         self._paths = rospy.get_param(
             '~paths', [
-                {'type': 'sin', 'step': 0.1, 'amplitude': 1.1, 'freq': 1.2}
+                {
+                    'type': 'sin',
+                    'args': {'step': 0.1, 'amplitude': 1.1, 'freq': 1.2}
+                }
             ]
         )
 
@@ -50,9 +53,9 @@ class PathPublisher:
         rospy.sleep(2)
 
         while not rospy.is_shutdown():
-            for path_data in self._paths:
+            for paths in self._paths:
                 self._reset_gz_robot_state()
-                path_msg = self.generate_path(path_data)
+                path_msg = self.generate_path(paths)
                 rospy.loginfo("Publishing generated path ...")
                 self.path_pub.publish(path_msg)
                 rospy.loginfo("Path published")
@@ -62,15 +65,13 @@ class PathPublisher:
 
                 self.path_finished = False
 
-    def generate_path(self, path_data):
-        path_msg = self._create_path()
+    def generate_path(self, path):
+        path_msg = self._create_path_msg()
 
-        path = copy(path_data)
-        type = path['type']
-        del path['type']
+        rospy.loginfo("Generating path of type: '{}' with args: {}".
+                      format(path['type'], path['args']))
 
-        rospy.loginfo("Generating path of type: '{}' with args: {}".format(type, path))
-        x, y, yaw = self.generators[type](**path)
+        x, y, yaw = self.generators[path['type']](**path['args'])
 
         for i in range(len(x)):
             pose = self._create_pose(path_msg.header, i, x[i], y[i], yaw[i])
@@ -78,7 +79,7 @@ class PathPublisher:
 
         return path_msg
 
-    def _create_path(self):
+    def _create_path_msg(self):
         path = Path()
         path.header.frame_id = self.map_frame
         path.header.stamp = rospy.Time.now()
