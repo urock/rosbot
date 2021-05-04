@@ -1,0 +1,14 @@
+<launch>
+    <arg name="gui"             default="true" />
+    <arg name="rviz"            default="true" />
+
+    <include file="$(find rosbot2_gazebo)/launch/bringup.launch">
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+    
+    <group if="$(arg rviz)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rosbot_controller)/rviz/urock.rviz"/>
+    </group>
+
+    <include file="$(find path_viz)/launch/path_viz.launch"/>
+</launch>

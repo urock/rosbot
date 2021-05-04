@@ -1,122 +1,94 @@
 #!/usr/bin/env python3
-import numpy as np
-from time import time
-from typing import Type
 
+from copy import copy
 import rospy
-from geometry_msgs.msg import Twist
-from nav_msgs.msg import Path
-from visualization_msgs.msg import MarkerArray
+from time import time, perf_counter
+from utils.visualizations import StateVisualizer, TrajectoriesVisualizer, ReferenceVisualizer, Colors
 
-from utils.geometry import quaternion_to_euler
-from utils.dtypes import Control, dist_L2_np
-from utils.visualizations import visualize_reference
+from geometry_msgs.msg import Vector3
 
 
 class LocalPlanner:
-    def __init__(self, odom, optimizer):
-        self.goal_tolerance = rospy.get_param('~local_planner/goal_tolerance', 0.2)
-        self.controller_freq = rospy.get_param('~local_planner/controller_freq', 90)
-
-        self.rate = rospy.Rate(self.controller_freq)
-        self.control_dt = 1.0 / self.controller_freq
-
+    def __init__(self, optimizer, odom, controller, goal_handler, path_handler, metric_handler):
         self.optimizer = optimizer
         self.odom = odom
+        self.controller = controller
+        self.goal_handler = goal_handler
+        self.path_handler = path_handler
+        self.metric_handler = metric_handler
 
-        self.path_points = []
+        self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
+        self._visualize_state = rospy.get_param('~local_planner/visualize_state', True)
 
-        self.reference_traj = np.empty(shape=(0, 3))
-        self.curr_goal_idx = - 1
+        self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
-        self.has_path = False
-        self.path_arrive_time: float
-        self.path_sub = rospy.Subscriber("/path", Path, self._path_cb)
-
-        rospy.Timer(rospy.Duration(self.control_dt), self._update_goal_cb)
-
-        self.cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=5)
-        self.ref_pub = rospy.Publisher('/ref_trajs', MarkerArray, queue_size=10)
-        self.path_pub = rospy.Publisher('/mppi_path', Path, queue_size=5)
+        self._state_visualizer = StateVisualizer('/mppi_path')
+        self._trajs_visualizer = TrajectoriesVisualizer('/mppi_trajs')
+        self._ref_visualizer = ReferenceVisualizer('/ref_trajs')
 
     def start(self):
-        """Starts main loop running mppi controller if got path.
-        """
         try:
             while not rospy.is_shutdown():
-                if self.has_path:
-                    self.optimizer.update_state(self.odom.curr_state)
-                    control = self.optimizer.next_control(self.curr_goal_idx)
-                    self._publish_control(control)
-                else:
-                    self._publish_stop_control()
-                self.rate.sleep()
+                if self.path_handler.has_path:
+                    self._path_handle()
+                elif not self.goal_handler.path_finished:
+                    self._goal_handle()
 
         except KeyboardInterrupt:
             rospy.loginfo("Interrupted")
 
-    def _publish_control(self, control):
-        """ Publishes controls for the rosbot
+    def _path_handle(self):
+        if self._visualize_trajs:
+            self._ref_visualizer.reset()
+            self._trajs_visualizer.reset()
+        if self._visualize_state:
+            self._state_visualizer.reset()
 
-        Args:
-            control: control vector of Control type
-        """
-        cmd = Twist()
-        cmd.linear.x = control.v
-        cmd.linear.y = 0
-        cmd.linear.z = 0
-        cmd.angular.x = 0
-        cmd.angular.y = 0
-        cmd.angular.z = control.w
-        self.cmd_pub.publish(cmd)
+        self.optimizer.generator.reset()
+        self.optimizer.generator.state = self.odom.state
+        self.goal_handler.state = self.odom.state
 
-    def _publish_stop_control(self):
-        self._publish_control(Control())
+        self.goal_handler.reference_trajectory = self.path_handler.path
+        self.optimizer.reference_trajectory = self.path_handler.path
+        self.optimizer.reference_intervals = self.path_handler.path_intervals
 
-    def _update_goal_cb(self, timer):
-        if not self.has_path:
-            return
-
-        nearest_pt_idx, dist = self._get_nearest_traj_point_and_dist()
-        if not self._is_goal_reached(dist):
-            self.curr_goal_idx = nearest_pt_idx
+    def _goal_handle(self):
+        start = perf_counter()
+        goal_idx = self.goal_handler.update_goal()
+        if not self.goal_handler.path_finished:
+            self._control(goal_idx)
+            self._visualizations_handle()
+            t = perf_counter() - start
+            if self._wait_full_step:
+                rospy.sleep(self.optimizer.get_offset_time() - t)
         else:
-            self.curr_goal_idx = nearest_pt_idx + 1
+            self._path_finished_handle()
 
-        if self.curr_goal_idx == len(self.reference_traj):
-            self.has_path = False
-            self._print_metrics()
-            return
+    def _control(self, goal_idx):
+        control = self.optimizer.calc_next_control(goal_idx)
+        self.controller.publish_control(control)
+        self._update_metrics(control)
 
-        self.path_points.append(self.odom.curr_state)
-        visualize_reference(2000, self.ref_pub, self.reference_traj,
-                            self.curr_goal_idx, self.optimizer.traj_lookahead)
+    def _path_finished_handle(self):
+        self.controller.publish_stop_control()
+        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
+                                         self.optimizer.reference_trajectory)
 
-    def _get_nearest_traj_point_and_dist(self):
-        min_idx = self.curr_goal_idx
-        min_dist = 10e18
+    def _visualizations_handle(self):
+        if self._visualize_trajs:
+            self._trajs_visualizer.add(self.optimizer.curr_trajectories,
+                                       Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=10)
+            self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
+                                       Colors.red, scale=Vector3(0.05, 0.05, 0.05))
 
-        traj_end = len(self.reference_traj)
-        end = self.curr_goal_idx + self.optimizer.traj_lookahead + 1
-        end = min(end, traj_end)
-        for q in range(self.curr_goal_idx, end):
-            curr_dist = dist_L2_np(self.odom.curr_state, self.reference_traj[q])
-            if min_dist >= curr_dist:
-                min_dist = curr_dist
-                min_idx = q
+            self._trajs_visualizer.visualize()
+            self._ref_visualizer.visualize(self.optimizer.reference_considered,
+                                           Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
 
-        return min_idx, min_dist
+        if self._visualize_state:
+            self._state_visualizer.visualize(
+                self.odom.state, Colors.blue, scale=Vector3(0.025, 0.025, 0.025))
 
-    def _is_goal_reached(self, dist):
-        return dist < self.goal_tolerance
-
-    def _path_cb(self, msg):
-        for pose in msg.poses:
-            x, y = pose.pose.position.x, pose.pose.position.y
-            yaw = quaternion_to_euler(pose.pose.orientation)[0]
-            self.reference_traj = np.append(self.reference_traj, [[x, y, yaw]], axis=0)
-
-        self.optimizer.set_reference_traj(self.reference_traj)
-        self.path_arrive_time = time()
-        self.curr_goal_idx = 0
-        self.has_path = True
+    def _update_metrics(self, control):
+        self.metric_handler.add_state(copy(self.odom.state))
+        self.metric_handler.add_control(copy(control))
