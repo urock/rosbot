@@ -3,11 +3,11 @@
     <arg name="map_frame"       default="/odom"/>
     <arg name="path_topic"       default="/path"/>
 
-    <node pkg="rosbot_controller" type="path_publisher_node.py" name="path_pub" output="screen">
+    <node pkg="rosbot_controller" type="scene_publisher_node.py" name="scene_publisher" output="screen">
         <param name="map_frame"     value="$(arg map_frame)" />
         <param name="path_topic"     value="$(arg path_topic)" />
 
-        <rosparam command="load" file="$(find rosbot_controller)/config/path_publish.yaml" subst_value="true" />
+        <rosparam command="load" file="$(find rosbot_controller)/config/scene.yaml" subst_value="true" />
 
     </node>
 </launch>

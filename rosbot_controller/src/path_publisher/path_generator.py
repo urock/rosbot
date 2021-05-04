@@ -4,7 +4,7 @@ import numpy as np
 import rospy
 
 
-class FiguresGenerator:
+class PathGenerator:
     def __init__(self):
         self.generators = {
             'sin': self._make_sin,
@@ -15,7 +15,8 @@ class FiguresGenerator:
         type = path['type']
         args = path['args']
 
-        rospy.loginfo("Generator: generating path of type: '{}' with args: {}".  format(type, args))
+        rospy.loginfo(
+            "Path Generator: generating path of type: '{}' with args: {}".  format(type, args))
         return self.generators[type](**args)
 
     def _make_sin(self, step=0.1, amplitude=1.0, freq=1.0, reverse=False):

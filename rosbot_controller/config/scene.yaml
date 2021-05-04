@@ -1,3 +1,6 @@
+map_resolution: 1.0
+map_origin_pose: [-2, -2] 
+
 paths : [
             {
                 'type': 'sin',
@@ -10,5 +13,12 @@ paths : [
             {
                 'type': 'polygon',
                 'args': {'step': 0.1, 'edges': [[0, 0], [0, 2], [2, 2], [2, 0]] },
+            }
+        ]
+
+maps : [
+            {
+                'type': 'square_obstacle',
+                'args': {'width': 6, 'height' : 4, 'obstacle' : {'x_bounds': [2, 3], 'y_bounds': [2, 3]} }
             }
         ]
