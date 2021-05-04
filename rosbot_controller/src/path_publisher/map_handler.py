@@ -18,12 +18,12 @@ class MapHandler:
         rospy.loginfo("Map Handler: Map Published")
 
     def _make_map(self, resolution, width, height, data):
-        time =rospy.Time.now()
+        time = rospy.Time.now()
         grid = OccupancyGrid()
         grid.header.frame_id = self._map_frame
         grid.header.stamp = time
         grid.info.origin = self._origin
-        grid.info.map_load_time = time 
+        grid.info.map_load_time = time
         grid.info.resolution = resolution
         grid.info.width = width
         grid.info.height = height

@@ -13,7 +13,7 @@ from map_generator import MapGenerator
 from map_handler import MapHandler
 
 
-class PathPublisher:
+class ScenePublisher:
     def __init__(self):
         self._map_frame = rospy.get_param('~map_frame', '/odom')
         self._path_topic = rospy.get_param('~path_topic', '/path')
@@ -32,7 +32,7 @@ class PathPublisher:
 
         origin_pose = Pose()
         origin_pose.position.x = self._map_origin[0]
-        origin_pose.position.y = self._map_origin[0]        
+        origin_pose.position.y = self._map_origin[0]
 
         self._map_handler = MapHandler(self._map_frame, self._map_topic, origin=origin_pose)
 
@@ -64,7 +64,7 @@ class PathPublisher:
                 map = self._maps[self._map_idx]
                 data = self._map_generator.generate(map)
                 self._map_handler.publish(self._map_resolution,
-                                               map['args']['width'], map['args']['height'], data)
+                                          map['args']['width'], map['args']['height'], data)
 
                 self._map_idx = self._update_idx(self._map_idx, len(self._maps))
                 self._next_map = False
@@ -77,7 +77,6 @@ class PathPublisher:
 
         return idx
 
-
     def _next_path_cb(self, req):
         self._next_path = True
         return EmptyResponse()
@@ -89,7 +88,7 @@ class PathPublisher:
 
 def main():
     rospy.init_node("path_pub", anonymous=True)
-    node = PathPublisher()
+    node = ScenePublisher()
     node.start()
 
     rospy.spin()
