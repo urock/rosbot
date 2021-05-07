@@ -28,12 +28,12 @@ def visualize_costs(batch_costs, ax):
 
     # plt.show()
 
-def visualize_control(u, dt, ax1, ax2):
+def visualize_control(u, dt, ax1, ax2, title):
     """
         Args:
             u: np.array of shape (time_steps, control_size)
     """
-    ax1.set_title("Control")
+    ax1.set_title(title)
     ax1.set_xlabel('t, s')        
     ax1.set_ylabel('u')
 

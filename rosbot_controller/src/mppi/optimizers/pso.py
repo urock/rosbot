@@ -4,9 +4,9 @@ import numpy as np
 
 class PSO:
 
-    def __init__(self, batch_size=100, time_steps=100, control_size=2, 
+    def __init__(self, batch_size=100, time_steps=10, control_size=2, 
                 v_max=1.0, w_max=1.0,
-                w=0.8, c1=0.15, c2=0.85, learing_rate=1):
+                w=0.8, c1=0.15, c2=0.85, learing_rate=1.0):
 
         self.batch_size = batch_size
         self.time_steps = time_steps
@@ -46,6 +46,8 @@ class PSO:
 
         self.batch_p = self.batch_u
 
+        # print("batch_pso.shape = " + str(self.batch_u.shape))
+
         return self.batch_u
 
 
@@ -67,6 +69,7 @@ class PSO:
 
         self.batch_u += self.lr * self.batch_v
 
+        # print("batch_pso.shape = " + str(self.batch_u.shape))
         return self.batch_u
 
 
