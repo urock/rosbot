@@ -45,7 +45,7 @@ class OfflinePlanner:
 
         self.v_max, self.w_max = 1.0, 1.0 
 
-        self.n_iters = 20
+        self.n_iters = 1000
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
         self.model_1 = nnio.ONNXModel(model_path_1)
@@ -64,7 +64,7 @@ class OfflinePlanner:
         
         self.optimizer.update_bests(batch_costs)
 
-        print("Run: init ok")
+        print("Run: init ok, Best Batch Cost = {:.10f}".format(np.min(batch_costs)))
 
         start = perf_counter() 
 
@@ -81,8 +81,8 @@ class OfflinePlanner:
           
             best_pso, best_cost = self.optimizer.get_best_control() 
 
-            print("Run: {} iterartions done. dt = {:.3f} s. Cost = {:.10f}".
-                        format(it, t - start, best_cost))            
+            print("Run: {} iterartions done. dt = {:.3f} s. Best Global Cost = {:.10f}. Best Batch Cost = {:.10f}".
+                        format(it, t - start, best_cost, np.min(batch_costs)))            
 
             
         best_pso, best_cost = self.optimizer.get_best_control() 
@@ -345,6 +345,7 @@ class OfflinePlanner:
         dx = x[:,1:] - x[:,:-1] 
         dy = y[:,1:] - y[:,:-1] 
         dr2 = (dx)**2 + (dy)**2
+        
 
         return idx_min, t_min + dist_min + np.sum(dr2, axis=1)
         
@@ -370,60 +371,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-
-
-    # def test(self, current_state, goal):
-
-    #     print("Test started")
-
-    #     u = np.zeros(shape=(self.time_steps, self.control_size))
-    #     u[:,0] = 0.1
-    #     u[:,1] = 0.2
-
-    #     # x = self._propagate_control_to_states_no_nn(current_state, u[None])
-    #     x = self._propagate_control_to_states(current_state, u[None])
-
-    #     fig, ax = plt.subplots(3)
-    #     visualize_trajectory(x, ax[0])
-    #     visualize_control(u, self.dt, ax[1], ax[2])
-        
-    #     plt.show()      
-
-
-    # def _cost_for_goal(self, batch_x, goal):
-    #     """
-    #     Args:
-    #         batch_x: np.array of shape (batch_size, time_steps, state_size) 
-    #         goal (list of 2 elements): coord of main goal 
-    #     Return:
-    #         batch_costs: batch_x: np.array of shape (batch_size)
-    #     """
-
-
-    #     x = batch_x[:, self.time_steps-1, 0]    # take only last element
-    #     y = batch_x[:, self.time_steps-1, 1]    
-
-
-
-    #     L2 = (x-goal[0])**2 + (y-goal[1])**2
-
-    #     x = batch_x[:, 0::10, 0]    # take every 10th element
-    #     y = batch_x[:, 0::10, 1]    
-
-
-    #     delta_x = x[:, 1:] - x[:, :-1]
-    #     delta_y = y[:, 1:] - y[:, :-1]
-
-
-    #     dl = delta_x**2 + delta_y**2
-
-    #     dl_sum = np.sum(dl, axis=1)
-
-    #     dl_y = np.abs(np.sum(y, axis=1))
-    #     # dl_sum = np.concatenate(dl_sum, 0)
-
-    #     # return np.sum(L2, axis=1)
-    #     # return L2 + 0.1 * np.sum(v,axis=1)
-    #     return L2
-    #     # return L2 + 0.1 * dl_sum
-    #     # return L2 + dl_y + dl_sum    
+ 
