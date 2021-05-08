@@ -29,7 +29,7 @@ from modules.plot_tools import visualize_trajectory, visualize_control, visualiz
 
 class OfflinePlanner:
      
-    def __init__(self, model_path_1, model_path_100):
+    def __init__(self, n_iters, model_path):
 
         self.batch_size = 100
 
@@ -42,11 +42,15 @@ class OfflinePlanner:
 
         self.v_max, self.w_max = 1.0, 1.0 
 
-        self.n_iters = 100
+        self.n_iters = n_iters
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
-        self.model_1 = nnio.ONNXModel(model_path_1)
-        self.model_100 = nnio.ONNXModel(model_path_100)
+        
+        self.use_nn_model = False
+
+        if model_path is not None:
+            self.model = nnio.ONNXModel(model_path)
+            self.use_nn_model = True
 
         self.optimizer = PSO(self.batch_size, self.pso_steps, self.control_size, self.v_max, self.w_max)
 
@@ -56,7 +60,7 @@ class OfflinePlanner:
         print("Run started")
 
         batch_pso = self.optimizer.init_control_batch()
-        batch_x = self._propagate_control_to_states_no_nn(current_state, batch_pso)
+        batch_x = self._propagate_control_to_states(current_state, batch_pso)
         idx_min, batch_costs = self._calculate_costs(batch_x, goal, obstacles)
         
         self.optimizer.update_bests(batch_costs)
@@ -70,7 +74,7 @@ class OfflinePlanner:
             start = perf_counter() 
 
             batch_pso = self.optimizer.gen_next_control_batch()            
-            batch_x = self._propagate_control_to_states_no_nn(current_state, batch_pso)
+            batch_x = self._propagate_control_to_states(current_state, batch_pso)
             idx_min, batch_costs = self._calculate_costs(batch_x, goal, obstacles)
             self.optimizer.update_bests(batch_costs)
 
@@ -83,7 +87,7 @@ class OfflinePlanner:
 
             
         best_pso, best_cost = self.optimizer.get_best_control() 
-        best_x = self._propagate_control_to_states_no_nn(current_state, best_pso[None])
+        best_x = self._propagate_control_to_states(current_state, best_pso[None])
         best_u = self._expand_control(best_pso[None])
         idx_min, batch_costs = self._calculate_costs(best_x, goal, obstacles)
 
@@ -163,8 +167,8 @@ class OfflinePlanner:
             # batch_u[:, i*num_dt_for_pso_step:(i+1)*num_dt_for_pso_step]
 
             for j in range(m):
-                # batch_u[:,i*m + j,0] = batch_v_pso[:,i] + k_v[:]*j*self.dt
-                # batch_u[:,i*m + j,1] = batch_w_pso[:,i] + k_w[:]*j*self.dt
+                # batch_u[:,i*m + j,0] = batch_v_pso[:,i] + k[:,0]*j*self.dt
+                # batch_u[:,i*m + j,1] = batch_w_pso[:,i] + k[:,1]*j*self.dt
                 batch_u[:,i*m + j] = batch_pso[:,i] + k[:]*j*self.dt
 
         return batch_u
@@ -178,12 +182,35 @@ class OfflinePlanner:
                 batch_pso: np.array of shape (batch_size, pso_steps, control_size)
             Return: 
                 batch_x: np.array of shape (batch_size, time_steps, state_size)
-
         """ 
         batch_u = self._expand_control(batch_pso)
         # batch of sequences of robot states
         batch_x = np.empty(shape=(batch_u.shape[0], self.time_steps, self.state_size))
 
+        if self.use_nn_model:
+            batch_v, batch_w = self._inference_nn_model(current_state, batch_u)
+        else:
+            batch_v, batch_w = batch_u[:,:,0], batch_u[:,:,1]
+
+        batch_trajectories = self._calc_trajectories(current_state, batch_v, batch_w, self.dt)
+
+        batch_x[:,:,:3] = batch_trajectories
+        batch_x[:,:,3] = batch_v
+        batch_x[:,:,4] = batch_w
+
+        return batch_x
+
+
+    def _inference_nn_model(self, current_state, batch_u):
+        """ 
+            Calulates batch of sequences of velocities:
+            Args: 
+                current state: np.array of shape (state_size) [x, y, yaw, v, w]
+                batch_u: np.array of shape (batch_size, time_steps, control_size)
+            Return: 
+                batch_v: np.array of shape (batch_size, time_steps) - linear velocity
+                batch_w: np.array of shape (batch_size, time_steps) - anglular velocity
+        """ 
         # 5 for v, w, control_dim and dt
         model_inp_vector_size = 5
         batch_model_input_seqs = np.zeros(shape=(batch_u.shape[0], self.time_steps, model_inp_vector_size))
@@ -198,68 +225,18 @@ class OfflinePlanner:
         start = perf_counter() 
 
         # predict velocities
-        if batch_u.shape[0] == 100:
-            for t_step in range(self.time_steps - 1):
-                curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
-                curr_predicted = self.model_100(curr_batch)
-                batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted
-        else:
-            for t_step in range(self.time_steps - 1):
-                curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
-                curr_predicted = self.model_1(curr_batch)
-                batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted            
+        for t_step in range(self.time_steps - 1):
+            curr_batch = batch_model_input_seqs[:, t_step].astype(np.float32)
+            curr_predicted = self.model(curr_batch)
+            batch_model_input_seqs[:, t_step + 1, :2] = curr_predicted            
 
         t = perf_counter() 
-        # print("Inference time: dt = {:.3f} s".format(t - start))            
+        print("Inference time: dt = {:.3f} s".format(t - start))            
 
         batch_v = batch_model_input_seqs[:, :, 0]
         batch_w = batch_model_input_seqs[:, :, 1]
-        batch_trajectories = self._calc_trajectories(current_state, batch_v, batch_w, self.dt)
 
-        batch_x[:,:,:3] = batch_trajectories
-        batch_x[:,:,3] = batch_v
-        batch_x[:,:,4] = batch_w
-
-        return batch_x
-
-
-    def _propagate_control_to_states_no_nn(self, current_state, batch_pso):
-        """ 
-            Calulates batch of sequences of states based on inputs:
-            Args: 
-                current state: np.array of shape (state_size) [x, y, yaw, v, w]
-                batch_pso: np.array of shape (batch_size, pso_steps, control_size)
-            Return: 
-                batch_x: np.array of shape (batch_size, time_steps, state_size)
-
-        """ 
-        batch_u = self._expand_control(batch_pso)
-        # print("batch_u.shape = " + str(batch_u.shape))
-
-
-        # fig1, ax1 = plt.subplots(2)
-        # visualize_control(batch_pso[0], self.pso_dt, ax1[0], ax1[1], "PSO Control")
-
-        # fig2, ax2 = plt.subplots(2)
-        # visualize_control(batch_u[0], self.dt, ax2[0], ax2[1], "Expanded Control")
-
-        # plt.show()  
-
-        # batch of sequences of robot states
-        batch_x = np.empty(shape=(batch_u.shape[0], self.time_steps, self.state_size))
-          
-
-        batch_v = batch_u[:,:,0]
-        batch_w = batch_u[:,:,1]
-        batch_trajectories = self._calc_trajectories(current_state, batch_v, batch_w, self.dt)
-
-        batch_x[:,:,:3] = batch_trajectories
-        batch_x[:,:,3] = batch_v
-        batch_x[:,:,4] = batch_w
-
-        # print("batch_x.shape = " + str(batch_x.shape))
-    
-        return batch_x
+        return batch_v, batch_w    
                 
 
     def _calc_trajectories(self, current_state, batch_v, batch_w, dt):
@@ -364,10 +341,10 @@ class OfflinePlanner:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m100', '--model_path_100', type=str, required=True,
-                        help='Path to nn model file with batch size 100')
-    parser.add_argument('-m1', '--model_path_1', type=str, required=True,
-                        help='Path to nn model file with batch size 1')
+    parser.add_argument('-m', '--model_path', type=str, required=False,
+                        help='Path to nn onnx model')
+    parser.add_argument('-it', '--n_iters', type=int, required=False, default=10,
+                        help='Path to nn onnx model')                        
 
     args = parser.parse_args()
 
@@ -377,7 +354,7 @@ def main():
     # center x, center y, radius
     obstacles = [(1.0, 0.3, 0.5), (1.5, 1.75, 0.3)]           
 
-    planner = OfflinePlanner(args.model_path_1, args.model_path_100)
+    planner = OfflinePlanner(args.n_iters, args.model_path)
     control = planner.run(current_state, goal, obstacles)
     # control = planner.test(current_state, goal)
     
@@ -385,3 +362,4 @@ if __name__ == '__main__':
     main()
 
  
+
