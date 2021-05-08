@@ -32,7 +32,7 @@ from utils.logger_tools import visualize_trajectory, visualize_control, visualiz
 
 class OfflinePlanner:
      
-    def __init__(self, model_path_1, model_path_100, obstacles = None):
+    def __init__(self, model_path_1, model_path_100):
 
         self.batch_size = 100
 
@@ -45,7 +45,7 @@ class OfflinePlanner:
 
         self.v_max, self.w_max = 1.0, 1.0 
 
-        self.n_iters = 1000
+        self.n_iters = 100
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
         self.model_1 = nnio.ONNXModel(model_path_1)
@@ -54,13 +54,13 @@ class OfflinePlanner:
         self.optimizer = PSO(self.batch_size, self.pso_steps, self.control_size, self.v_max, self.w_max)
 
         
-    def run(self, current_state, goal):
+    def run(self, current_state, goal, obstacles):
 
         print("Run started")
 
         batch_pso = self.optimizer.init_control_batch()
         batch_x = self._propagate_control_to_states_no_nn(current_state, batch_pso)
-        idx_min, batch_costs = self._calculate_costs(batch_x, goal)
+        idx_min, batch_costs = self._calculate_costs(batch_x, goal, obstacles)
         
         self.optimizer.update_bests(batch_costs)
 
@@ -74,7 +74,7 @@ class OfflinePlanner:
 
             batch_pso = self.optimizer.gen_next_control_batch()            
             batch_x = self._propagate_control_to_states_no_nn(current_state, batch_pso)
-            idx_min, batch_costs = self._calculate_costs(batch_x, goal)
+            idx_min, batch_costs = self._calculate_costs(batch_x, goal, obstacles)
             self.optimizer.update_bests(batch_costs)
 
             t = perf_counter() 
@@ -86,34 +86,36 @@ class OfflinePlanner:
 
             
         best_pso, best_cost = self.optimizer.get_best_control() 
-        print("batch_pso.shape = " + str(best_pso.shape))
-        print("best_cost.shape = " + str(best_cost.shape))
-
         best_x = self._propagate_control_to_states_no_nn(current_state, best_pso[None])
-        print("best_x.shape = " + str(best_x.shape))
-
         best_u = self._expand_control(best_pso[None])
-        print("best_u.shape = " + str(best_u.shape))
-
-
-        idx_min, batch_costs = self._calculate_costs(best_x, goal)
-
-        print(idx_min)
+        idx_min, batch_costs = self._calculate_costs(best_x, goal, obstacles)
 
         reaching_goal_idx = idx_min[0]
 
-        x = best_x[0][reaching_goal_idx, 0]    # take only last element
+        x = best_x[0][reaching_goal_idx, 0]
         y = best_x[0][reaching_goal_idx, 1]
         yaw = best_x[0][reaching_goal_idx, 2]    
 
-        print("Last point ({:.4f},{:.4f}, {:.4f}) Cost = {:.10f}".format(x, y, yaw, best_cost))
+        print("Last point ({:.4f},{:.4f}, {:.4f}) reached @ {:.2f} sec with Cost = {:.10f}".
+                format(x, y, yaw, reaching_goal_idx*self.dt, best_cost))
 
-        final_control = best_u[0][:reaching_goal_idx]
-        print("final_control.shape = " + str(final_control.shape))
+        final_control = best_u[0][:reaching_goal_idx + 1]
+        final_trajectory = best_x[0][:reaching_goal_idx + 1]   
+
+        self._plot_graphs(final_control, final_trajectory, obstacles)
+
+        return final_control
 
 
+    def _plot_graphs(self, final_control, final_trajectory, obstacles):
+        
         fig1, ax1 = plt.subplots(1)
-        visualize_trajectory(best_x[0][:reaching_goal_idx], ax1)
+        visualize_trajectory(final_trajectory, ax1)
+
+        for obstacle in obstacles:
+            circle1 = plt.Circle((obstacle[0], obstacle[1]), obstacle[2], color='r')
+            ax1.add_patch(circle1)
+
         fig2, ax2 = plt.subplots(2)
         visualize_control(final_control, self.dt, ax2[0], ax2[1], "Best Control")
         
@@ -122,15 +124,14 @@ class OfflinePlanner:
         ax3[0].set_title("State over time")
         ax3[0].set_xlabel('t, s')        
 
-        t = [i*self.dt for i in range(reaching_goal_idx + 1)]
+        t = [i*self.dt for i in range(final_control.shape[0])]
 
-        plot_xy_data(x=t, y=best_x[0][:reaching_goal_idx + 1, 0], ax=ax3[0], plot_name="X")
-        plot_xy_data(x=t, y=best_x[0][:reaching_goal_idx + 1, 1], ax=ax3[1], plot_name="Y")        
-        plot_xy_data(x=t, y=best_x[0][:reaching_goal_idx + 1, 2], ax=ax3[2], plot_name="Yaw")        
+        plot_xy_data(x=t, y=final_trajectory[:, 0], ax=ax3[0], plot_name="X")
+        plot_xy_data(x=t, y=final_trajectory[:, 1], ax=ax3[1], plot_name="Y")        
+        plot_xy_data(x=t, y=final_trajectory[:, 2], ax=ax3[2], plot_name="Yaw")        
 
-        plt.show()   
-
-        return final_control
+        plt.show()
+        
 
     
     def _expand_control(self, batch_pso):
@@ -294,21 +295,22 @@ class OfflinePlanner:
         return traj_points
 
 
-    def _calculate_costs(self, batch_x, goal):
+    def _calculate_costs(self, batch_x, goal, obstacles):
         """
             Calculates batch of costs (cost for each predicted seqeunce of robot states)
             For now takes into account only final goal
         """
 
-        return self._cost_for_goal_and_time(batch_x, goal)
+        return self._cost_for_goal_and_time(batch_x, goal, obstacles)
 
 
-    def _cost_for_goal_and_time(self, batch_x, goal):
+    def _cost_for_goal_and_time(self, batch_x, goal, obstacles):
         """
         Args:
             batch_x: np.array of shape (batch_size, time_steps, state_size) 
             goal (list of 2 elements): coord of main goal 
         Return:
+            idx_min: batch of indexes at which goal has been reached
             batch_costs: batch of times reaching the goal np.array of shape (batch_size)
         """
 
@@ -345,9 +347,20 @@ class OfflinePlanner:
         dx = x[:,1:] - x[:,:-1] 
         dy = y[:,1:] - y[:,:-1] 
         dr2 = (dx)**2 + (dy)**2
-        
 
-        return idx_min, t_min + dist_min + np.sum(dr2, axis=1)
+        obstacle_cost = np.zeros(L2.shape[0])
+
+        for obstacle in obstacles:
+            center_x, center_y = obstacle[0], obstacle[1]
+            radius = obstacle[2]
+            
+            obstacle_dist2 = (x - center_x)**2 + (y - center_y)**2      # shape = (batch_size, time_steps)
+
+            obstacle_mask = np.min(obstacle_dist2,axis=1) < radius**2   # shape = (batch_size)
+
+            obstacle_cost[obstacle_mask] += 100
+        
+        return idx_min, t_min + dist_min + np.sum(dr2, axis=1) + obstacle_cost
         
            
 
@@ -364,8 +377,11 @@ def main():
     current_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])   # (x, y, yaw, v, w)
     goal = [2.0, 2.0]                                   # (x, y)
 
+    # center x, center y, radius
+    obstacles = [(1.0, 0.3, 0.5), (1.5, 1.75, 0.3)]           
+
     planner = OfflinePlanner(args.model_path_1, args.model_path_100)
-    control = planner.run(current_state, goal)
+    control = planner.run(current_state, goal, obstacles)
     # control = planner.test(current_state, goal)
     
 if __name__ == '__main__':
