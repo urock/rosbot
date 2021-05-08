@@ -3,16 +3,13 @@ import numpy as np
 from time import time
 from time import perf_counter
 import nnio
-
-# from typing import Type
 import argparse
-
-from optimizers.pso import PSO
-from utils.dtypes import State
-
 import matplotlib.pyplot as plt
-from utils.logger_tools import plot_xy_data, save_plot
-from utils.logger_tools import visualize_trajectory, visualize_control, visualize_costs 
+
+from modules.pso import PSO
+
+from modules.plot_tools import plot_xy_data
+from modules.plot_tools import visualize_trajectory, visualize_control, visualize_costs 
 
 
 """
