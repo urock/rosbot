@@ -67,7 +67,28 @@ class PSO:
         self.batch_v += self.c1 * p_r * (self.batch_p - self.batch_u)
         self.batch_v += self.c2 * g_r * (self.g[np.newaxis] - self.batch_u)
 
+        mask = self.batch_v[:,:,0] > self.v_max*2
+        self.batch_v[mask,0] = self.v_max*2
+        mask = self.batch_v[:,:,0] < -self.v_max*2
+        self.batch_v[mask,0] = -self.v_max*2
+
+        mask = self.batch_v[:,:,1] > self.w_max*2
+        self.batch_v[mask,1] = self.w_max*2
+        mask = self.batch_v[:,:,1] < -self.w_max*2
+        self.batch_v[mask,1] = -self.w_max*2
+
         self.batch_u += self.lr * self.batch_v
+
+        mask = self.batch_u[:,:,0] > self.v_max*2
+        self.batch_u[mask,0] = self.v_max*2
+        mask = self.batch_u[:,:,0] < -self.v_max*2
+        self.batch_u[mask,0] = -self.v_max*2
+
+        mask = self.batch_u[:,:,1] > self.w_max*2
+        self.batch_u[mask,1] = self.w_max*2
+        mask = self.batch_u[:,:,1] < -self.w_max*2
+        self.batch_u[mask,1] = -self.w_max*2
+
 
         # print("batch_pso.shape = " + str(self.batch_u.shape))
         return self.batch_u
