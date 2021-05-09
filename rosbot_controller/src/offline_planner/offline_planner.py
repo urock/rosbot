@@ -43,6 +43,9 @@ class OfflinePlanner:
         self.v_max, self.w_max = 1.0, 1.0 
         self.v_min = 0.0
 
+        self.goal_tolerance = 0.01
+        self.Tmax = 10.0
+
         self.n_iters = n_iters
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
@@ -300,15 +303,10 @@ class OfflinePlanner:
             batch_costs: batch of times reaching the goal np.array of shape (batch_size)
         """
 
-        eps = 0.01
-        Tmax = 10.0
-
         x = batch_x[:, :, 0]    # take every point
         y = batch_x[:, :, 1]
 
         L2 = (x-goal[0])**2 + (y-goal[1])**2
-        
-        # print("L2.shape = " + str(L2.shape))
 
         t_min = np.empty(L2.shape[0])
         idx_min = np.empty(L2.shape[0], int)
@@ -317,25 +315,27 @@ class OfflinePlanner:
         # check if goal is reached in Tmax time
         # if reached - save reaching time
         for i in range(L2.shape[0]):    # batch index loop
-            aw = np.argwhere(L2[i] < eps)
-            if aw.shape[0] != 0:
-                idx_min[i] = int(np.argwhere(L2[i] < eps)[0])
-                t_min[i] = self.dt*(np.argwhere(L2[i] < eps)[0])
-                if t_min[i] > Tmax:
-                    t_min[i] = Tmax
+            closest_to_goal_points = np.argwhere(L2[i] < self.goal_tolerance)
+            if closest_to_goal_points.shape[0] != 0:
+                idx_min[i] = int(closest_to_goal_points[0])
+                t_min[i] = self.dt*idx_min[i]
+                if t_min[i] > self.Tmax:
+                    t_min[i] = self.Tmax
             else:
-                t_min[i] = Tmax
+                t_min[i] = self.Tmax
                 idx_min[i] = int(L2.shape[1] - 1)
             
             # find min distance to goal 
             dist_min[i] = np.min(L2[i,:idx_min[i] + 1])
 
+        # calc trajectory_length
         dx = x[:,1:] - x[:,:-1] 
         dy = y[:,1:] - y[:,:-1] 
         dr2 = (dx)**2 + (dy)**2
+        trajectory_length = np.sum(dr2, axis=1)
 
+        # cost for obstacles
         obstacle_cost = np.zeros(L2.shape[0])
-
         for obstacle in obstacles:
             center_x, center_y = obstacle[0], obstacle[1]
             radius = obstacle[2]
@@ -346,7 +346,7 @@ class OfflinePlanner:
 
             obstacle_cost[obstacle_mask] += 100
         
-        return idx_min, t_min + dist_min + np.sum(dr2, axis=1) + obstacle_cost
+        return idx_min, t_min + dist_min + trajectory_length + obstacle_cost
         
            
 
