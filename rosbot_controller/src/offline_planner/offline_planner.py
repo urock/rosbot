@@ -31,9 +31,9 @@ class OfflinePlanner:
      
     def __init__(self, n_iters, model_path):
 
-        self.batch_size = 100
+        self.batch_size = 1000
 
-        self.dt = 0.05          # sec
+        self.dt = 0.033          # sec
         self.pso_dt = 1         # sec. PSO outputs control with pso_dt interval between samples 
         self.total_time = 10    # sec 
         self.pso_steps              = int(self.total_time/ self.pso_dt) + 1
@@ -41,6 +41,7 @@ class OfflinePlanner:
         self.num_dt_for_pso_step    = int(self.pso_dt/ self.dt)
 
         self.v_max, self.w_max = 1.0, 1.0 
+        self.v_min = 0.0
 
         self.n_iters = n_iters
         self.state_size = 5     # size of state vector X
@@ -100,15 +101,16 @@ class OfflinePlanner:
         print("Last point ({:.4f},{:.4f}, {:.4f}) reached @ {:.2f} sec with Cost = {:.10f}".
                 format(x, y, yaw, reaching_goal_idx*self.dt, best_cost))
 
+        pso_control = best_pso[:int(reaching_goal_idx/self.num_dt_for_pso_step) + 1]
         final_control = best_u[0][:reaching_goal_idx + 1]
         final_trajectory = best_x[0][:reaching_goal_idx + 1]   
 
-        self._plot_graphs(final_control, final_trajectory, obstacles)
+        self._plot_graphs(pso_control, final_control, final_trajectory, obstacles)
 
         return final_control
 
 
-    def _plot_graphs(self, final_control, final_trajectory, obstacles):
+    def _plot_graphs(self, pso_control, final_control, final_trajectory, obstacles):
         
         fig1, ax1 = plt.subplots(1)
         visualize_trajectory(final_trajectory, ax1)
@@ -119,6 +121,7 @@ class OfflinePlanner:
 
         fig2, ax2 = plt.subplots(2)
         visualize_control(final_control, self.dt, ax2[0], ax2[1], "Best Control")
+        visualize_control(pso_control, self.pso_dt, ax2[0], ax2[1], "PSO Control")
         
         fig3, ax3 = plt.subplots(3)
 
@@ -148,28 +151,37 @@ class OfflinePlanner:
 
         num_pso_steps = batch_pso.shape[1] - 1
 
-        # batch_v_pso = batch_pso[:,:,0]
-        # batch_w_pso = batch_pso[:,:,1]
+        batch_v_pso = batch_pso[:,:,0]
+        batch_w_pso = batch_pso[:,:,1]
 
         m = self.num_dt_for_pso_step
 
         for i in range(num_pso_steps):       
 
             # in coord system with center in i's pso step
-            # k_v = (batch_v_pso[:,i+1] - batch_v_pso[:,i])/self.pso_dt
-            # k_w = (batch_w_pso[:,i+1] - batch_w_pso[:,i])/self.pso_dt
+            k_v = (batch_v_pso[:,i+1] - batch_v_pso[:,i])/self.pso_dt
+            k_w = (batch_w_pso[:,i+1] - batch_w_pso[:,i])/self.pso_dt
             
-            k = (batch_pso[:,i+1] - batch_pso[:,i])/self.pso_dt
-
-            #TODO merge k_v with k_w (add last dim)
-
             # for current line (k, b) on this interation I have to fill 
             # batch_u[:, i*num_dt_for_pso_step:(i+1)*num_dt_for_pso_step]
-
             for j in range(m):
-                # batch_u[:,i*m + j,0] = batch_v_pso[:,i] + k[:,0]*j*self.dt
-                # batch_u[:,i*m + j,1] = batch_w_pso[:,i] + k[:,1]*j*self.dt
-                batch_u[:,i*m + j] = batch_pso[:,i] + k[:]*j*self.dt
+                batch_temp_v = batch_v_pso[:,i] + k_v[:]*j*self.dt
+                batch_temp_w = batch_w_pso[:,i] + k_w[:]*j*self.dt
+
+                # control threshold
+                mask = batch_temp_v > self.v_max
+                batch_temp_v[mask] = self.v_max
+                mask = batch_temp_v < self.v_min
+                batch_temp_v[mask] = self.v_min   
+
+                mask = batch_temp_w > self.w_max
+                batch_temp_w[mask] = self.w_max
+                mask = batch_temp_w < -self.w_max
+                batch_temp_w[mask] = -self.w_max 
+
+                batch_u[:,i*m + j,0] = batch_temp_v
+                batch_u[:,i*m + j,1] = batch_temp_w
+
 
         return batch_u
         

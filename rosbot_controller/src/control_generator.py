@@ -72,7 +72,7 @@ class ControlGenerator():
             for i in range(len(lines[0:-1])):
                 # print(lines[i].split(" "))
                 cur_t, v, w = lines[i].rstrip().split(" ")
-                cur_t, v, w = float(cur_t), float(v), float(z)
+                cur_t, v, w = float(cur_t), float(v), float(w)
                 self.t.append(cur_t)    
                 self.v.append(v)
                 self.w.append(w) 

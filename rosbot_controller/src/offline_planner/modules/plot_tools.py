@@ -28,19 +28,20 @@ def visualize_costs(batch_costs, ax):
 
     # plt.show()
 
-def visualize_control(u, dt, ax1, ax2, title):
+def visualize_control(u, dt, ax1, ax2, plot_name):
     """
         Args:
             u: np.array of shape (time_steps, control_size)
     """
-    ax1.set_title(title)
+    ax1.set_title("Control graph")
     ax1.set_xlabel('t, s')        
-    ax1.set_ylabel('u')
+    ax1.set_ylabel('linear velocity')
+    ax2.set_ylabel('angular velocity')
 
     t = [i*dt for i in range(u.shape[0])]
 
-    plot_xy_data(x=t, y=u[:,0], ax=ax1, plot_name="linear")
-    plot_xy_data(x=t, y=u[:,1], ax=ax2, plot_name="anglular")
+    plot_xy_data(x=t, y=u[:,0], ax=ax1, plot_name=plot_name)
+    plot_xy_data(x=t, y=u[:,1], ax=ax2, plot_name=plot_name)
 
 
 def plot_xy_data(x, y, ax=None, plot_name=" "):
