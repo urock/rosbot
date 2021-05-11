@@ -17,17 +17,20 @@ class MapGenerator:
             "Map Generator: generating '{}' with args: {}".  format(type, args))
         return self.generators[type](**args)
 
-    def _make_squared_obstacle(self, width, height, obstacle={'x_bounds': [1, 2], 'y_bounds': [1, 2]}):
+    def _make_squared_obstacle(self, width, height, obstacles):
         data = []
-        for i in range(height):
-            for j in range(width):
-                data.append(100 if in_obstacle([i, j], obstacle) else 0)
+        for y in range(height):
+            for x in range(width):
+                data.append(100 if in_obstacles([x, y], obstacles) else 0)
         return data
 
 
-def in_obstacle(point, obstacle):
-    if point[0] >= obstacle['x_bounds'][0] and point[0] <= obstacle['x_bounds'][1] and \
-       point[1] >= obstacle['y_bounds'][0] and point[1] <= obstacle['y_bounds'][1]:
-        return True
-    else:
-        return False
+def in_obstacles(point, obstacles):
+    x, y = point
+    for obstacle in obstacles:
+        if (x >= obstacle['x']) and x < (obstacle['x'] + obstacle['x_size']) and \
+           (y >= obstacle['y']) and y < (obstacle['y'] + obstacle['y_size']):
+            print(x, y)
+            return True
+
+    return False

@@ -1,17 +1,16 @@
-map_origin_pose: [0, 0] 
+map_origin_pose: [0, -2]
 map_resolution: 0.1
 
 maps : [
             {
                 'type': 'square_obstacle',
-                'args': {'width': 10, 'height' : 5, 'obstacle' : {'x_bounds': [1, 2], 'y_bounds': [1, 2]} }
-            },
-            {
-                'type': 'square_obstacle',
-                'args': {'width': 10, 'height' : 5, 'obstacle' : {'x_bounds': [2, 3], 'y_bounds': [2, 3]} }
-            },
-            {
-                'type': 'square_obstacle',
-                'args': {'width': 10, 'height' : 5, 'obstacle' : {'x_bounds': [3, 4], 'y_bounds': [3, 4]} }
+                'args': {'width': 60, 'height' : 40, 'obstacles' : [
+                                { 'x': 5,  'y': 25, 'x_size': 1,  'y_size': 1 },
+                                { 'x': 15,  'y': 30, 'x_size': 1,  'y_size': 1 },
+                                { 'x': 25,  'y': 25, 'x_size': 1,  'y_size': 1 },
+                                { 'x': 35,  'y': 15, 'x_size': 1,  'y_size': 1 },
+                                { 'x': 45,  'y': 10, 'x_size': 1,  'y_size': 1 },
+                            ]
+                        }
             }
-        ]
+       ]
