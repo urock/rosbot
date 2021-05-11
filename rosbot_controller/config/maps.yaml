@@ -1,0 +1,17 @@
+map_origin_pose: [0, 0] 
+map_resolution: 0.1
+
+maps : [
+            {
+                'type': 'square_obstacle',
+                'args': {'width': 10, 'height' : 5, 'obstacle' : {'x_bounds': [1, 2], 'y_bounds': [1, 2]} }
+            },
+            {
+                'type': 'square_obstacle',
+                'args': {'width': 10, 'height' : 5, 'obstacle' : {'x_bounds': [2, 3], 'y_bounds': [2, 3]} }
+            },
+            {
+                'type': 'square_obstacle',
+                'args': {'width': 10, 'height' : 5, 'obstacle' : {'x_bounds': [3, 4], 'y_bounds': [3, 4]} }
+            }
+        ]

@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="rosbot_controller" type="path_publisher_node.py" name="path_pub" output="screen">
+        <rosparam command="load" file="$(find rosbot_controller)/config/paths.yaml" subst_value="true" />
+    </node>
+</launch>

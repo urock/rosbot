@@ -5,7 +5,7 @@ local_planner:
     goal_tolerance: 0.05 
     trajectory_lookahed_count: 4
 
-    wait_full_step: False
+    wait_full_step: True
     visualize_trajs: True
     visualize_state: True
 
@@ -15,7 +15,7 @@ mppic:
     time_steps: 40
     model_path: "$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx"
     mppi_freq: 10
-    iter_count: 3
+    iter_count: 1
     v_std: 0.10
     w_std: 0.25
     limit_v: 0.5

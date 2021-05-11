@@ -15,7 +15,7 @@
         <rosparam command="load" file="$(find rosbot_controller)/config/mppi.yaml" subst_value="true" />
     </node>
 
-    <include file="$(find rosbot_controller)/launch/scene_publisher.launch"/>
-
+    <include file="$(find rosbot_controller)/launch/map_publisher.launch"/>
+    <include file="$(find rosbot_controller)/launch/path_publisher.launch"/>
 
 </launch>

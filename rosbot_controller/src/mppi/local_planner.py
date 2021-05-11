@@ -19,7 +19,6 @@ class LocalPlanner:
 
         self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
         self._visualize_state = rospy.get_param('~local_planner/visualize_state', True)
-
         self._wait_full_step = rospy.get_param('~local_planner/wait_full_step', False)
 
         self._state_visualizer = StateVisualizer('/mppi_path')
