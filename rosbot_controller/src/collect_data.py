@@ -1,12 +1,10 @@
 import os
+import numpy as np
 import rospy
 import rosservice
-import numpy as np
 import rosnode
-from geometry_msgs.msg import Twist # PoseStamped
-# from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Twist, ModelState
 from gazebo_msgs.srv import SetModelState
-from gazebo_msgs.msg import ModelState
 
 
 def ResetPose():
