@@ -100,7 +100,7 @@ def is_angle_obtuse(opposite_side, b, c):
 
 @njit
 def heron(opposite_side, b, c):
-    eps = 0.00001
+    eps = 0.000001
     if abs(opposite_side) < eps:
         return min(b, c)
 

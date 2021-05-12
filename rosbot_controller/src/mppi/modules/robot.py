@@ -10,7 +10,7 @@ sys.path.append("..")
 
 class Odom:
     """
-    Class keeps state of the robot, updating it from external source (tf message)
+    Class keep state of the robot, updating it from external source (tf message)
     """
 
     def __init__(self):

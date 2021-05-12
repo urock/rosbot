@@ -14,19 +14,13 @@ class MapPublisher:
         self._map_frame = rospy.get_param('~map_frame', '/odom')
 
         self._map_topic = rospy.get_param('~map_topic', '/map')
-        self._map_resolution = rospy.get_param('~map_resolution', 0.1)
 
         self._model_name = rospy.get_param('~gz_model_name', 'rosbot')
         self._reference_name = rospy.get_param('~gz_reference_frame', 'world')
 
         self._map_generator = MapGenerator()
-        self._map_origin = rospy.get_param('~map_origin_pose', [0, 0])
 
-        origin_pose = Pose()
-        origin_pose.position.x = self._map_origin[0]
-        origin_pose.position.y = self._map_origin[1]
-
-        self._map_handler = MapHandler(self._map_frame, self._map_topic, origin=origin_pose)
+        self._map_handler = MapHandler(self._map_frame, self._map_topic)
 
         self._maps = rospy.get_param('~maps', [])
         self._map_idx = 0
@@ -40,12 +34,21 @@ class MapPublisher:
             if self._next_map:
                 map = self._maps[self._map_idx]
                 data = self._map_generator.generate(map)
-                self._map_handler.publish(self._map_resolution,
-                                          map['args']['width'],
-                                          map['args']['height'], data)
+                origin = self._create_origin(map['origin'])
+                self._map_handler.publish(origin,
+                                          map['resolution'],
+                                          map['generator_args']['width'],
+                                          map['generator_args']['height'], data)
 
                 self._map_idx = 0 if self._map_idx == len(self._maps) - 1 else (self._map_idx + 1)
                 self._next_map = False
+
+    def _create_origin(self, origin_point):
+        origin = Pose()
+        origin.position.x = origin_point[0]
+        origin.position.y = origin_point[1]
+
+        return origin
 
     def _next_map_cb(self, req):
         self._next_map = True

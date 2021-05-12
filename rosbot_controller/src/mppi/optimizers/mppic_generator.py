@@ -61,10 +61,8 @@ class MPPICGenerator():
 
     def reset(self):
         self.state = State()
-        # 5 for v, w, control_dim and dt
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt
-
         self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
 
     def _update_batch_of_seqs(self):

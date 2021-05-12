@@ -24,7 +24,7 @@ from modules.metric_handler import MetricHandler
 
 
 pr = cProfile.Profile(timeunit=0.00)
-FUNCTION_PRINT_COUNT = 40
+FUNCTION_PRINT_COUNT = 200
 
 
 def main():

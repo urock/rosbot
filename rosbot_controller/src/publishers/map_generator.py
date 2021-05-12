@@ -11,11 +11,11 @@ class MapGenerator:
 
     def generate(self, map):
         type = map['type']
-        args = map['args']
+        generator_args = map['generator_args']
 
         rospy.loginfo(
-            "Map Generator: generating '{}' with args: {}".  format(type, args))
-        return self.generators[type](**args)
+            "Map Generator: generating '{}' with args: {}".  format(type, generator_args))
+        return self.generators[type](**generator_args)
 
     def _make_squared_obstacle(self, width, height, obstacles):
         data = []
@@ -30,7 +30,6 @@ def in_obstacles(point, obstacles):
     for obstacle in obstacles:
         if (x >= obstacle['x']) and x < (obstacle['x'] + obstacle['x_size']) and \
            (y >= obstacle['y']) and y < (obstacle['y'] + obstacle['y_size']):
-            print(x, y)
             return True
 
     return False
