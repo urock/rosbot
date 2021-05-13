@@ -42,7 +42,7 @@ class ControlGenerator():
 
     def run(self):
 
-        if self.mode == "from file": 
+        if self.mode == "from_file": 
             self.file_path = rospy.get_param('~file_path')
 
             self.read_control_from_file()

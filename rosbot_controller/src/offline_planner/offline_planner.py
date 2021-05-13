@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import os
 import numpy as np
 from time import time
 from time import perf_counter
@@ -29,7 +30,7 @@ from modules.plot_tools import visualize_trajectory, visualize_control, visualiz
 
 class OfflinePlanner:
      
-    def __init__(self, n_iters, model_path):
+    def __init__(self, n_iters, model_path, output_path):
 
         self.batch_size = 1000
 
@@ -47,6 +48,7 @@ class OfflinePlanner:
         self.Tmax = 10.0
 
         self.n_iters = n_iters
+        self.output_path = output_path
         self.state_size = 5     # size of state vector X
         self.control_size = 2   # size of state vector U
         
@@ -109,6 +111,9 @@ class OfflinePlanner:
         final_trajectory = best_x[0][:reaching_goal_idx + 1]   
 
         self._plot_graphs(pso_control, final_control, final_trajectory, obstacles)
+
+        if self.output_path is not None:
+            self.save_control_to_csv(final_control, self.output_path)
 
         return final_control
 
@@ -348,7 +353,29 @@ class OfflinePlanner:
         
         return idx_min, t_min + dist_min + trajectory_length + obstacle_cost
         
-           
+    def save_control_to_csv(self, control_seq, output_path):
+        """
+        Saves the control sequence in сsv format.
+        Args:
+            :control_seq: (): control sequence
+            :output_path: (str): path where the file will be saved
+
+        """
+        #print(type(control_seq))
+        #print(control_seq)
+        parent_dir, _ = os.path.split(output_path)
+        if not os.path.exists(parent_dir):
+            os.makedirs(parent_dir)
+
+        with open(output_path, 'w') as f:
+            f.write("t x yaw \n")
+            t = 0.0
+            for item in control_seq:
+                f.write(str(t) + " " + str(item[0]) + " " + str(item[1]) + "\n")
+                t = t + self.dt
+
+        print("Control file path = {}".format(os.path.abspath(output_path)))
+
 
 
 def main():
@@ -356,7 +383,9 @@ def main():
     parser.add_argument('-m', '--model_path', type=str, required=False,
                         help='Path to nn onnx model')
     parser.add_argument('-it', '--n_iters', type=int, required=False, default=10,
-                        help='Path to nn onnx model')                        
+                        help='Path to nn onnx model')   
+    parser.add_argument('-o', '--output_path', type=str, required=False, default=None,
+                        help='Path to the output file with control')                      
 
     args = parser.parse_args()
 
@@ -366,7 +395,7 @@ def main():
     # center x, center y, radius
     obstacles = [(1.0, 0.3, 0.5), (1.5, 1.75, 0.3)]           
 
-    planner = OfflinePlanner(args.n_iters, args.model_path)
+    planner = OfflinePlanner(args.n_iters, args.model_path, args.output_path)
     control = planner.run(current_state, goal, obstacles)
     # control = planner.test(current_state, goal)
     
