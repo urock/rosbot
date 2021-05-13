@@ -30,7 +30,7 @@ class MPPICOptimizer():
             self._optimize(goal_idx, count)
 
         self.curr_exec_time = perf_counter() - start
-        self.curr_offset = min(round(self.curr_exec_time / self.generator.dt),
+        self.curr_offset = min(math.ceil(self.curr_exec_time / self.generator.dt),
                                len(self.generator.curr_control_seq) - 1)
 
         control = self.generator.get_control(self.curr_offset)

@@ -22,16 +22,3 @@ class MapHandler:
         y = (y_i * self.map.info.resolution) + self.map.info.origin.position.y + self.map.info.resolution / 2;
 
         return [x, y]
-
-
-    def _make_map(self, origin, resolution, width, height, data):
-        time = rospy.Time.now()
-        grid = OccupancyGrid()
-        grid.header.frame_id = self._map_frame
-        grid.header.stamp = time
-        grid.info.origin = origin
-        grid.info.map_load_time = time
-        grid.info.resolution = resolution
-        grid.info.width = width
-        grid.info.height = height
-        grid.data = data

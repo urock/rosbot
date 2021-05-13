@@ -22,6 +22,8 @@ from modules.goal_handler import GoalHandler
 from modules.path_handler import PathHandler
 from modules.metric_handler import MetricHandler
 
+from modules.models import RosbotKinematic
+
 
 pr = cProfile.Profile(timeunit=0.00)
 FUNCTION_PRINT_COUNT = 200
@@ -40,6 +42,8 @@ def start_planner():
 
     model_path = rospy.get_param("~mppic/model_path", None)
     model = nnio.ONNXModel(model_path)
+    # model = RosbotKinematic()
+
     control_generator = MPPICGenerator(model)
     optimizer = MPPICOptimizer(control_generator, triangle_cost, calc_softmax_seq)
     odom = Odom()

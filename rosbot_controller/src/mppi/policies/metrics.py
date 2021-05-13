@@ -3,12 +3,11 @@ import numpy as np
 
 def mean_dist_metric(ref_traj, path_points):
     error = 0
-    ref_count = len(ref_traj)
     for ref in ref_traj[:, :3]:
         min_dist = __find_min_dist(ref, path_points[:, :3])
         error += min_dist
 
-    return error / ref_count
+    return error / len(ref_traj)
 
 
 def __find_min_dist(ref_pt, path_points):

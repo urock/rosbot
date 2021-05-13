@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 class MetricHandler():
     def __init__(self, metric):
         self.metric = metric
-        self.path = np.zeros(shape=(0, 5))
-        self.controls = np.zeros(shape=(0, 2))
+        self.path = np.zeros(shape=(0, 5)) # x, y, yaw, v, w
+        self.controls = np.zeros(shape=(0, 2)) # v w
 
     def add_state(self, state):
         self.path = np.append(self.path, state.to_numpy()[np.newaxis], axis=0)
@@ -29,14 +29,28 @@ class MetricHandler():
         self.show_statistics('Vels', lin_vels, ang_vels)
         self.show_statistics('Controls', lin_controls, ang_controls)
 
-        self.show_graphs(lin_vels, ang_vels, self.controls)
+        self.plot_speed(lin_vels, ang_vels, self.controls)
+        self.plot_trajs(self.path, reference_trajectory)
+        plt.show()
 
     def show_statistics(self, tag, lin, ang):
         rospy.loginfo(tag + " Mean: v {:.6f}, w = {:.6f}.".format(np.mean(lin), np.mean(ang)))
         rospy.loginfo(tag + " Std: v {:.6f}, w = {:.6f}.".format(np.std(lin), np.std(ang)))
         rospy.loginfo(tag + " Var: v {:.6f}, w = {:.6f}.\n".format(np.var(lin), np.var(ang)))
 
-    def show_graphs(self, lin_vels, ang_vels, controls):
+    def plot_trajs(self, path, reference):
+        plt.figure(2)
+        plt.plot(path[:, 0], path[:, 1], label='Path')
+        plt.plot(reference[:, 0], reference[:, 1], marker='d', ms=2.0, label='Trajectory')
+
+        plt.yscale("linear")
+        plt.title("Trajectory")
+        plt.xlabel("X")
+        plt.ylabel("Y")
+        plt.legend()
+
+
+    def plot_speed(self, lin_vels, ang_vels, controls):
         lin_rng = np.arange(len(lin_vels))
         plt.figure(1)
         plt.subplot(221)
@@ -72,4 +86,3 @@ class MetricHandler():
         plt.title("Angular Control")
         plt.xlabel("point")
         plt.ylabel("Angular vel")
-        plt.show()
