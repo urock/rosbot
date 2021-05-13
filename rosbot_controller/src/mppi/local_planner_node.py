@@ -22,6 +22,8 @@ from modules.goal_handler import GoalHandler
 from modules.path_handler import PathHandler
 from modules.metric_handler import MetricHandler
 
+from modules.map_handler import MapHandler
+
 from modules.models import RosbotKinematic
 
 
@@ -51,7 +53,10 @@ def start_planner():
     goal_handler = GoalHandler()
     path_handler = PathHandler()
     metric_handler = MetricHandler(mean_dist_metric)
-    mppic = LocalPlanner(optimizer, odom, controller, goal_handler, path_handler, metric_handler)
+    map_handler = MapHandler()
+
+    mppic = LocalPlanner(optimizer, odom, controller, goal_handler,
+                         path_handler, map_handler, metric_handler)
 
     mppic.start()
     rospy.spin()

@@ -6,8 +6,8 @@ local_planner:
     trajectory_lookahed_count: 4
 
     wait_full_step: True
-    visualize_trajs: True
-    visualize_state: True
+    visualize_trajs: False
+    visualize_state: False
 
 mppic:
     noise_repeat_factor: 2
@@ -18,7 +18,7 @@ mppic:
     iter_count: 3
     v_std: 0.10
     w_std: 0.25
-    limit_v: 0.5
+    limit_v: 5.0
     limit_w:  1.0
     desired_v: 0.3
-    traj_lookahead: 1.5
+    traj_lookahead: 2.0

@@ -9,13 +9,14 @@ from geometry_msgs.msg import Vector3
 
 
 class LocalPlanner:
-    def __init__(self, optimizer, odom, controller, goal_handler, path_handler, metric_handler):
+    def __init__(self, optimizer, odom, controller, goal_handler, path_handler, map_handler, metric_handler):
         self.optimizer = optimizer
         self.odom = odom
         self.controller = controller
         self.goal_handler = goal_handler
         self.path_handler = path_handler
         self.metric_handler = metric_handler
+        self.map_handler = map_handler
 
         self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
         self._visualize_state = rospy.get_param('~local_planner/visualize_state', True)
