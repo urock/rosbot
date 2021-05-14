@@ -1,48 +1,36 @@
-from utils.visualizations import visualize_trajs, MarkerArray
-from utils.geometry import quaternion_to_euler
-from utils.dtypes import State, Control, dist_L2, dist_L2_np
-import rospy
 from time import perf_counter
 from typing import Callable, Type
 import numpy as np
 import sys
 sys.path.append("..")
 
+import rospy
 
-# Alex
-class MonteCarlo:
-
-    def __init__(self, curr_control_seq):
-        # self.batch_u = curr_control_seq  ??? 
-
-    def gen_next_control_batch(self):
-
-        self.batch_u = np.zeros(shape=(self.batch_size, self.time_steps, 2))
-
-        v_noises = np.random.normal(0.0, self.v_std, size=(self.batch_size, self.time_steps, 1))
-        w_noises = np.random.normal(0.0, self.w_std, size=(self.batch_size, self.time_steps, 1))
-        noises = np.concatenate([v_noises, w_noises], axis=2)
-
-        return self.batch_u
+from optimizers.optimizer import Optimizer
+from utils.dtypes import State, Control, dist_L2, dist_L2_np
+from utils.geometry import quaternion_to_euler
+from utils.visualizations import visualize_trajs, MarkerArray
 
 
-class MPPIController:
-    def __init__(self, model, loss, next_control_policie):
+class MPPIController(Optimizer):
+    def __init__(self, model, loss, next_control_policy):
         self.freq = int(rospy.get_param('~mppic/mppi_freq', 30))
         self.dt = 1.0 / self.freq
         self.batch_size = int(rospy.get_param('~mppic/batch_size', 100))
         self.time_steps = int(rospy.get_param('~mppic/time_steps', 50))
         self.iter_count = int(rospy.get_param('~mppic/iter_count', 1))
+
         self.v_std = rospy.get_param('~mppic/v_std', 0.1)
         self.w_std = rospy.get_param('~mppic/w_std', 0.1)
         self.limit_v = rospy.get_param('~mppic/limit_v', 0.5)
         self.limit_w = rospy.get_param('~mppic/limit_w', 0.7)
         self.desired_v = rospy.get_param('~mppic/desired_v', 0.5)
+
         self.traj_lookahead = int(rospy.get_param('~mppic/traj_lookahead', 7))
         self.goals_interval = rospy.get_param('~mppic/goals_interval', 0.1)
 
         self.calc_losses = loss
-        self.calc_next_control_seq = next_control_policie
+        self.calc_next_control_seq = next_control_policy
         self.model = model
 
         # 5 for v, w, control_dim and dt
@@ -54,10 +42,6 @@ class MPPIController:
         self.curr_state: Type[State]
 
         self.trajs_pub = rospy.Publisher('/mppi_trajs', MarkerArray, queue_size=10)
-
-        # Alex
-        self.control_generator = MonteCarlo()
-
 
     def set_reference_traj(self, ref_traj):
         self.reference_traj = ref_traj
@@ -85,27 +69,20 @@ class MPPIController:
 
     def _optimize(self, goal_idx: int):
         self._update_batch_of_seqs()
-        trajs = self._predict_trajs()
-        state = np.concatenate([trajs, self.batch_of_seqs[:, :, 2:4]], axis=2)
+        state = self._predict_trajs()
         losses = self.calc_losses(state, self.reference_traj, self.traj_lookahead,
                                   goal_idx, self.desired_v, self.goals_interval)
 
         next_control_seq = self.calc_next_control_seq(losses, self.batch_of_seqs[:, :, 2:4])
         self.curr_control_seq = next_control_seq
-        # visualize_trajs(0, self.trajs_pub, trajs, 0.8)
-
-    
+        visualize_trajs(0, self.trajs_pub, state, 0.8)
 
     def _update_batch_of_seqs(self):
         noises = self._generate_noises()
         self.batch_of_seqs[:, 0, 0] = self.curr_state.v
         self.batch_of_seqs[:, 0, 1] = self.curr_state.w
-        # self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
 
-        # Alex
-        self.batch_of_seqs[:, :, 2:4] = self.control_generator.gen_next_control_batch()
-
-        
+        self.batch_of_seqs[:, :, 2:4] = self.curr_control_seq[None] + noises
 
         self.batch_of_seqs[:, :, 2:3] = np.clip(self.batch_of_seqs[:, :, 2:3], -self.limit_v,
                                                 self.limit_v)
@@ -162,5 +139,8 @@ class MPPIController:
             x[:, :, np.newaxis],
             y[:, :, np.newaxis],
             yaw[:, :, np.newaxis],
+            self.batch_of_seqs[:, :, :1],
+            self.batch_of_seqs[:, :, 1:2]
         ], axis=2)
+
         return traj_points
