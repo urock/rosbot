@@ -15,6 +15,8 @@ def parse_file(folder_path, file, data):
     with open(path, 'r') as f:
         keys = f.readline()
         keys = keys.rstrip().split(' ')  # get keys from first line, remove '/n'
+        if "#" in keys:
+            keys.remove("#")
         for line in f.readlines():
             line = line[0:-1].split(' ')
             for i in range(len(keys)):
@@ -53,6 +55,13 @@ def main():
     for data, file in zip([robot_state, model_state, control, time], required_files):
         parse_file(folder_path, file, data)
 
+    try:
+        nn_model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+        parse_file(folder_path, "nn_model_state.csv", nn_model_state)
+    except:
+        nn_model_state = None
+        print("There are no files with the state of the neural network model!")
+
     # print(robot_state)
     # time = np.cumsum(np.array(delta_time['dt']))
     fig, ax = plt.subplots(2)
@@ -63,11 +72,17 @@ def main():
     plot_xy_data(x=time['t'], y=robot_state['v'], ax=ax[0], plot_name="robot v")
     plot_xy_data(x=time['t'], y=model_state['v'], ax=ax[0], plot_name="kinematic model v")
     plot_xy_data(x=time['t'], y=control['x'], ax=ax[0], plot_name="u1")
+    if nn_model_state is not None:
+        # print(nn_model_state['v'])
+        plot_xy_data(x=time['t'], y=nn_model_state['v'], ax=ax[0], plot_name="nn model v")
 
     ax[1].set_title("angular velocity and control")
     plot_xy_data(x=time['t'], y=robot_state['w'], ax=ax[1], plot_name="robot w")
     plot_xy_data(x=time['t'], y=model_state['w'], ax=ax[1], plot_name="kinematic model w")
     plot_xy_data(x=time['t'], y=control['yaw'], ax=ax[1], plot_name="u2")
+    if nn_model_state is not None:
+        plot_xy_data(x=time['t'], y=nn_model_state['w'], ax=ax[1], plot_name="nn model w")
+
 
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="velocities_and_control")    
@@ -80,10 +95,14 @@ def main():
     ax2[0].set_title("X coord over time")
     plot_xy_data(x=time['t'], y=robot_state['x'], ax=ax2[0], plot_name="robot x(t)")
     plot_xy_data(x=time['t'], y=model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
-    
+    if nn_model_state is not None:
+        plot_xy_data(x=time['t'], y=nn_model_state['x'], ax=ax2[0], plot_name="nn model x(t)")
+
     ax2[1].set_title("Y coord over time")
     plot_xy_data(x=time['t'], y=robot_state['y'], ax=ax2[1], plot_name="robot y(t)")
     plot_xy_data(x=time['t'], y=model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
+    if nn_model_state is not None:
+        plot_xy_data(x=time['t'], y=nn_model_state['y'], ax=ax2[1], plot_name="nn model y(t)")
 
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="XY over time")        
@@ -95,6 +114,8 @@ def main():
     ax3.set_title("Yaw angle over time")
     plot_xy_data(x=time['t'], y=robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
     plot_xy_data(x=time['t'], y=model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
+    if nn_model_state is not None:
+        plot_xy_data(x=time['t'], y=nn_model_state['yaw'], ax=ax3, plot_name="nn model yaw(t)")
 
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="YAW over time")        
@@ -106,7 +127,9 @@ def main():
     ax4.set_title("XY trajectory")
     plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="x_y")
     plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model x_y")
-
+    if nn_model_state is not None:
+        plot_xy_data(x=nn_model_state['x'], y=nn_model_state['y'], ax=ax4, plot_name="nn model x_y")
+    
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="Y over X")        
 
