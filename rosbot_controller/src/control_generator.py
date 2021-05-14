@@ -114,39 +114,63 @@ class ControlGenerator():
     def periodic_sequence_v(self):
         v = 0
         yield v
-        for i in range(int(self.Tv/(2*self.dt))):
-            if v < self.v_max:
+        for _ in range(int(self.Tv/(2*self.dt))):
+            if self.a_l > 0 and v < self.v_max:
+                v += self.a_l * self.dt         
+
+            if self.a_l < 0 and abs(v) < self.v_max:
                 v += self.a_l * self.dt
-            yield v            
+
+            yield v             
 
         while True:
-            for i in range(int(self.Tv/(2*self.dt))):
-                if v > self.v_min:
+            for _ in range(int(self.Tv/(2*self.dt))):
+                if self.a_l > 0 and v > self.v_min:
                     v -= self.a_l * self.dt
+
+                if self.a_l < 0 and v < self.v_min:
+                    v -= self.a_l * self.dt
+
                 yield v
-            for i in range(int(self.Tv/(2*self.dt))):
-                if v < self.v_max:
+            for _ in range(int(self.Tv/(2*self.dt))):
+                if self.a_l > 0 and v < self.v_max:
+                    v += self.a_l * self.dt         
+
+                if self.a_l < 0 and abs(v) < self.v_max:
                     v += self.a_l * self.dt
-                yield v
+                    
+                yield v  
         
 
     def periodic_sequence_w(self):
         w = 0
         yield w
-        for i in range(int(self.Tw/(2*self.dt))):
-            if w < self.w_max:
+        for _ in range(int(self.Tw/(2*self.dt))):
+            if self.a_w > 0 and w < self.w_max:
+                w += self.a_w * self.dt         
+
+            if self.a_w < 0 and abs(w) < self.w_max:
                 w += self.a_w * self.dt
-            yield w            
+
+            yield w           
 
         while True:
-            for i in range(int(self.Tw/(2*self.dt))):
-                if w > self.w_min:
+            for _ in range(int(self.Tw/(2*self.dt))):
+                if self.a_w > 0 and w > self.w_min:
                     w -= self.a_w * self.dt
+
+                if self.a_w < 0 and w < self.w_min:
+                    w -= self.a_w * self.dt
+
                 yield w
-            for i in range(int(self.Tw/(2*self.dt))):
-                if w < self.w_max:
+            for _ in range(int(self.Tw/(2*self.dt))):
+                if self.a_w > 0 and w < self.w_max:
+                    w += self.a_w * self.dt         
+
+                if self.a_w < 0 and abs(w) < self.w_max:
                     w += self.a_w * self.dt
-                yield w
+                    
+                yield w   
 
     def build_graph(self, t, v, w):
 
