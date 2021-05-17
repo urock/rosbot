@@ -24,21 +24,7 @@ def parse_file(folder_path, file, data):
 
     os.chdir(pwd)
 
-
-def main():
-    """ """
-
-    plt.rcParams['font.size'] = '12'
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-folder_path', action='store', dest='folder_path',
-                        required=True, help='absolute path to the folder with data.csv')
-    
-    parser.add_argument('-output_folder', action='store', dest='output_folder', 
-                        required=False, default="", 
-                        help="absolute path to the output folder to store images. No images are stored if empty")                        
-    args = parser.parse_args()
-    folder_path = args.folder_path
+def parse_one_trajectories(folder_path):
 
     # declare file names with data
     required_files = ['state.csv', 'kinetic_model_state.csv', 'control.csv', 'time.csv']
@@ -61,6 +47,13 @@ def main():
     except:
         nn_model_state = None
         print("There are no files with the state of the neural network model!")
+
+    return robot_state, model_state, control, time, nn_model_state
+
+
+def plot_for_one_trajectory(args, folder_path):
+
+    robot_state, model_state, control, time, nn_model_state = parse_one_trajectories(folder_path)
 
     # print(robot_state)
     # time = np.cumsum(np.array(delta_time['dt']))
@@ -134,6 +127,38 @@ def main():
         save_plot(path=args.output_folder, name="Y over X")        
 
     plt.show()
+
+def plot_for_group(args, folder_path):
+    """
+    """
+    for traj in os.listdir(folder_path):
+        traj_path = folder_path + '/' + traj
+        robot_state, model_state, control, time, nn_model_state = parse_one_trajectories(traj_path)
+
+
+def main():
+    """ """
+
+    plt.rcParams['font.size'] = '12'
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-group', action='store', default=False, dest='group',
+                        required=False, help='')
+
+    parser.add_argument('-folder_path', action='store', dest='folder_path',
+                        required=True, help='absolute path to the folder with data.csv')
+    
+    parser.add_argument('-output_folder', action='store', dest='output_folder', 
+                        required=False, default="", 
+                        help="absolute path to the output folder to store images. No images are stored if empty")                        
+    args = parser.parse_args()
+    folder_path = args.folder_path
+
+    if not args.group:
+        plot_for_one_trajectory(args, folder_path)
+    else:
+        plot_for_group(args, folder_path)
     
 
 
