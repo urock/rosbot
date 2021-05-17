@@ -34,7 +34,8 @@ class OfflinePlanner:
 
         self.batch_size = 1000
 
-        self.dt = 0.033          # sec
+        # self.dt = 0.033          # sec
+        self.dt = 0.03          # sec
         self.pso_dt = 1         # sec. PSO outputs control with pso_dt interval between samples 
         self.total_time = 10    # sec 
         self.pso_steps              = int(self.total_time/ self.pso_dt) + 1
@@ -390,7 +391,7 @@ def main():
     args = parser.parse_args()
 
     current_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])   # (x, y, yaw, v, w)
-    goal = [2.0, 2.0]                                   # (x, y)
+    goal = [2.0, 2.0]                                     # (x, y)
 
     # center x, center y, radius
     obstacles = [(1.0, 0.3, 0.5), (1.5, 1.75, 0.3)]           

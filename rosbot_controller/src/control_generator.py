@@ -34,7 +34,7 @@ class ControlGenerator():
 
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
 
-        self.dt = 0.033
+        self.dt = 0.03
         self.v = []
         self.w = []
         self.t = []
