@@ -3,17 +3,17 @@ import os
 import matplotlib.pyplot as plt
 
 
-def plot_xy_data(x, y, ax=None, plot_name=" "):
+def plot_xy_data(x, y, ax=None, plot_name=" ", alpha=1):
     """Build a graph from x and y"""
     x = np.array(x)
     y = np.array(y)
     if ax == None:
-        plt.plot(x, y, marker='o', label=plot_name)
+        plt.plot(x, y, marker='o', label=plot_name, alpha=alpha)
         # plt.plot(x, y, label=plot_name)
         plt.grid(True)
         # plt.title(title)
     else:
-        ax.plot(x, y, marker='o', label=plot_name)
+        ax.plot(x, y, marker='o', label=plot_name, alpha=alpha)
         # ax.plot(x, y, label=plot_name)
         ax.grid(True)
         # ax.set_title(title)

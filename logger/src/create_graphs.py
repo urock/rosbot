@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 import os
+import seaborn as sns
+import pandas as pd
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
@@ -131,10 +133,42 @@ def plot_for_one_trajectory(args, folder_path):
 def plot_for_group(args, folder_path):
     """
     """
+    fig, ax = plt.subplots(1)
+    ax.set_xlabel('X, m')        
+    ax.set_ylabel('Y, m')
+    ax.set_title("XY trajectory")
+
+    robot_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    nn_model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    control = {'x': [], 'yaw': []}
+    time = {'t': []}
+
+    robot_state = pd.DataFrame(robot_state, columns=robot_state.keys())
+    model_state = pd.DataFrame(model_state, columns=robot_state.keys())
+    nn_model_state = pd.DataFrame(nn_model_state, columns=robot_state.keys())
+
     for traj in os.listdir(folder_path):
         traj_path = folder_path + '/' + traj
-        robot_state, model_state, control, time, nn_model_state = parse_one_trajectories(traj_path)
+        robot_state_, model_state_, control_, time_, nn_model_state_ = parse_one_trajectories(traj_path)
+        robot_state_ = pd.DataFrame(robot_state_, columns=robot_state.keys())
+        model_state_ = pd.DataFrame(model_state_, columns=robot_state.keys())
+        nn_model_state_ = pd.DataFrame(nn_model_state_, columns=robot_state.keys())
 
+        #robot_state = pd.concat([robot_state, robot_state_], ignore_index=True)
+        #nn_model_state = pd.concat([nn_model_state, nn_model_state_], ignore_index=True)
+        #model_state = pd.concat([model_state, model_state_], ignore_index=True)
+        
+        robot_state_.plot(x='x', y='y', ax=ax, legend=False, c='b', alpha=0.2, kind='line')
+        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='r', alpha=0.2, kind='line')
+        nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.2, kind='line')
+
+    ax.legend(['Rosbot state', 'kinetic model state', 'NN state' ])
+    #grid_1 = sns.pairplot(robot_state, x_vars=['x'], y_vars=['y'],  plot_kws={'alpha':0.1})
+    #grid_2 = sns.pairplot(nn_model_state,x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
+    #grid_3 = sns.pairplot(model_state, x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
+
+    plt.show()
 
 def main():
     """ """
