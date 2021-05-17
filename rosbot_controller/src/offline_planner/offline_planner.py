@@ -391,7 +391,7 @@ def main():
     args = parser.parse_args()
 
     current_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])   # (x, y, yaw, v, w)
-    goal = [2.0, 2.0]                                     # (x, y)
+    goal = [2.0, 3.0]                                     # (x, y)
 
     # center x, center y, radius
     obstacles = [(1.0, 0.3, 0.5), (1.5, 1.75, 0.3)]           

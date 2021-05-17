@@ -23,10 +23,10 @@
         <arg name="output_folder"   value="$(arg output_folder)" />
     </include>
 
-    <include file="$(find rosbot_controller)/launch/control_gen.launch">
+<!--     <include file="$(find rosbot_controller)/launch/control_gen.launch">
         <arg name="launch_logger"   value="false" />
         <arg name="control_mode"    value="$(arg control_mode)" />
         <arg name="file_path"       value="$(arg file_path)" />
-    </include>
+    </include> -->
 
 </launch>
