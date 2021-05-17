@@ -8,7 +8,7 @@
 
     <!-- for NN Model -->
     <arg name="use_nn_model"    default="false" />
-    <arg name="nn_model_path"   default="$(find rosbot_controller)/nets/model_batch_1.onnx" />
+    <arg name="nn_model_path"   default="$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx" />
     <arg name="cmd_topic"       default="cmd_vel" />
     <arg name="parent_frame"    default="odom"/>
     <arg name="robot_frame"     default="nn_model_link"/>
