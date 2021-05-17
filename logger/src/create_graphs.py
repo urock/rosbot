@@ -7,6 +7,17 @@ import argparse
 import matplotlib.pyplot as plt
 from logger.logger_tools import plot_xy_data, save_plot
 
+"""
+python3 
+for one folder with data
+python3 create_graphs.py -folder_path /home/user/catkin_ws/src/logger/output_data/test_PSO_2_3_150_dt_0.03/test_PSO_2_3_150_dt_0.03_1
+
+or
+for many folders
+python3 create_graphs.py -folder_path /home/user/catkin_ws/src/logger/output_data/test_PSO_2_3_150_dt_0.03 -group True
+
+"""
+
 def parse_file(folder_path, file, data):
     """ """
 
@@ -132,6 +143,7 @@ def plot_for_one_trajectory(args, folder_path):
 
 def plot_for_group(args, folder_path):
     """
+    # FOR PSO planner
     """
     fig, ax = plt.subplots(1)
     ax.set_xlabel('X, m')        
