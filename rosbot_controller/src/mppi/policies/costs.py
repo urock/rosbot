@@ -52,14 +52,17 @@ def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, d
 
     costs = np.empty(shape=state.shape[0])
 
-    obstacles_c = obstacles_cost(state, obstacles, limit=0.15, eps=0.15, inside_penalty=10000,
+    # v = state[:, :, 3]
+    # lin_vel_c = lin_vel_cost(v, desired_v, 15)
+
+    obstacles_c = obstacles_cost(state, obstacles, limit=0.0, eps=0.10, inside_penalty=1000,
                                  outside_slope_weight=2, outside_power=1)
 
     triangle_c = triangle_cost_segments(state, reference_trajectory, reference_intervals,
                                         weight=1, power=1)
 
     goal_c = goal_cost(state, reference_trajectory[-1],
-                       weight=40, power=2)
+                       weight=75, power=1)
 
     costs += obstacles_c + triangle_c + goal_c
     return costs
@@ -155,7 +158,6 @@ def goal_cost(state, goal, weight=1, power=1):
 
 
 # @njit
-# def lin_vel_cost(v, desired_v):
-#     DESIRED_V_WEIGHT = 2.0
-#     v_costs = DESIRED_V_WEIGHT * ((v - desired_v)**2).sum(1)
-#     return v_costs
+def lin_vel_cost(v, desired_v, weight = 2):
+    v_costs = weight * ((v - desired_v)**2).mean(1)
+    return v_costs

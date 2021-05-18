@@ -10,7 +10,7 @@ local_planner:
     visualize_state: True
 
 mppic:
-    noise_repeat_factor: 1
+    noise_repeat_factor: 2
     batch_size: 300
     time_steps: 40
     model_path: "$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx"
@@ -21,7 +21,7 @@ mppic:
     limit_v: 0.5
     limit_w:  1.0
     desired_v: 0.3
-    traj_lookahead: 1.7
+    traj_lookahead: 1.5
 
 
 # x, y, Radius
