@@ -3,20 +3,20 @@
 from copy import copy
 import rospy
 from time import time, perf_counter
-from utils.visualizations import StateVisualizer, TrajectoriesVisualizer, ReferenceVisualizer, Colors
+from utils.visualizations import StateVisualizer, TrajectoriesVisualizer, \
+        ReferenceVisualizer, ObstaclesVisualizer, Colors
 
 from geometry_msgs.msg import Vector3
 
 
 class LocalPlanner:
-    def __init__(self, optimizer, odom, controller, goal_handler, path_handler, map_handler, metric_handler):
+    def __init__(self, optimizer, odom, controller, goal_handler, path_handler, metric_handler):
         self.optimizer = optimizer
         self.odom = odom
         self.controller = controller
         self.goal_handler = goal_handler
         self.path_handler = path_handler
         self.metric_handler = metric_handler
-        self.map_handler = map_handler
 
         self._visualize_trajs = rospy.get_param('~local_planner/visualize_trajs', False)
         self._visualize_state = rospy.get_param('~local_planner/visualize_state', True)
@@ -25,6 +25,11 @@ class LocalPlanner:
         self._state_visualizer = StateVisualizer('/mppi_path')
         self._trajs_visualizer = TrajectoriesVisualizer('/mppi_trajs')
         self._ref_visualizer = ReferenceVisualizer('/ref_trajs')
+
+        self._obstacle_visualizer = ObstaclesVisualizer('/mppi_obstacles')
+
+        rospy.sleep(2)
+        self._obstacle_visualizer.visualize(self.optimizer.obstacles, Colors.red)
 
     def start(self):
         try:
@@ -41,8 +46,10 @@ class LocalPlanner:
         if self._visualize_trajs:
             self._ref_visualizer.reset()
             self._trajs_visualizer.reset()
+
         if self._visualize_state:
             self._state_visualizer.reset()
+
 
         self.optimizer.generator.reset()
         self.optimizer.generator.state = self.odom.state
@@ -54,6 +61,7 @@ class LocalPlanner:
 
     def _goal_handle(self):
         start = perf_counter()
+
         goal_idx = self.goal_handler.update_goal()
         if not self.goal_handler.path_finished:
             self._control(goal_idx)

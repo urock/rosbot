@@ -29,7 +29,7 @@ class MetricHandler():
         self.show_statistics('Vels', lin_vels, ang_vels)
         self.show_statistics('Controls', lin_controls, ang_controls)
 
-        self.plot_speed(lin_vels, ang_vels, self.controls)
+        self.plot_vels(lin_vels, ang_vels, self.controls)
         self.plot_trajs(self.path, reference_trajectory)
         plt.show()
 
@@ -50,7 +50,7 @@ class MetricHandler():
         plt.legend()
 
 
-    def plot_speed(self, lin_vels, ang_vels, controls):
+    def plot_vels(self, lin_vels, ang_vels, controls):
         lin_rng = np.arange(len(lin_vels))
         plt.figure(1)
         plt.subplot(221)

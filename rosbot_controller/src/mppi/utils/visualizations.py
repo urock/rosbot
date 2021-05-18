@@ -84,6 +84,37 @@ class StateVisualizer:
         self._curr_id = 0
 
 
+class ObstaclesVisualizer:
+    def __init__(self, topic):
+        self._id = 0
+        self._marker_arr = MarkerArray()
+        self._pub = rospy.Publisher(topic, MarkerArray, queue_size=100)
+
+    def visualize(self, obstacles, color):
+        for obstacle in obstacles:
+            self.add(obstacle, color)
+
+        self._pub.publish(self._marker_arr)
+        self._marker_arr = MarkerArray()
+        self._id = 0
+
+    def add(self, obstacle, color):
+        pt = [ obstacle[0], obstacle[1] ]
+        r = obstacle[2]
+
+        marker = create_marker(self._id, pt , color, scale=Vector3(r, r, 0.2))
+        self._marker_arr.markers.append(marker)
+        self._id += 1
+
+    def reset(self):
+        marker_arr = MarkerArray()
+        marker = Marker()
+        marker.header.frame_id = "odom"
+        marker.action = Marker.DELETEALL
+        marker_arr.markers.append(marker)
+        self._pub.publish(marker_arr)
+
+
 def create_marker(id, pt, color, scale=Vector3(0.035, 0.035, 0.035)):
     marker = Marker()
     marker.id = id

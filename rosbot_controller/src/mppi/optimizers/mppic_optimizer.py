@@ -9,10 +9,12 @@ sys.path.append("..")
 
 
 class MPPICOptimizer():
-    def __init__(self, control_generator, cost, next_control_policy):
+    def __init__(self, obstacles, control_generator, cost, next_control_policy):
         self.cost = cost
         self.generator = control_generator
         self.next_control_policy = next_control_policy
+
+        self.obstacles = np.array([np.array(obstacle) for obstacle in obstacles])
 
         self._iter_count = int(rospy.get_param("~mppic/iter_count", 1))
         self._desired_v = rospy.get_param("~mppic/desired_v", 0.5)
@@ -60,6 +62,7 @@ class MPPICOptimizer():
             self.curr_trajectories,
             self.reference_considered,
             self.intervals_considered,
+            self.obstacles,
             self._desired_v
         )
 

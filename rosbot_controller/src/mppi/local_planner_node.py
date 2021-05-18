@@ -8,7 +8,7 @@ import signal
 
 import rospy
 
-from policies.costs import nearest_cost, triangle_cost
+from policies.costs import triangle_cost
 from policies.control import calc_softmax_seq, find_min_seq
 from policies.metrics import mean_dist_metric
 
@@ -21,9 +21,6 @@ from modules.controller import Controller
 from modules.goal_handler import GoalHandler
 from modules.path_handler import PathHandler
 from modules.metric_handler import MetricHandler
-
-from modules.map_handler import MapHandler
-
 from modules.models import RosbotKinematic
 
 
@@ -46,17 +43,17 @@ def start_planner():
     model = nnio.ONNXModel(model_path)
     # model = RosbotKinematic()
 
+    obstacles = rospy.get_param("~obstacles", [])
     control_generator = MPPICGenerator(model)
-    optimizer = MPPICOptimizer(control_generator, triangle_cost, calc_softmax_seq)
+    optimizer = MPPICOptimizer(obstacles, control_generator, triangle_cost, calc_softmax_seq)
     odom = Odom()
     controller = Controller()
     goal_handler = GoalHandler()
     path_handler = PathHandler()
     metric_handler = MetricHandler(mean_dist_metric)
-    map_handler = MapHandler()
 
     mppic = LocalPlanner(optimizer, odom, controller, goal_handler,
-                         path_handler, map_handler, metric_handler)
+                         path_handler, metric_handler)
 
     mppic.start()
     rospy.spin()
