@@ -13,6 +13,9 @@ class State:
     def to_str(self):
         return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}".format(self.x, self.y, self.yaw)
 
+    def size(self):
+        return 5
+
 
 class Control:
     def __init__(self, v=0.0, w=0.0):

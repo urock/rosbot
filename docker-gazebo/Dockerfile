@@ -73,6 +73,7 @@ RUN apt-get update && \
     apt-get install -y \
        python-pip \
        python-tk \
+       python3-tk \
        python3-pip && \
        rm -rf /var/lib/apt/lists/*
 

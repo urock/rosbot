@@ -42,7 +42,7 @@ class ControlGenerator():
 
     def run(self):
 
-        if self.mode == "from file": 
+        if self.mode == "from_file": 
             self.file_path = rospy.get_param('~file_path')
 
             self.read_control_from_file()
@@ -72,7 +72,7 @@ class ControlGenerator():
             for i in range(len(lines[0:-1])):
                 # print(lines[i].split(" "))
                 cur_t, v, w = lines[i].rstrip().split(" ")
-                cur_t, v, w = float(cur_t), float(v), float(z)
+                cur_t, v, w = float(cur_t), float(v), float(w)
                 self.t.append(cur_t)    
                 self.v.append(v)
                 self.w.append(w) 

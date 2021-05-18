@@ -24,7 +24,7 @@ class ModelRunner:
 
         self.tf_br = tf.TransformBroadcaster()
         
-        self.cmd_freq = 30.0 # Hz       
+        self.cmd_freq = 40.0 # Hz       
         self.dt = 1.0 / self.cmd_freq 
         self.rate = rospy.Rate(self.cmd_freq) 
 
