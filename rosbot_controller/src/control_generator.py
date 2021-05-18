@@ -96,10 +96,10 @@ class ControlGenerator():
     def publish_control_sequence(self):
         twist_cmd = Twist()
         for i, t in enumerate(self.t):
-            init_tme = time.time()
+            # init_tme = time.time()
             twist_cmd.linear.x = self.v[i]
             twist_cmd.angular.z = self.w[i]
-            print("Execution time = {}".format(time.time() - init_tme))
+            # print("Execution time = {}".format(time.time() - init_tme))
             self.cmd_pub.publish(twist_cmd)
             rospy.sleep(self.dt)
 
