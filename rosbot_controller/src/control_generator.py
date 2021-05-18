@@ -39,7 +39,9 @@ class ControlGenerator():
         self.v = []
         self.w = []
         self.t = []
+        self.index = 0
         self.wait_for_subscribers()
+
         rospy.on_shutdown(self.on_shutdown)
 
     def wait_for_subscribers(self):
@@ -51,7 +53,7 @@ class ControlGenerator():
             num_of_subs = self.cmd_pub.get_num_connections()
             rospy.loginfo("Wait for subscribers, current num of subscribers = {} / {}".format(num_of_subs, self.desired_number_of_subs))
             rospy.sleep(1)
-        rospy.sleep(5)
+        rospy.sleep(2)
 
         
 
@@ -61,6 +63,7 @@ class ControlGenerator():
             self.file_path = rospy.get_param('~file_path')
 
             self.read_control_from_file()
+            # rospy.Timer(rospy.Duration(self.dt), self.timer_callback)
 
         elif self.mode == "periodic":
             self.Nt = int(((float)(rospy.get_param('~Tmax'))/self.dt))
@@ -74,10 +77,20 @@ class ControlGenerator():
             self.a_w = rospy.get_param('~a_ang')    # angular acceleration       
 
             self.generate_periodic_control()
-
-        # self.build_graph(self.t, self.v, self.w)
         self.publish_control_sequence()
+            # self.build_graph(self.t, self.v, self.w)
+            # self.publish_control_sequence()
 
+    # def timer_callback(self, timer_event):
+    #     """
+    #     """
+    #     # print(time.time())
+    #     twist_cmd = Twist()
+    #     if self.index < len(self.v):
+    #         twist_cmd.linear.x = self.v[self.index]
+    #         twist_cmd.angular.z = self.w[self.index]
+    #         self.index = self.index + 1
+    #     self.cmd_pub.publish(twist_cmd)
 
     def read_control_from_file(self):
 
@@ -96,10 +109,8 @@ class ControlGenerator():
     def publish_control_sequence(self):
         twist_cmd = Twist()
         for i, t in enumerate(self.t):
-            # init_tme = time.time()
             twist_cmd.linear.x = self.v[i]
             twist_cmd.angular.z = self.w[i]
-            # print("Execution time = {}".format(time.time() - init_tme))
             self.cmd_pub.publish(twist_cmd)
             rospy.sleep(self.dt)
 
@@ -214,6 +225,11 @@ class ControlGenerator():
 def main():
     control_gen = ControlGenerator('control_generator')
     control_gen.run()
+    # try:
+    #     control_gen.run()
+    #     rospy.spin()
+    # except:
+    #     pass
 
 if __name__ == '__main__':
     main()

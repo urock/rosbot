@@ -37,7 +37,7 @@ def parse_file(folder_path, file, data):
 
     os.chdir(pwd)
 
-def parse_one_trajectories(folder_path):
+def parse_one_trajectory(folder_path):
 
     # declare file names with data
     required_files = ['state.csv', 'kinetic_model_state.csv', 'control.csv', 'time.csv']
@@ -66,7 +66,7 @@ def parse_one_trajectories(folder_path):
 
 def plot_for_one_trajectory(args, folder_path):
 
-    robot_state, model_state, control, time, nn_model_state = parse_one_trajectories(folder_path)
+    robot_state, model_state, control, time, nn_model_state = parse_one_trajectory(folder_path)
 
     # print(robot_state)
     # time = np.cumsum(np.array(delta_time['dt']))
@@ -162,7 +162,7 @@ def plot_for_group(args, folder_path):
 
     for traj in os.listdir(folder_path):
         traj_path = folder_path + '/' + traj
-        robot_state_, model_state_, control_, time_, nn_model_state_ = parse_one_trajectories(traj_path)
+        robot_state_, model_state_, control_, time_, nn_model_state_ = parse_one_trajectory(traj_path)
         robot_state_ = pd.DataFrame(robot_state_, columns=robot_state.keys())
         model_state_ = pd.DataFrame(model_state_, columns=robot_state.keys())
         nn_model_state_ = pd.DataFrame(nn_model_state_, columns=robot_state.keys())
