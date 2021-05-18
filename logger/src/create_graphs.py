@@ -175,7 +175,7 @@ def plot_for_group(args, folder_path):
         model_state_.plot(x='x', y='y', ax=ax, legend=False, c='r', alpha=0.2, kind='line')
         nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.2, kind='line')
 
-    ax.legend(['Rosbot state', 'kinetic model state', 'NN state' ])
+    ax.legend(['Rosbot state', 'Kinematic model state', 'NN model state' ])
     #grid_1 = sns.pairplot(robot_state, x_vars=['x'], y_vars=['y'],  plot_kws={'alpha':0.1})
     #grid_2 = sns.pairplot(nn_model_state,x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
     #grid_3 = sns.pairplot(model_state, x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})

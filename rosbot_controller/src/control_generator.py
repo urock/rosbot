@@ -31,6 +31,7 @@ class ControlGenerator():
         self.node_name = node_name
         rospy.init_node(self.node_name, anonymous=True)
         self.mode = rospy.get_param('~control_mode')
+        self.desired_number_of_subs = int(rospy.get_param('~desired_number_of_subs', 1))
 
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
 
@@ -38,7 +39,21 @@ class ControlGenerator():
         self.v = []
         self.w = []
         self.t = []
+        self.wait_for_subscribers()
         rospy.on_shutdown(self.on_shutdown)
+
+    def wait_for_subscribers(self):
+        """
+
+        """
+        num_of_subs = self.cmd_pub.get_num_connections()
+        while num_of_subs < self.desired_number_of_subs:
+            num_of_subs = self.cmd_pub.get_num_connections()
+            rospy.loginfo("Wait for subscribers, current num of subscribers = {} / {}".format(num_of_subs, self.desired_number_of_subs))
+            rospy.sleep(1)
+        rospy.sleep(5)
+
+        
 
     def run(self):
 
@@ -81,9 +96,10 @@ class ControlGenerator():
     def publish_control_sequence(self):
         twist_cmd = Twist()
         for i, t in enumerate(self.t):
+            init_tme = time.time()
             twist_cmd.linear.x = self.v[i]
             twist_cmd.angular.z = self.w[i]
-
+            print("Execution time = {}".format(time.time() - init_tme))
             self.cmd_pub.publish(twist_cmd)
             rospy.sleep(self.dt)
 
