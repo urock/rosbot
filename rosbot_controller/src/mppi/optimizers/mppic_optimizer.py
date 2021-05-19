@@ -8,28 +8,36 @@ import rospy
 sys.path.append("..")
 
 
-class MPPICOptimizer():
+class MPPICOptimizer:
     def __init__(self, obstacles, control_generator, cost, next_control_policy):
+        self._get_params()
+
         self.cost = cost
         self.generator = control_generator
         self.next_control_policy = next_control_policy
 
         self.obstacles = np.array([np.array(obstacle) for obstacle in obstacles])
-
-        self._iter_count = int(rospy.get_param("~mppic/iter_count", 1))
-        self._desired_v = rospy.get_param("~mppic/desired_v", 0.5)
-        self._trajectory_lookahead = int(rospy.get_param("~mppic/traj_lookahead", 2))
-
         self.reference_trajectory: np.ndarray
         self.reference_intervals: np.array
         self.curr_trajectories: np.ndarray
+
+        self.weights = {}
+        self.powers = {}
+
+        self.count_ahead = 10
+        self.count_behind = 0
+
         self.curr_offset = 0
+
+    def _get_params(self):
+        self.iter_count = int(rospy.get_param("~optimizer/iter_count", 1))
+        self.traj_lookahead = int(rospy.get_param("~optimizer/traj_lookahead", 2))
 
     def calc_next_control(self, goal_idx):
         start = perf_counter()
-        for _ in range(self._iter_count):
-            count_ahead, count_behind = self._calc_considered_ref_points(goal_idx)
-            self._optimize(goal_idx, count_ahead, count_behind)
+        for _ in range(self.iter_count):
+            self.count_ahead, self.count_behind = self._calc_considered_ref_points(goal_idx)
+            self._optimize(goal_idx)
 
         self.curr_exec_time = perf_counter() - start
         self.curr_offset = min(math.ceil(self.curr_exec_time / self.generator.dt),
@@ -49,11 +57,11 @@ class MPPICOptimizer():
     def get_offset_time(self):
         return self.curr_offset * self.generator.dt
 
-    def _optimize(self, goal_idx: int, ref_count_ahead: int, ref_count_behind: int):
+    def _optimize(self, goal_idx: int):
         self.curr_trajectories = self.generator.generate_trajectories()
 
-        beg = max(0, goal_idx - ref_count_behind)
-        end = min(goal_idx + ref_count_ahead, len(self.reference_trajectory) - 1) + 1
+        beg = max(0, goal_idx - self.count_behind)
+        end = min(goal_idx + self.count_ahead, len(self.reference_trajectory) - 1) + 1
 
         self.reference_considered = self.reference_trajectory[beg:end, :3]
         self.intervals_considered = self.reference_intervals[beg:end - 1]
@@ -63,11 +71,12 @@ class MPPICOptimizer():
             self.reference_considered,
             self.intervals_considered,
             self.obstacles,
-            self._desired_v
+            self.weights,
+            self.powers
         )
 
-        next_control_seq = self.next_control_policy(costs, self.generator.controls_batch)
-        self.generator.curr_control_seq = next_control_seq
+        self.generator.curr_control_seq = self.next_control_policy(
+            costs, self.generator.controls_batch)
 
     def _calc_considered_ref_points(self, goal_idx):
         count_ahead = 0
@@ -75,7 +84,7 @@ class MPPICOptimizer():
         for q in range(goal_idx, len(self.reference_intervals)):
             dist += self.reference_intervals[q]
             count_ahead += 1
-            if dist > self._trajectory_lookahead:
+            if dist > self.traj_lookahead:
                 break
 
         count_behind = 0
@@ -84,7 +93,7 @@ class MPPICOptimizer():
         for w in range(goal_idx - 1, -1, -1):
             dist += self.reference_intervals[w]
             count_behind += 1
-            if dist > self._trajectory_lookahead:
+            if dist > self.traj_lookahead:
                 break
 
         return count_ahead, count_behind

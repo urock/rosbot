@@ -15,7 +15,6 @@ class Odom:
 
     def __init__(self):
         self.state = State()
-
         self._odom_topic = rospy.get_param("~robot/odom_topic", "/odom")
         rospy.Subscriber(self._odom_topic, Odometry, self._odometry_cb)
 

@@ -38,8 +38,7 @@ from numba import njit
 #     return dists.min(2).sum(1)
 
 
-# @njit
-def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, desired_v):
+def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, weights, powers):
     """Cost according to nearest segment.
 
     Args:
@@ -50,22 +49,25 @@ def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, d
     Return:
         costs: np.array of shape [batch_size]
     """
+    
+    obst_weight = weights['obstacle']
+    ref_weight = weights['reference']
+    goal_weight = weights['goal']
+
+    ref_power = powers['reference']
+    goal_power = powers['goal']
 
     costs = np.empty(shape=state.shape[0])
-
-    # v = state[:, :, 3]
-    # lin_vel_c = lin_vel_cost(v, desired_v, 15)
-
-    obstacles_c = obstacles_cost(state, obstacles, limit=0.0, eps=0.10, inside_penalty=1000,
-                                 outside_slope_weight=2, outside_power=1)
+    obstacles_c = obstacles_cost(state, obstacles, limit=0.0, eps=0.15, inside_penalty=10000,
+                                 outside_slope_weight=2, outside_power=obst_weight)
 
     triangle_c = triangle_cost_segments(state, reference_trajectory, reference_intervals,
-                                        weight=1, power=1)
+                                        weight=ref_weight, power=ref_power)
 
     goal_c = goal_cost(state, reference_trajectory[-1],
-                       weight=75, power=1)
+                       weight=goal_weight, power=goal_power)
 
-    costs += obstacles_c + triangle_c + goal_c
+    costs += triangle_c + goal_c + obstacles_c
     return costs
 
 
@@ -76,35 +78,35 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals, wei
     y_dists = state[:, :, 1:2] - reference_trajectory[:, 1]
     dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
 
+    if len(reference_trajectory) == 1:
+        return dists.sum(2).sum(1)
+
     first_sides = dists[:, :, :-1]
     second_sides = dists[:, :, 1:]
     opposite_sides = reference_intervals
 
+    first_obtuse_mask = is_angle_obtuse(first_sides, second_sides, opposite_sides)
+    second_obtuse_mask = is_angle_obtuse(second_sides, first_sides, opposite_sides)
 
     cost = np.zeros(shape=(dists.shape[0]))
+    dists_to_segments = np.empty(len(reference_intervals))
     for i in range(dists.shape[0]):
         for j in range(dists.shape[1]):
-            dist_to_segment = -1 
-
             for k in range(len(reference_intervals)):
                 first_side = first_sides[i, j, k]
                 second_side = second_sides[i, j, k]
                 opposite_side = opposite_sides[k]
-
-                if is_angle_obtuse(opposite_side, first_side, second_side):
-
-                    dist_to_segment = heron(
+                if is_angle_obtuse(first_side, second_side, opposite_side):
+                    dists_to_segments[k] = first_side
+                elif is_angle_obtuse(second_side, first_side, opposite_side):
+                    dists_to_segments[k] = second_side
+                else:
+                    dists_to_segments[k] = heron(
                         opposite_side,
                         first_side,
                         second_side
                     )
-                    
-                    break
-
-            if dist_to_segment == -1:
-                dist_to_segment = np.min(dists[i, j]) 
-
-            cost[i] += dist_to_segment
+            cost[i] += dists_to_segments.min()
 
     return (cost*weight)**power
 
@@ -150,7 +152,6 @@ def obstacles_cost(state, obstacles, limit, eps, inside_penalty, outside_slope_w
     return costs
 
 
-@njit
 def goal_cost(state, goal, weight=1, power=1):
     x_dists = state[:, :, 0] - goal[0]
     y_dists = state[:, :, 1] - goal[1]
@@ -159,7 +160,7 @@ def goal_cost(state, goal, weight=1, power=1):
     return weight * (dists[:, -1] ** power)
 
 
-@njit
-def lin_vel_cost(v, desired_v, weight = 2):
-    v_costs = weight * ((v - desired_v)**2).mean(1)
-    return v_costs
+# @njit
+# def lin_vel_cost(v, desired_v, weight=2):
+#     v_costs = weight * ((v - desired_v)**2).mean(1)
+#     return v_costs
