@@ -99,10 +99,10 @@ class ObstaclesVisualizer:
         self._id = 0
 
     def add(self, obstacle, color):
-        pt = [ obstacle[0], obstacle[1] ]
+        pt = [obstacle[0], obstacle[1]]
         r = obstacle[2]
 
-        marker = create_marker(self._id, pt , color, scale=Vector3(r, r, 0.2))
+        marker = create_marker(self._id, pt, color, scale=Vector3(r, r, 0.2))
         self._marker_arr.markers.append(marker)
         self._id += 1
 

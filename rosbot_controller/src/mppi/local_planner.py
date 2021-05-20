@@ -80,18 +80,19 @@ class LocalPlanner:
 
             self._visualizations_handle()
             t = perf_counter() - start
-            if t < 3 and not self.stop_robot and control is not None: 
+            if t < 3 and not self.stop_robot and control is not None:
                 self._update_metrics(control)
                 self.metric_handler.add_exec_time(t)
-                rospy.loginfo("Local Planner. Mean Exec Time: {}\n".format(self.metric_handler.get_mean_time()))
-                rospy.loginfo("Local Planner. Std Exec Time: {}\n".format(self.metric_handler.get_std_time()))
+                rospy.loginfo("Local Planner. Mean Exec Time: {}\n".format(
+                    self.metric_handler.get_mean_time()))
+                rospy.loginfo("Local Planner. Std Exec Time: {}\n".format(
+                    self.metric_handler.get_std_time()))
 
             if self._wait_full_step:
                 sleep_time = self.optimizer.get_offset_time() - t
                 rospy.sleep(sleep_time)
         else:
             self._path_finished_handle()
-
 
     def _path_finished_handle(self):
         self.controller.publish_stop_control()
@@ -155,7 +156,6 @@ class LocalPlanner:
             'reference': config['reference_power'],
             'obstacle': config['obstacle_power']
         }
-
 
         self._wait_full_step = config['wait_full_step']
         self._visualize = config['visualize']

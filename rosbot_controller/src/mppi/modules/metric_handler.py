@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 class MetricHandler():
     def __init__(self, metric):
         self.metric = metric
-        self.path = np.zeros(shape=(0, 5)) # x, y, yaw, v, w
-        self.controls = np.zeros(shape=(0, 2)) # v w
+        self.path = np.zeros(shape=(0, 5))  # x, y, yaw, v, w
+        self.controls = np.zeros(shape=(0, 2))  # v w
 
-        self.exec_times = [] 
+        self.exec_times = []
 
     def add_exec_time(self, t):
         self.exec_times.append(t)
@@ -18,12 +18,12 @@ class MetricHandler():
         return np.sum(self.exec_times) / len(self.exec_times)
 
     def get_std_time(self):
-        return np.std(self.exec_times) 
+        return np.std(self.exec_times)
 
     def reset(self):
-        self.path = np.zeros(shape=(0, 5)) # x, y, yaw, v, w
-        self.controls = np.zeros(shape=(0, 2)) # v w
-        self.exec_times = [] 
+        self.path = np.zeros(shape=(0, 5))  # x, y, yaw, v, w
+        self.controls = np.zeros(shape=(0, 2))  # v w
+        self.exec_times = []
 
     def add_state(self, state):
         self.path = np.append(self.path, state.to_numpy()[np.newaxis], axis=0)
@@ -64,7 +64,6 @@ class MetricHandler():
         plt.xlabel("X")
         plt.ylabel("Y")
         plt.legend()
-
 
     def plot_vels(self, lin_vels, ang_vels, controls):
         lin_rng = np.arange(len(lin_vels))

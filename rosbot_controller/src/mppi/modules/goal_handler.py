@@ -9,7 +9,7 @@ class GoalHandler:
         self.state = None
         self.path_finished = True
         self.goal_idx = 0
-        self.count_ahead: int 
+        self.count_ahead: int
 
         self._reference_trajectory: np.array
 

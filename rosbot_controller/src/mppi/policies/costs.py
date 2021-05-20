@@ -1,6 +1,7 @@
 import numpy as np
 from numba import njit
 
+
 def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, weights, powers):
     """Cost according to nearest segment.
 
@@ -12,7 +13,6 @@ def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, w
     Return:
         costs: np.array of shape [batch_size]
     """
-    
 
     costs = np.empty(shape=state.shape[0])
 

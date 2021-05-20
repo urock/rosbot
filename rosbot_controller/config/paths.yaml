@@ -2,5 +2,9 @@ paths : [
             {
                 'type': 'sin',
                 'args': {'step': 0.1, 'amplitude': 1.0, 'freq' : 1.0 }
+            },
+            {
+                'type': 'sin',
+                'args': {'step': 0.1, 'amplitude': 1.0, 'freq' : 0.1 }
             }
         ]

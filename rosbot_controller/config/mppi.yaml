@@ -1,9 +1,11 @@
 mppic:
     model_path: "$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx"
 
-obstacles: [ [1.0, 0.75,  0.3], 
-             [2.5, 0.55,  0.3],
-            ]
+obstacles: [              
+              [1, 0,  0.3],
+              [2.5, 0.55,  0.3],
+              [4, 0.3, 0.3]
+           ]
 
 robot:
     odom_topic: "odom" 

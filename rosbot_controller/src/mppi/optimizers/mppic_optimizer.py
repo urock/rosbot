@@ -48,7 +48,8 @@ class MPPICOptimizer:
         control = self.generator.get_control(self.curr_offset)
         self.generator.displace_controls(self.curr_offset)
 
-        rospy.loginfo("Optimizer. Exec Time: {:.4f}, Goal: {} ".format(self.curr_exec_time, goal_idx))
+        rospy.loginfo("Optimizer. Exec Time: {:.4f}, Goal: {} ".format(
+            self.curr_exec_time, goal_idx))
         return control
 
     def get_offset_time(self):
