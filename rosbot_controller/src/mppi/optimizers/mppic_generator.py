@@ -16,8 +16,6 @@ class MPPICGenerator():
         self._get_params()
 
         self._model = model
-        self.dt = 1.0 / self.freq
-
         self.state = State()
         # 5 for v, w, control_dim and dt
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
@@ -26,7 +24,7 @@ class MPPICGenerator():
         self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
 
     def _get_params(self):
-        self.freq = int(rospy.get_param("~generator/mppi_freq", 30))
+        self.dt = rospy.get_param("~generator/model_dt", 0.1)
         self.time_steps = int(rospy.get_param("~generator/time_steps", 50))
         self.batch_size = int(rospy.get_param("~generator/batch_size", 100))
         self.v_std = rospy.get_param("~generator/v_std", 0.1)
@@ -63,7 +61,6 @@ class MPPICGenerator():
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
     def reset(self):
-        self.state = State()
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt
         self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))

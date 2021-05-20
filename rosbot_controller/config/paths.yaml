@@ -2,17 +2,5 @@ paths : [
             {
                 'type': 'sin',
                 'args': {'step': 0.1, 'amplitude': 1.0, 'freq' : 1.0 }
-            },
-            {
-                'type': 'sin',
-                'args': {'step': 0.1, 'amplitude': 1.0, 'freq' : 5.0 }
-            },
-            {
-                'type': 'polygon',
-                'args': {'step': 0.1, 'edges': [[0, 0], [0, 1], [1, 1], [1, 0]] },
-            },
-            {
-                'type': 'polygon',
-                'args': {'step': 0.1, 'edges': [[0, 0], [0, 2], [2, 2], [2, 0]] },
             }
         ]

@@ -50,9 +50,9 @@ class TrajectoriesVisualizer:
         self._trajectory_id = 0
 
     def add(self, trajectories, color, scale, step=1):
-        for traj in trajectories:
-            for p in traj[::step]:
-                marker = create_marker(self._trajectory_id, p, color, scale)
+        for traj in trajectories[::step]:
+            for point in traj:
+                marker = create_marker(self._trajectory_id, point, color, scale)
                 self._trajectories_markers.markers.append(marker)
                 self._trajectory_id += 1
 

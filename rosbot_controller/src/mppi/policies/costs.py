@@ -1,43 +1,6 @@
 import numpy as np
 from numba import njit
 
-
-# def nearest_cost(state, reference_trajectory, reference_intervals, obstacles, desired_v):
-#     """Cost according to k nearest points.
-
-#     Args:
-#         state: np.ndarray of shape [batch_size, time_steps, 8]
-#                where 3 for x, y, yaw, v, w, v_control, w_control, dts
-#         ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
-#         traj_lookahead: int
-#         goal_idx: int
-#         goals_interval: float
-#         desired_v: float
-
-#     Return:
-#         costs: np.array of shape [batch_size]
-#     """
-#     v = state[:, :, 3]
-
-#     costs = lin_vel_cost(v, desired_v)
-#     costs += nearest_cost_for_k_ellements(state, reference_trajectory, 3)
-#     costs += obstacles_cost(state, obstacles)
-#     costs += goal_cost(state, reference_trajectory[-1])
-
-#     return costs
-
-
-# def nearest_cost_for_k_ellements(state, reference_trajectory, k_idx):
-#     x_dists = state[:, :, :1] - reference_trajectory[:, 0]
-#     y_dists = state[:, :, 1:2] - reference_trajectory[:, 1]
-#     dists = x_dists ** 2 + y_dists ** 2
-
-#     k = min(k_idx, len(reference_trajectory))
-#     dists = np.partition(dists, k - 1, axis=2)[:, :, :k] * np.arange(1, k + 1)
-
-#     return dists.min(2).sum(1)
-
-
 def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, weights, powers):
     """Cost according to nearest segment.
 
@@ -50,20 +13,20 @@ def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, w
         costs: np.array of shape [batch_size]
     """
     
-    obst_weight = weights['obstacle']
-    ref_weight = weights['reference']
-    goal_weight = weights['goal']
-
-    ref_power = powers['reference']
-    goal_power = powers['goal']
 
     costs = np.empty(shape=state.shape[0])
-    obstacles_c = obstacles_cost(state, obstacles, limit=0.0, eps=0.15, inside_penalty=10000,
-                                 outside_slope_weight=2, outside_power=obst_weight)
 
+    obst_weight = weights['obstacle']
+    obst_power = powers['obstacle']
+    obstacles_c = obstacles_cost(state, obstacles, eps=0.15, weight=obst_weight, power=obst_power)
+
+    ref_weight = weights['reference']
+    ref_power = powers['reference']
     triangle_c = triangle_cost_segments(state, reference_trajectory, reference_intervals,
                                         weight=ref_weight, power=ref_power)
 
+    goal_weight = weights['goal']
+    goal_power = powers['goal']
     goal_c = goal_cost(state, reference_trajectory[-1],
                        weight=goal_weight, power=goal_power)
 
@@ -107,6 +70,7 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals, wei
                         second_side
                     )
             cost[i] += dists_to_segments.min()
+        cost[i] /= dists.shape[1]
 
     return (cost*weight)**power
 
@@ -127,40 +91,31 @@ def heron(opposite_side, b, c):
     return h
 
 
-def obstacles_cost(state, obstacles, limit, eps, inside_penalty, outside_slope_weight, outside_power):
+def obstacles_cost(state, obstacles, eps, weight, power):
     costs = np.zeros(shape=(state.shape[0]))
-
     if not len(obstacles):
         return costs
 
     x, y, r = obstacles[:, 0], obstacles[:, 1], obstacles[:, 2]
 
-    # Distance to the obstacle, including robot's size
-    r = r + limit
     x_dists = state[:, :, :1] - x
     y_dists = state[:, :, 1:2] - y
     dists = np.sqrt(x_dists ** 2 + y_dists ** 2) - r
     dists = dists.min(2).min(1)
 
-    # Points inside the obstacle
-    costs[dists <= 0] = inside_penalty
+    dists[dists < 0] = 0
 
     # Points close to the obstacle
-    approx_mask = (dists > 0) & (dists < eps)
-    costs[approx_mask] = ((eps - dists[approx_mask]) * outside_slope_weight) ** outside_power
+    approx_mask = (dists < eps)
+    costs[approx_mask] = ((eps - dists[approx_mask]) * weight) ** power
 
     return costs
 
 
+@njit
 def goal_cost(state, goal, weight=1, power=1):
     x_dists = state[:, :, 0] - goal[0]
     y_dists = state[:, :, 1] - goal[1]
     dists = np.sqrt(x_dists ** 2 + y_dists ** 2)
 
     return weight * (dists[:, -1] ** power)
-
-
-# @njit
-# def lin_vel_cost(v, desired_v, weight=2):
-#     v_costs = weight * ((v - desired_v)**2).mean(1)
-#     return v_costs

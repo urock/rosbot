@@ -9,6 +9,22 @@ class MetricHandler():
         self.path = np.zeros(shape=(0, 5)) # x, y, yaw, v, w
         self.controls = np.zeros(shape=(0, 2)) # v w
 
+        self.exec_times = [] 
+
+    def add_exec_time(self, t):
+        self.exec_times.append(t)
+
+    def get_mean_time(self):
+        return np.sum(self.exec_times) / len(self.exec_times)
+
+    def get_std_time(self):
+        return np.std(self.exec_times) 
+
+    def reset(self):
+        self.path = np.zeros(shape=(0, 5)) # x, y, yaw, v, w
+        self.controls = np.zeros(shape=(0, 2)) # v w
+        self.exec_times = [] 
+
     def add_state(self, state):
         self.path = np.append(self.path, state.to_numpy()[np.newaxis], axis=0)
 
@@ -29,9 +45,9 @@ class MetricHandler():
         self.show_statistics('Vels', lin_vels, ang_vels)
         self.show_statistics('Controls', lin_controls, ang_controls)
 
-        self.plot_vels(lin_vels, ang_vels, self.controls)
-        self.plot_trajs(self.path, reference_trajectory)
-        plt.show()
+        # self.plot_vels(lin_vels, ang_vels, self.controls)
+        # self.plot_trajs(self.path, reference_trajectory)
+        # plt.show()
 
     def show_statistics(self, tag, lin, ang):
         rospy.loginfo(tag + " Mean: v {:.6f}, w = {:.6f}.".format(np.mean(lin), np.mean(ang)))

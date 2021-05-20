@@ -13,20 +13,17 @@ goal_handler:
 
 local_planner:
     wait_full_step: True
-    visualize_trajs: True
-    visualize_state: True
+    visualize: True
 
 optimizer:
     iter_count: 2
     traj_lookahead: 1.5
 
-
 generator:
     batch_size: 300
     time_steps: 40
-    mppi_freq: 10
+    model_dt: 0.1
     v_std: 0.10
     w_std: 0.30
     limit_v: 0.5
     limit_w:  1.3
-
