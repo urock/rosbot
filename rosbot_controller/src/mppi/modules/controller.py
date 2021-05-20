@@ -1,7 +1,6 @@
 from utils.dtypes import Control
 import rospy
 from geometry_msgs.msg import Twist
-from time import perf_counter
 
 import sys
 sys.path.append("..")
@@ -26,7 +25,6 @@ class Controller:
         cmd.angular.y = 0
         cmd.angular.z = control.w
         self.cmd_pub.publish(cmd)
-        self.publish_time = perf_counter()
-
+        self.publish_time = rospy.Time.now()
     def publish_stop_control(self):
         self.publish_control(Control())

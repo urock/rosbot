@@ -1,6 +1,5 @@
 from utils.geometry import quaternion_to_euler
 import rospy
-from time import time
 import numpy as np
 from nav_msgs.msg import Path
 
@@ -35,4 +34,4 @@ class PathHandler():
         self.path_intervals = np.linalg.norm(self._path[1:, :2] - self._path[:-1, :2], axis=1)
 
         self.has_path = True
-        self.path_come_time = time()
+        self.path_come_time = rospy.Time.now() 

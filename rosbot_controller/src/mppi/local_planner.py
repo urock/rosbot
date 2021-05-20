@@ -2,7 +2,6 @@
 
 from copy import copy
 import rospy
-from time import time, perf_counter
 from utils.visualizations import StateVisualizer, TrajectoriesVisualizer, \
     ReferenceVisualizer, ObstaclesVisualizer, Colors
 
@@ -67,7 +66,7 @@ class LocalPlanner:
         self.optimizer.reference_intervals = self.path_handler.path_intervals
 
     def _goal_handle(self):
-        start = perf_counter()
+        start = rospy.Time.now()
 
         self.goal_handler.count_ahead = self.optimizer.count_ahead
         goal_idx = self.goal_handler.update_goal()
@@ -79,7 +78,8 @@ class LocalPlanner:
                     self.controller.publish_control(control)
 
             self._visualizations_handle()
-            t = perf_counter() - start
+            t = (rospy.Time.now() - start).to_sec()
+
             if t < 3 and not self.stop_robot and control is not None:
                 self._update_metrics(control)
                 self.metric_handler.add_exec_time(t)
@@ -96,7 +96,7 @@ class LocalPlanner:
 
     def _path_finished_handle(self):
         self.controller.publish_stop_control()
-        self.metric_handler.show_metrics(time() - self.path_handler.path_come_time,
+        self.metric_handler.show_metrics((rospy.Time.now() - self.path_handler.path_come_time).to_sec(),
                                          self.optimizer.reference_trajectory)
 
     def _visualizations_handle(self):

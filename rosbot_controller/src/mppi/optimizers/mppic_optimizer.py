@@ -1,5 +1,4 @@
 from utils.dtypes import State
-from time import perf_counter
 import numpy as np
 import sys
 import math
@@ -35,13 +34,14 @@ class MPPICOptimizer:
         self.traj_lookahead = int(rospy.get_param("~optimizer/traj_lookahead", 2))
 
     def calc_next_control(self, goal_idx):
-        start = perf_counter()
+        start = rospy.Time.now()
 
         for _ in range(self.iter_count):
             self.count_ahead, self.count_behind = self._calc_considered_ref_points(goal_idx)
             self._optimize(goal_idx)
 
-        self.curr_exec_time = perf_counter() - start
+        self.curr_exec_time = (rospy.Time.now() - start).to_sec()
+
         self.curr_offset = min(round(self.curr_exec_time / self.generator.dt),
                                self.generator.time_steps - 1)
 
