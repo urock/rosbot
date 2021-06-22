@@ -3,7 +3,7 @@
 Расчет open loop управления методом PSO для следования в заданную точку с объездом препятвий, заданных просто в виде кругов на плоскости. 
 
 ```
-/offline_planner.py -it 150 -m ~/catkin_ws/src/rosbot_controller/nets/rosbot_gazebo9_2d_model.onnx -o ~/control1.tx
+/offline_planner.py -it 150 -m ~/catkin_ws/src/rosbot_controller/nets/rosbot_gazebo9_2d_model.onnx -o ~/control1.txt
 ```
 
 Аргументы:
