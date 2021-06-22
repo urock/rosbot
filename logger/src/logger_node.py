@@ -230,9 +230,9 @@ class Logger:
         plt.rcParams['figure.figsize'] = (11.0, 8.0)
         plt.figure("trajectory and states")
 
-        plt.plot(x1, y1, color='b', label='robot state', linewidth=3)
-        plt.plot(x2, y2, color='r', label='kinetic model state', linewidth=3)
-        plt.plot(x3, y3, color='yellow', label='NN model state', linewidth=3)
+        plt.plot(x1, y1, color='b', label='ground truth', linewidth=3)
+        plt.plot(x2, y2, color='r', label='kinematic model', linewidth=3)
+        plt.plot(x3, y3, color='yellow', label='NN model', linewidth=3)
         plt.plot(x4, y4, color='g', label='trajectory', linewidth=3)
 
         # base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
