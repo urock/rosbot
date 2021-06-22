@@ -1,9 +1,22 @@
 #!/usr/bin/env python
 import os
+import seaborn as sns
+import pandas as pd
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 from logger.logger_tools import plot_xy_data, save_plot
+
+"""
+python3 
+for one folder with data
+python3 create_graphs.py -folder_path /home/user/catkin_ws/src/logger/output_data/test_PSO_2_3_150_dt_0.03/test_PSO_2_3_150_dt_0.03_1
+
+or
+for many folders
+python3 create_graphs.py -folder_path /home/user/catkin_ws/src/logger/output_data/test_PSO_2_3_150_dt_0.03 -group True
+
+"""
 
 def parse_file(folder_path, file, data):
     """ """
@@ -24,21 +37,7 @@ def parse_file(folder_path, file, data):
 
     os.chdir(pwd)
 
-
-def main():
-    """ """
-
-    plt.rcParams['font.size'] = '12'
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-folder_path', action='store', dest='folder_path',
-                        required=True, help='absolute path to the folder with data.csv')
-    
-    parser.add_argument('-output_folder', action='store', dest='output_folder', 
-                        required=False, default="", 
-                        help="absolute path to the output folder to store images. No images are stored if empty")                        
-    args = parser.parse_args()
-    folder_path = args.folder_path
+def parse_one_trajectory(folder_path):
 
     # declare file names with data
     required_files = ['state.csv', 'kinetic_model_state.csv', 'control.csv', 'time.csv']
@@ -61,6 +60,13 @@ def main():
     except:
         nn_model_state = None
         print("There are no files with the state of the neural network model!")
+
+    return robot_state, model_state, control, time, nn_model_state
+
+
+def plot_for_one_trajectory(args, folder_path):
+
+    robot_state, model_state, control, time, nn_model_state = parse_one_trajectory(folder_path)
 
     # print(robot_state)
     # time = np.cumsum(np.array(delta_time['dt']))
@@ -134,6 +140,71 @@ def main():
         save_plot(path=args.output_folder, name="Y over X")        
 
     plt.show()
+
+def plot_for_group(args, folder_path):
+    """
+    # FOR PSO planner
+    """
+    fig, ax = plt.subplots(1)
+    ax.set_xlabel('X, m')        
+    ax.set_ylabel('Y, m')
+    ax.set_title("XY trajectory")
+
+    robot_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    nn_model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+    control = {'x': [], 'yaw': []}
+    time = {'t': []}
+
+    robot_state = pd.DataFrame(robot_state, columns=robot_state.keys())
+    model_state = pd.DataFrame(model_state, columns=robot_state.keys())
+    nn_model_state = pd.DataFrame(nn_model_state, columns=robot_state.keys())
+
+    for traj in os.listdir(folder_path):
+        traj_path = folder_path + '/' + traj
+        robot_state_, model_state_, control_, time_, nn_model_state_ = parse_one_trajectory(traj_path)
+        robot_state_ = pd.DataFrame(robot_state_, columns=robot_state.keys())
+        model_state_ = pd.DataFrame(model_state_, columns=robot_state.keys())
+        nn_model_state_ = pd.DataFrame(nn_model_state_, columns=robot_state.keys())
+
+        #robot_state = pd.concat([robot_state, robot_state_], ignore_index=True)
+        #nn_model_state = pd.concat([nn_model_state, nn_model_state_], ignore_index=True)
+        #model_state = pd.concat([model_state, model_state_], ignore_index=True)
+        
+        robot_state_.plot(x='x', y='y', ax=ax, legend=False, c='b', alpha=0.2, kind='line')
+        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='r', alpha=0.2, kind='line')
+        nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.2, kind='line')
+
+    ax.legend(['Rosbot state', 'Kinematic model state', 'NN model state' ])
+    #grid_1 = sns.pairplot(robot_state, x_vars=['x'], y_vars=['y'],  plot_kws={'alpha':0.1})
+    #grid_2 = sns.pairplot(nn_model_state,x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
+    #grid_3 = sns.pairplot(model_state, x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
+
+    plt.show()
+
+def main():
+    """ """
+
+    plt.rcParams['font.size'] = '12'
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('-group', action='store', default=False, dest='group',
+                        required=False, help='')
+
+    parser.add_argument('-folder_path', action='store', dest='folder_path',
+                        required=True, help='absolute path to the folder with data.csv')
+    
+    parser.add_argument('-output_folder', action='store', dest='output_folder', 
+                        required=False, default="", 
+                        help="absolute path to the output folder to store images. No images are stored if empty")                        
+    args = parser.parse_args()
+    folder_path = args.folder_path
+
+    if not args.group:
+        plot_for_one_trajectory(args, folder_path)
+    else:
+        plot_for_group(args, folder_path)
     
 
 
