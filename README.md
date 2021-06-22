@@ -1,6 +1,6 @@
 # Rosbot control mode development 
 
-Репозиторий инструментов работы с Rosbot в ROS Melodic для обучения нейросетевой диманической модели робота и разработки MPC контроллера управления. 
+Репозиторий инструментов работы с Rosbot в ROS Melodic для управления роботом в Gazebo, сбора данных для обучения нейросетевой диманической модели робота и разработки MPC контроллера управления. 
 
 ## Введение
 
@@ -8,10 +8,14 @@
 
 1. Управление дифференциальным роботом
 	* генератор периодических последовательноcтей управления
-	* контроллер следования по траектории 
-2. Логирование состояния робота и управления
-3. Утилиты построения графиков после проезда
-4. Средства автоматической сборки данных 
+	* Open loop контроллер (публикация управления из файла) @KostyaYamshanov
+	* Closed loop simple контроллер следования по траектории @KostyaYamshanoв
+	* Closed loop MPPI контроллер следования по траектории с учетом объезда препятствий? @artofnothingness
+2. Логирование состояния робота и управления 
+	* Визуализация моделей - кинематическая и нейросетевая @KostyaYamshanov
+3. Утилиты построения графиков после проезда @KostyaYamshanov
+4. Средства автоматической сборки данных @KostyaYamshanov
+6. Планирование оптимального управления @urock
 
 ## Docker 
 
@@ -19,17 +23,15 @@
 
 Для работы в Gazebo сборка образа и запуск контейнера осуществляется из директории docker_gazebo: создается `gazebo-control-image` образ и запускается `gazebo-control` контейнер. 
 
-Для работы на реальном роботе сборка образа и запуск контейнера осуществляется из директории docker_robot: создается `robot-control-image` образ и запускается `robot-control` контейнер. **to be done**
 
 ### Install Guide
 - Install docker  https://docs.docker.com/engine/install/ubuntu/
 - Docker post install steps https://docs.docker.com/engine/install/linux-postinstall/
 ```
-./$docker_dir/dependencies.sh		# установка зависимостей на локальную машину
-./$docker_dir/build.sh				# Build image 
-./$docker_dir/run.sh				# Create & Run container
+./docker_gazebo/dependencies.sh		# установка зависимостей на локальную машину
+./docker_gazebo/build.sh			# Build image 
+./docker_gazebo/run.sh				# Create & Run container
 ```
-где docker_dir = `docker_gazebo, docker_robot`
 
 ### Usage Guide
 ```
@@ -37,7 +39,7 @@ docker start $container_name 		 # Start container
 docker attach $container_name 		 # Attach to container
 docker exec -it $container_name bash # Open bash session in running container 
 ```
-где container_name = `gazebo-control, robot_control`
+где container_name = `gazebo-control`
 
 ## Компиляция 
 
@@ -79,18 +81,41 @@ roslaunch rosbot_controller control_gen.launch output_folder:=_13 Tmax:=30.0 per
 ```
 ![GitHub Logo](/docs/images/linear_and_angular_examples.png)
 
-### Управление контроллером следования по траектории
+### Open loop контроллер (публикация управления из файла) @KostyaYamshanov
+
+### Closed loop simple контроллер следования по траектории @KostyaYamshanoв
+
+### Closed loop MPPI контроллер следования по траектории с учетом объезда препятствий? @artofnothingness
 
 
 ## Логирование состояния робота и управления
 
-Создана ROS модуль, обеспечивающий логгирование координат робота и управления
+Создан ROS модуль, обеспечивающий логгирование координат робота и управления
+
+### Визуализация моделей - кинематическая и нейросетевая @KostyaYamshanov
+
+пути к onnx файлам ?
 
 
 ## Утилиты построения графиков после проезда
 
+## Средства автоматической сборки данных 
 
-## Описание launch файлов
+```bash
+cd catkin_ws_path
+cd src/rosbot/rosbot_controller/src/ 
+./test.zsh -t="5.0sin0.1 -5.0sin0.2 3.0sin3.0 2.0sin1.5" -v="1.5 2.5 3.5 4.5" -w="0.5 1.0 2.5 3.0"
+```
+* -t - список траекторий
+* -v - список линейных скоростей
+* -w - список угловых скоростей
+Данные будут сохранены в *logger/output_data/*
+
+
+## Планирование оптимального управления @urock
+
+
+## Детальное описание launch файлов
 
 ### run_simulation.launch
 Что делает: Запускает gazebo, спавнит rosbot, запукает model runners
@@ -129,7 +154,7 @@ roslaunch rosbot_controller control_gen.launch output_folder:=_8 Tmax:=30.0 peri
 
 ### 4.2 follow_path.launch
 * Расположение rosbot_controller/launch/follow_path.launch
-* Что делает: публикует траекторию, запускает контроллер для следования rosobot по пути
+* Что делает: публикует траекторию, запускает closed loop simple контроллер для следования rosobot по пути
 * Аргументы:
 	1. traj_type - тип траектории {sin polygon from_file}
 	2. move_plan - путь до файла с траекторией
@@ -158,14 +183,3 @@ roslaunch rosbot_controller follow_path.launch traj_type:=2.5sin0.2
 roslaunch rosbot_controller mppi_test.launch traj_type:=2.5sin0.2 rviz:=true gui:=false 
 ```
 
-## Средства автоматической сборки данных 
-
-```bash
-cd catkin_ws_path
-cd src/rosbot/rosbot_controller/src/ 
-./test.zsh -t="5.0sin0.1 -5.0sin0.2 3.0sin3.0 2.0sin1.5" -v="1.5 2.5 3.5 4.5" -w="0.5 1.0 2.5 3.0"
-```
-* -t - список траекторий
-* -v - список линейных скоростей
-* -w - список угловых скоростей
-Данные будут сохранены в *logger/output_data/*
