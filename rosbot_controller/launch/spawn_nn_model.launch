@@ -1,7 +1,7 @@
 <launch>
 
     <!-- parameters for spawn nn model -->
-    <arg name="nn_model_path"   default="$(find rosbot_controller)/src/model.onnx" />
+    <arg name="nn_model_path"   default="$(find rosbot_controller)/nets/rosbot_gazebo9_2d_model.onnx" />
     <arg name="cmd_topic"       default="cmd_vel" />
     <arg name="parent_frame"    default="odom"/>
     <arg name="robot_frame"     default="nn_model_link"/>
