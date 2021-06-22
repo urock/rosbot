@@ -36,11 +36,9 @@
 
 ### Usage Guide
 ```
-docker start $container_name 		 # Start container
-docker attach $container_name 		 # Attach to container
-docker exec -it $container_name bash # Open bash session in running container 
+docker start gazebo-control 		 
+docker attach gazebo-control   		 
 ```
-где container_name = `gazebo-control`
 
 ## Компиляция и запуск симуляции
 
