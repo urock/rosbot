@@ -10,7 +10,7 @@
 	* генератор периодических последовательноcтей управления
 	* Open loop контроллер (публикация управления из файла) @KostyaYamshanov
 	* Closed loop simple контроллер следования по траектории @KostyaYamshanoв
-	* [Closed loop MPPI контроллер !](/rosbot_controller/src/mppi/mppi.md)
+	* [Closed loop MPPI контроллер](/rosbot_controller/src/mppi/mppi.md)
 2. Логирование состояния робота и управления 
 	* Визуализация моделей - кинематическая и нейросетевая @KostyaYamshanov
 3. Утилиты построения графиков после проезда @KostyaYamshanov
