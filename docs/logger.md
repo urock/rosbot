@@ -4,4 +4,4 @@
 
 ### Визуализация моделей - кинематическая и нейросетевая @KostyaYamshanov
 
-пути к onnx файлам ?
+Пусь к файлу onnx модели = `rosbot_controller/nets/rosbot_gazebo9_2d_model.onnx`
