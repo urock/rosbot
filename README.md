@@ -6,8 +6,7 @@
 
 В репозитории созданы следующие инструменты:
 
-#contents
-0. [Запуск симуляции в Docker](#docker-heading)
+0. Запуск симуляции в Docker (см ниже)
 1. Управление дифференциальным роботом
 	* [Генератор периодических последовательноcтей управления](/docs/control_gen.md)
 	* [Open loop контроллер (публикация управления из файла)](/docs/open_loop.md) 
@@ -19,7 +18,6 @@
 4. [Средства автоматической сборки данных](/docs/data_collect.md) 
 6. [Планирование оптимального управления](/docs/offline_planner.md)
 
-#docker-heading
 ## Docker 
 
 Рекомендуется работать через Docker. 
@@ -38,11 +36,9 @@
 
 ### Usage Guide
 ```
-docker start $container_name 		 # Start container
-docker attach $container_name 		 # Attach to container
-docker exec -it $container_name bash # Open bash session in running container 
+docker start gazebo-control 		 
+docker attach gazebo-control   		 
 ```
-где container_name = `gazebo-control`
 
 ## Компиляция и запуск симуляции
 
@@ -54,7 +50,7 @@ source devel/setup.zsh  # необходимо делать только во в
 roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=true
 ```
 
-Примеры работы с определенными инструментами смотри в соответствующих разделах [оглавления](#contents).
+Примеры работы с определенными инструментами смотри в соответствующих разделах оглавления.
 
 Также существуют [детальные описания launch файлов](/docs/launch_files.md). 
 

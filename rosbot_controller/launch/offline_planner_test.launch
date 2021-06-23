@@ -2,7 +2,7 @@
 
     <arg name="gui"                 		  default="false" />
     <arg name="rviz"                		  default="true" />
-    <arg name="nn_model_path"       		  default="$(find rosbot_controller)/nets/new_model_dynamic_batch.onnx"/>
+    <arg name="nn_model_path"       		  default="$(find rosbot_controller)/nets/rosbot_gazebo9_2d_model.onnx"/>
     <arg name="use_nn_model"        		  default="true" />
 
     <arg name="output_folder"       		  default="/offline_planner_test"/>

@@ -391,10 +391,10 @@ def main():
     args = parser.parse_args()
 
     current_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])   # (x, y, yaw, v, w)
-    goal = [2.0, 3.0]                                     # (x, y)
+    goal = [2.0, 2.0]                                     # (x, y)
 
     # center x, center y, radius
-    obstacles = [(1.0, 0.3, 0.5), (1.5, 1.75, 0.3)]           
+    obstacles = [(0.5, 0.5, 0.45), (1.6, 1.2, 0.45)]           
 
     planner = OfflinePlanner(args.n_iters, args.model_path, args.output_path)
     control = planner.run(current_state, goal, obstacles)
