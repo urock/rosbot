@@ -1,7 +1,21 @@
 # Model Predictive Path Integral
 
-## Set paths
-To set paths set "paths" param in config/paths.yaml. Only two types are avaliable now (sin, polygon). Each type has its own args e.g:
+## Введение 
+В данном репозитории представлена реализация метода Model Predictive Path Integral на языке Python c использованием параметрической идентификации модели при помощи нейронной сети, а также програмные компоненты для тестирования данного метода. 
+
+
+## Запуск тестового проезда
+Тестовые проезды проводятся на заранее заданных путях. Для запуска алгоритма на тестовых проездах необходимо запустить лаунч фаил и вызвать сервис для публикации пути:
+```
+roslaunch rosbot_controller mppi.launch
+rosservice call /next_path
+```
+
+## Описание алгоритма
+Алгоритм представляет собой расчет средневзвешенного управления по случайно сгенерированным управляющим воздействиям на основании функции стоимости, которая высчитывается для каждой последовательности управляющих воздействий отдельно. Функция стоимости расчитывается над траекториями полученными при помощи интегрирования скоростей, которые в своей очередь получены рекурсивным применения модели робота (в данном слуае линейной, идентифицированной нейросетью).
+
+## Как задать путь?
+Для того чтобы задат путь необходимо изменить параметр "paths в config/paths.yaml. На данный момент поддерживается два вида пути: sin, polygin. Для каждого типа существует набор уникальных параметров (args). Пример:
 
 ```
 paths : [
@@ -15,12 +29,11 @@ paths : [
     }
 ]
 ```
+Заданные пути можно последовательно менять вызывая сервис ```/next_path```. 
 
-You can then switch between them in real time using service call ```/next_path```
-
-## Set obstacles
-To set obstacles set "obstacles" param in config/mppi.yaml in format [x, y, radius], e.g:
-
+## Как задать препятствия?
+Препятствия в даной реализации задаются как точки с некоторым радиусом. Для того чтобы их задать 
+необходимо изменить параметр "obstacles в config/mppi.yaml. Формат препятствия [x, y, radius]. Пример:
 ```
 obstacles: [              
               [1, 0,  0.3],
@@ -29,43 +42,34 @@ obstacles: [
 ```
 
 
-## Run MPPI
-```
-roslaunch rosbot_controller mppi.launch
-```
-
-
-## Run next path 
-After running MPPI call the service:
-``` 
-rosservice call /next_path
-```
-
-## Change MPPI params
-You can change MPPI params in real time using dynamic_reconfigure in rqt. Default params are set in cfg/MPPI.cfg. 
-
 ## MPPI params
 
 
-| Parameter       | Type   | Definition                                                                         |
-| --------------- | ------ | ---------------------------------------------------------------------------------- |
-| traj_vis_step   | int    | Step for trajectories which will be visualized                                     |
-| iter_count      | int    | Number of MPPI iterations                                                          |
-| traj_lookahead  | double | Global trajectory lookahead in meters                                              |
-| batch_size      | int    | Count of generated on each iteration trajectories                                  |
-| time_steps      | int    | Number of time steps in recursive mppi propagation                                 |
-| model_dt        | double | Time step dt                                                                       |
-| v_std           | double | Linear velocity std of gaussian distrubution                                       |
-| w_std           | double | Angular velocity std of gaussian distrubution                                      |
-| limit_v         | double | Limit on linear velocity control                                                   |
-| limit_w         | double | Limit on angular velocity control                                                  |
-| temperature     | double | Parameter of MPPI which influence selectiveness of generated trajectories          |
-| goal_weight     | double | Weight of goal component of cost function                                          |
-| goal_power      | int    | Power of goal component of cost function                                           |
-| reference_weigh | double | Weight of reference component of cost function                                     |
-| reference_power | int    | Power of reference component of cost function                                      |
-| obstacle_weight | double | Weight of obstacle component of cost function                                      |
-| obstacle_power  | int    | Power of obstacle component of cost function                                       |
-| stop_robot      | bool   | Stop robot                                                                         |
-| wait_full_step  | bool   | Start next iteration only after time multiple of dt passed                         |
-| visualize       | bool   | Visualization of trajectories, considerable reference trajectory, path passed etc. |
+| Parameter       | Type   | Definition                                                                                         |
+| --------------- | ------ | -------------------------------------------------------------------------------------------------- |
+| traj_vis_step   | int    | Шаг по которому определяется какие траектории следует визуализировать (10 означает каждую десятую) |
+| iter_count      | int    | Количество итераций алгоритма MPPI                                                                 |
+| traj_lookahead  | double | Расстояние глобальной траектории которое доступно локальному планировщику                          |
+| batch_size      | int    | Количество генерируемых траекторий                                                                 |
+| time_steps      | int    | Количество временых шагов по которым строятся траектории                                           |
+| model_dt        | double | Время одного шага                                                                                  |
+| v_std           | double | Стандартное отклонение случайного распределения линейной скорости                                  |
+| w_std           | double | Стандартное отклонение случайного распределения линейной скорости                                  |
+| limit_v         | double | Предел на задаваемую линейную скорость                                                             |
+| limit_w         | double | Предел на задаваемую угловую скорость                                                              |
+| temperature     | double | Параметр определяющий "избирательность" траекторий в методе MPPI                                   |
+| goal_weight     | double | Вес компоненты цели в  функции стоимости                                                           |
+| goal_power      | int    | Степень в которую возводится компонента цели в функции стоимости                                   |
+| reference_weigh | double | Вес компоненты референсной траектории в функции стоимости                                          |
+| reference_power | int    | Степень в которую возводится компонента референсной траектории в функции стоимости                 |
+| obstacle_weight | double | Вес компоненты препятствий в функции стоимости                                                     |
+| obstacle_power  | int    | Степень в которую возводится компонента препятствий в функции стоимости                            |
+| stop_robot      | bool   | Останавливает робота                                                                               |
+| wait_full_step  | bool   | Следующая итерация алгоритма стартует только по истечению времени кратному параметру dt            |
+| visualize       | bool   | Включает визуализацию в RViz                                                                       |
+
+
+
+## Изменение параметров
+Вы можете изменить параметры работы алгоритма в процессе его работы используя dynamic_reconfigure в rqt. 
+По умолчанию параметры заданы в cfg/MPPI.cfg.
