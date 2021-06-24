@@ -31,7 +31,7 @@ class MetricHandler():
     def add_control(self, control):
         self.controls = np.append(self.controls, control.to_numpy()[np.newaxis], axis=0)
 
-    def show_metrics(self, time, reference_trajectory):
+    def show_metrics(self, time, reference_trajectory, path_len):
         lin_vels = self.path[:, 3]
         ang_vels = self.path[:, 4]
 
@@ -41,6 +41,7 @@ class MetricHandler():
         value = self.metric(reference_trajectory, self.path)
         rospy.loginfo("Path Total Time: {:.6f}.".format(time))
         rospy.loginfo("Path Error by {}: {:.6f}.\n".format(self.metric.__name__, value))
+        rospy.loginfo("Path Lenght: {:.6f}.".format(path_len))
 
         self.show_statistics('Vels', lin_vels, ang_vels)
         self.show_statistics('Controls', lin_controls, ang_controls)

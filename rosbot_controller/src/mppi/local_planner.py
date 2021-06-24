@@ -9,6 +9,7 @@ from geometry_msgs.msg import Vector3
 
 from dynamic_reconfigure.server import Server
 from rosbot_controller.cfg import MPPIConfig
+import numpy as np
 
 
 class LocalPlanner:
@@ -97,7 +98,7 @@ class LocalPlanner:
     def _path_finished_handle(self):
         self.controller.publish_stop_control()
         self.metric_handler.show_metrics((rospy.Time.now() - self.path_handler.path_come_time).to_sec(),
-                                         self.optimizer.reference_trajectory)
+                                         self.optimizer.reference_trajectory, np.sum(self.optimizer.reference_intervals))
 
     def _visualizations_handle(self):
         if self._visualize:

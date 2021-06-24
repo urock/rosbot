@@ -6,5 +6,9 @@ paths : [
             {
                 'type': 'sin',
                 'args': {'step': 0.1, 'amplitude': 1.0, 'freq' : 0.1 }
-            }
+            },
+            {
+                'type': 'polygon',
+                'args': {'step': 0.1, 'edges': [[0.0, 0.0], [0.0, 5.0], [5.0, 5.0], [5.0, 0.0] ] }
+            },
         ]

@@ -15,7 +15,7 @@ goal_handler:
 
 local_planner:
     wait_full_step: True
-    visualize: True
+    visualize: False
 
 optimizer:
     iter_count: 2
@@ -26,6 +26,6 @@ generator:
     time_steps: 40
     model_dt: 0.1
     v_std: 0.10
-    w_std: 0.30
+    w_std: 0.10
     limit_v: 0.5
     limit_w:  1.3
