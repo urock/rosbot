@@ -42,7 +42,7 @@ obstacles: [
 ```
 
 
-## MPPI params
+## Параметры
 
 
 | Parameter       | Type   | Definition                                                                                         |
