@@ -9,26 +9,27 @@ def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, w
         state: np.ndarray of shape [batch_size, time_steps, 8] where 3 for x, y, yaw, v, w, v_control, w_control, dts
         ref_traj: np.array of shape [ref_traj_size, 3] where 3 for x, y, yaw
         desired_v: float
+        obstacles: list of points [x, y]
+        weights: weights for cost components
+        powers: powers for cost components
 
     Return:
         costs: np.array of shape [batch_size]
     """
 
+
     costs = np.empty(shape=state.shape[0])
+    obstacles_c = obstacles_cost(state, obstacles, eps=0.15,
+                                 weight=weights['obstacle'],
+                                 power=powers['obstacle'])
 
-    obst_weight = weights['obstacle']
-    obst_power = powers['obstacle']
-    obstacles_c = obstacles_cost(state, obstacles, eps=0.15, weight=obst_weight, power=obst_power)
-
-    ref_weight = weights['reference']
-    ref_power = powers['reference']
     triangle_c = triangle_cost_segments(state, reference_trajectory, reference_intervals,
-                                        weight=ref_weight, power=ref_power)
+                                        weight=weights['reference'], 
+                                        power=powers['reference'])
 
-    goal_weight = weights['goal']
-    goal_power = powers['goal']
     goal_c = goal_cost(state, reference_trajectory[-1],
-                       weight=goal_weight, power=goal_power)
+                       weight=weights['goal'],
+                       power=powers['goal'])
 
     costs += triangle_c + goal_c + obstacles_c
     return costs

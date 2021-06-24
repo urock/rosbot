@@ -78,7 +78,9 @@ class LocalPlanner:
                 if not self.stop_robot:
                     self.controller.publish_control(control)
 
-            self._visualizations_handle()
+                if self._visualize:
+                    self._visualizations_handle()
+
             t = (rospy.Time.now() - start).to_sec()
 
             if t < 3 and not self.stop_robot and control is not None:
@@ -101,17 +103,16 @@ class LocalPlanner:
                                          self.optimizer.reference_trajectory, np.sum(self.optimizer.reference_intervals))
 
     def _visualizations_handle(self):
-        if self._visualize:
-            self._trajs_visualizer.add(self.optimizer.curr_trajectories,
-                                       Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=self.traj_vis_step)
-            self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
-                                       Colors.red, scale=Vector3(0.05, 0.05, 0.05))
+        self._trajs_visualizer.add(self.optimizer.curr_trajectories,
+                                    Colors.teal, scale=Vector3(0.025, 0.025, 0.025), step=self.traj_vis_step)
+        self._trajs_visualizer.add([self.optimizer.generator.propagete_curr_trajectory()],
+                                    Colors.red, scale=Vector3(0.05, 0.05, 0.05))
 
-            self._trajs_visualizer.visualize()
-            self._ref_visualizer.visualize(self.optimizer.reference_considered,
-                                           Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
-            self._state_visualizer.visualize(
-                self.odom.state, Colors.blue, scale=Vector3(0.025, 0.025, 0.025))
+        self._trajs_visualizer.visualize()
+        self._ref_visualizer.visualize(self.optimizer.reference_considered,
+                                        Colors.purple, scale=Vector3(0.05, 0.05, 0.20))
+        self._state_visualizer.visualize(
+            self.odom.state, Colors.blue, scale=Vector3(0.025, 0.025, 0.025))
 
     def _update_metrics(self, control):
         self.metric_handler.add_state(copy(self.odom.state))
@@ -119,31 +120,17 @@ class LocalPlanner:
 
     def cfg_cb(self, config, level):
         self.stop_optimizer = True
+        self._visualize = False
+        self.controller.publish_stop_control()
 
-        if (config['stop_robot']):
-            self.controller.publish_stop_control()
-
-        rospy.sleep(1.5)
-
-        self.traj_vis_step = config['traj_vis_step']
+        rospy.sleep(1.0)
         self.optimizer.iter_count = config['iter_count']
         self.optimizer.traj_lookahead = config['traj_lookahead']
         self.optimizer.temperature = config['temperature']
-
-        self.optimizer.generator.batch_size = config['batch_size']
-        self.optimizer.generator.time_steps = config['time_steps']
-        self.optimizer.generator.dt = config['model_dt']
-        self.optimizer.generator.reset()
-
-        if self._visualize:
-            self._ref_visualizer.reset()
-            self._trajs_visualizer.reset()
-
+        self.optimizer.generator.set(config['batch_size'], config['time_steps'], config['model_dt'])
         self.optimizer.generator.v_std = config['v_std']
         self.optimizer.generator.w_std = config['w_std']
-
         self.optimizer.generator.limit_v = config['limit_v']
-        self.optimizer.generator.limit_w = config['limit_w']
         self.optimizer.generator.limit_w = config['limit_w']
 
         self.optimizer.weights = {
@@ -158,10 +145,14 @@ class LocalPlanner:
             'obstacle': config['obstacle_power']
         }
 
+        self.traj_vis_step = config['traj_vis_step']
+        self._ref_visualizer.reset()
+        self._trajs_visualizer.reset()
+
         self._wait_full_step = config['wait_full_step']
         self._visualize = config['visualize']
 
-        rospy.logwarn("Params changed")
+        rospy.logwarn("Dynamic Params Set")
 
         self.metric_handler.reset()
         self.stop_optimizer = False

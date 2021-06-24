@@ -60,6 +60,16 @@ class MPPICGenerator():
         end_part = np.array([self.curr_control_seq[-1]] * offset)
         self.curr_control_seq = np.concatenate([control_cropped, end_part], axis=0)
 
+
+    def set(self, batch_size, time_steps, dt):
+        self.batch_size = batch_size
+        self.time_steps = time_steps
+        self.dt = dt
+
+        self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
+        self._batch_of_seqs[:, :, 4] = self.dt
+        self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
+
     def reset(self):
         self._batch_of_seqs = np.zeros(shape=(self.batch_size, self.time_steps, 5))
         self._batch_of_seqs[:, :, 4] = self.dt

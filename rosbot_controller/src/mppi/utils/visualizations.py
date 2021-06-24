@@ -15,18 +15,18 @@ class Colors:
 
 class ReferenceVisualizer:
     def __init__(self, topic):
-        self._reference_id = 0
-        self._reference_pub = rospy.Publisher(topic, MarkerArray, queue_size=10)
+        self._curr_id = 0
+        self._pub = rospy.Publisher(topic, MarkerArray, queue_size=10)
 
     def visualize(self, reference_trajectory, color, scale):
-        self._reference_id = 0
+        self._curr_id = 0
         marker_array = MarkerArray()
         for q in range(len(reference_trajectory)):
-            marker = create_marker(self._reference_id, reference_trajectory[q], color, scale)
+            marker = create_marker(self._curr_id, reference_trajectory[q], color, scale)
             marker_array.markers.append(marker)
-            self._reference_id += 1
+            self._curr_id += 1
 
-        self._reference_pub.publish(marker_array)
+        self._pub.publish(marker_array)
 
     def reset(self):
         marker_arr = MarkerArray()
@@ -35,76 +35,27 @@ class ReferenceVisualizer:
         marker.action = Marker.DELETEALL
         marker_arr.markers.append(marker)
 
-        self._reference_pub.publish(marker_arr)
+        self._pub.publish(marker_arr)
+        self._curr_id = 0
 
 
 class TrajectoriesVisualizer:
     def __init__(self, topic):
-        self._trajectory_id = 0
-        self._trajectories_markers = MarkerArray()
-        self._trajectories_pub = rospy.Publisher(topic, MarkerArray, queue_size=100)
+        self._curr_id = 0
+        self._markers = MarkerArray()
+        self._pub = rospy.Publisher(topic, MarkerArray, queue_size=100)
 
     def visualize(self):
-        self._trajectories_pub.publish(self._trajectories_markers)
-        self._trajectories_markers = MarkerArray()
-        self._trajectory_id = 0
+        self._pub.publish(self._markers)
+        self._markers = MarkerArray()
+        self._curr_id = 0
 
     def add(self, trajectories, color, scale, step=1):
         for traj in trajectories[::step]:
             for point in traj:
-                marker = create_marker(self._trajectory_id, point, color, scale)
-                self._trajectories_markers.markers.append(marker)
-                self._trajectory_id += 1
-
-    def reset(self):
-        marker_arr = MarkerArray()
-        marker = Marker()
-        marker.header.frame_id = "odom"
-        marker.action = Marker.DELETEALL
-        marker_arr.markers.append(marker)
-        self._trajectories_pub.publish(marker_arr)
-
-
-class StateVisualizer:
-    def __init__(self, topic):
-        self._curr_id = 0
-        self._state_pub = rospy.Publisher(topic, Marker, queue_size=1)
-
-    def visualize(self, state, color, scale):
-        pt = [state.x, state.y]
-        marker = create_marker(self._curr_id, pt, color, scale)
-        self._state_pub.publish(marker)
-        self._curr_id += 1
-
-    def reset(self):
-        marker = Marker()
-        marker.header.frame_id = "odom"
-        marker.action = Marker.DELETEALL
-        self._state_pub.publish(marker)
-        self._curr_id = 0
-
-
-class ObstaclesVisualizer:
-    def __init__(self, topic):
-        self._id = 0
-        self._marker_arr = MarkerArray()
-        self._pub = rospy.Publisher(topic, MarkerArray, queue_size=100)
-
-    def visualize(self, obstacles, color):
-        for obstacle in obstacles:
-            self.add(obstacle, color)
-
-        self._pub.publish(self._marker_arr)
-        self._marker_arr = MarkerArray()
-        self._id = 0
-
-    def add(self, obstacle, color):
-        pt = [obstacle[0], obstacle[1]]
-        r = obstacle[2]
-
-        marker = create_marker(self._id, pt, color, scale=Vector3(r, r, 0.2))
-        self._marker_arr.markers.append(marker)
-        self._id += 1
+                marker = create_marker(self._curr_id, point, color, scale)
+                self._markers.markers.append(marker)
+                self._curr_id += 1
 
     def reset(self):
         marker_arr = MarkerArray()
@@ -113,6 +64,58 @@ class ObstaclesVisualizer:
         marker.action = Marker.DELETEALL
         marker_arr.markers.append(marker)
         self._pub.publish(marker_arr)
+        self._curr_id = 0
+
+
+class StateVisualizer:
+    def __init__(self, topic):
+        self._curr_id = 0
+        self._pub = rospy.Publisher(topic, Marker, queue_size=1)
+
+    def visualize(self, state, color, scale):
+        pt = [state.x, state.y]
+        marker = create_marker(self._curr_id, pt, color, scale)
+        self._pub.publish(marker)
+        self._curr_id += 1
+
+    def reset(self):
+        marker = Marker()
+        marker.header.frame_id = "odom"
+        marker.action = Marker.DELETEALL
+        self._pub.publish(marker)
+        self._curr_id = 0
+
+
+class ObstaclesVisualizer:
+    def __init__(self, topic):
+        self._curr_id = 0
+        self._markers = MarkerArray()
+        self._pub = rospy.Publisher(topic, MarkerArray, queue_size=100)
+
+    def visualize(self, obstacles, color):
+        for obstacle in obstacles:
+            self.add(obstacle, color)
+
+        self._pub.publish(self._markers)
+        self._markers = MarkerArray()
+        self._curr_id = 0
+
+    def add(self, obstacle, color):
+        pt = [obstacle[0], obstacle[1]]
+        r = obstacle[2]
+
+        marker = create_marker(self._curr_id, pt, color, scale=Vector3(r, r, 0.2))
+        self._markers.markers.append(marker)
+        self._curr_id += 1
+
+    def reset(self):
+        marker_arr = MarkerArray()
+        marker = Marker()
+        marker.header.frame_id = "odom"
+        marker.action = Marker.DELETEALL
+        marker_arr.markers.append(marker)
+        self._pub.publish(marker_arr)
+        self._curr_id = 0
 
 
 def create_marker(id, pt, color, scale=Vector3(0.035, 0.035, 0.035)):
