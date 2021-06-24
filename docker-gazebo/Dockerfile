@@ -68,6 +68,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ------------------------------ END -------------------------- #
 ##################################################################
 
+RUN curl -s https://raw.githubusercontent.com/ros/rosdistro/master/ros.asc | apt-key add -
+
 # Python
 RUN apt-get update && \
     apt-get install -y \
