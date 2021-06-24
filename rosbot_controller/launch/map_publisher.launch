@@ -1,5 +1,0 @@
-<launch>
-    <node pkg="rosbot_controller" type="map_publisher_node.py" name="map_pub" output="screen">
-        <rosparam command="load" file="$(find rosbot_controller)/config/maps.yaml" subst_value="true" />
-    </node>
-</launch>

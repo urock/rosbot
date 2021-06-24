@@ -8,7 +8,7 @@ sys.path.append("..")
 
 
 class MPPICOptimizer:
-    def __init__(self, obstacles, control_generator, cost, next_control_policy):
+    def __init__(self, control_generator, cost, next_control_policy):
         self._get_params()
 
         self.cost = cost
@@ -16,6 +16,8 @@ class MPPICOptimizer:
         self.next_control_policy = next_control_policy
         self.temperature: float
 
+
+        obstacles = rospy.get_param("~obstacles", [])
         self.obstacles = np.array([np.array(obstacle) for obstacle in obstacles])
         self.reference_trajectory: np.ndarray
         self.reference_intervals: np.array

@@ -40,12 +40,15 @@ def start_planner():
     rospy.init_node("planner", anonymous=True, disable_signals=True)
 
     model_path = rospy.get_param("~mppic/model_path", None)
-    model = nnio.ONNXModel(model_path)
-    # model = RosbotKinematic()
+    use_nn_model = rospy.get_param("~mppic/use_nn_model", True)
 
-    obstacles = rospy.get_param("~obstacles", [])
+    if (use_nn_model):
+        model = nnio.ONNXModel(model_path)
+    else:
+        model = RosbotKinematic()
+
     control_generator = MPPICGenerator(model)
-    optimizer = MPPICOptimizer(obstacles, control_generator, triangle_cost, calc_softmax_seq)
+    optimizer = MPPICOptimizer(control_generator, triangle_cost, calc_softmax_seq)
     odom = Odom()
     controller = Controller()
     goal_handler = GoalHandler()
