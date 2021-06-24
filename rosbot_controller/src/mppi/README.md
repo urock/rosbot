@@ -1,6 +1,6 @@
 # Model Predictive Path Integral
 
-## Set Paths
+## Set paths
 To set paths set "paths" param in config/paths.yaml. Only two types are avaliable now (sin, polygon). Each type has its own args e.g:
 
 ```
