@@ -14,9 +14,7 @@ rosservice call /next_path
 ## Описание алгоритма
 Алгоритм представляет собой расчет средневзвешенного управления по случайно сгенерированным управляющим воздействиям на основании функции стоимости, которая высчитывается для каждой последовательности управляющих воздействий отдельно. Функция стоимости расчитывается над траекториями полученными при помощи интегрирования скоростей, которые в своей очередь получены рекурсивным применения модели робота (в данной реализации линейной, идентифицированной нейросетью).
 
-<img src="https://latex.codecogs.com/gif.latex?O_t=\text { Onset event at time bin } t " /> 
-<img src="https://latex.codecogs.com/gif.latex?s=\text { sensor reading }  " /> 
-<img src="https://latex.codecogs.com/gif.latex?P(s | O_t )=\text { Probability of a sensor reading value when sleep onset is observed at a time bin } t " />
+![Cost function](./.resources/cost.png)
 
 ## Как задать путь?
 Для того чтобы задать путь необходимо изменить параметр "paths" в config/paths.yaml. На данный момент поддерживается два вида пути: sin, polygon. Для каждого типа существует набор уникальных параметров (args). Пример:
