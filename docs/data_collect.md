@@ -9,3 +9,12 @@ cd src/rosbot/rosbot_controller/src/
 * -v - список линейных скоростей
 * -w - список угловых скоростей
 Данные будут сохранены в *logger/output_data/*
+
+
+или автоматическое средство сбора случайно сгенерированных последовательностей управления
+
+```bash
+cd catkin_ws_path
+cd src/rosbot/rosbot_controller/src/ 
+./colect_data.zsh
+```
