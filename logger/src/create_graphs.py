@@ -171,7 +171,7 @@ def plot_for_group(args, folder_path):
         nn_model_state_ = pd.DataFrame(nn_model_state_, columns=robot_state.keys())
       
         robot_state_.plot(x='x', y='y', ax=ax, legend=False, c='b', alpha=0.2, kind='line')
-        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='r', alpha=0.2, kind='line')
+        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='orange', alpha=0.2, kind='line')
         nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.2, kind='line')
 
     ax.legend(['ground truth', 'kinematic model', 'NN model' ])
