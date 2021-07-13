@@ -1,11 +1,13 @@
+#!/usr/bin/env python
 import os
 import numpy as np
 import rospy
 import rosservice
 import rosnode
-from geometry_msgs.msg import Twist, ModelState
+from geometry_msgs.msg import Twist
+from gazebo_msgs.msg import ModelState
 from gazebo_msgs.srv import SetModelState
-
+import subprocess
 
 def ResetPose():
     """
@@ -48,12 +50,19 @@ def run_control_gen(
     Launch the control_generator,
     and wait for the end of the trajectory 
     """
-
-    os.popen("roslaunch rosbot_controller spawn_kinematic_model.launch")
+    # subprocess.Popen("ros2 launch rosbot_description rosbot_sim.launch.py world:=/home/user/empty gui:=false rosbot_update_rate:={}".format(int(UPDATE_RATE)), shell=True)
+    subprocess.Popen("roslaunch rosbot_controller spawn_kinematic_model.launch", shell=True)
     rospy.sleep(5)
-    os.popen(
-        f"roslaunch rosbot_controller control_gen.launch output_folder:=/{output_folder} Tmax:={Tmax} v_max:={v_max} w_max:={w_max} a_lin:={a_lin} a_ang:={a_ang} period_lin:={period_lin} period_ang:={period_ang} v_min:={0} w_min:={0}"
-        )
+    subprocess.Popen(
+        "roslaunch rosbot_controller control_gen.launch \
+        output_folder:=/{} Tmax:={} \
+        v_max:={} w_max:={} a_lin:={} \
+        a_ang:={} period_lin:={} \
+        period_ang:={} v_min:=0 w_min:=0"
+        .format(output_folder, Tmax, v_max, w_max, a_lin,
+                 a_ang, period_lin, period_ang), shell=True
+    )
+
 
     rospy.sleep(3)
     # Wait while the logger is working
@@ -74,7 +83,8 @@ Tmax = 50               # control_generator running time
 UPDATE_RATE = np.random.uniform(1/DT_MIN, 1/DT_MAX) # sample rosbot update_rate
 
 # spawn rosbot and kinetic model
-os.popen("roslaunch rosbot_controller run_simulation.launch rviz:=false update_rate:={} cmd_freq:={}".format(UPDATE_RATE, UPDATE_RATE))
+subprocess.Popen("roslaunch rosbot_controller run_simulation.launch \
+    rviz:=true update_rate:={} cmd_freq:={}".format(UPDATE_RATE, UPDATE_RATE), shell=True)
 rospy.sleep(7)
 rospy.init_node("data_collector", anonymous=True)
 cmd_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=1)
@@ -100,7 +110,9 @@ output_folder = "control_gen_dt_{}_Tmax={}_v_max={}_w_max={}_a_lin={}_a_ang={}_p
 )
 
 # Collect the first trajectory
-run_control_gen(output_folder, Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+run_control_gen(output_folder, Tmax, v_max, w_max, a_lin,
+                 a_ang, period_lin, period_ang)
+
 ResetPose() # teleport the rosbot to the origin
 
 # update angular acceleration, so second trajectory will be mirrored
@@ -118,7 +130,8 @@ output_folder = "control_gen_dt_{}_Tmax={}_v_max={}_w_max={}_a_lin={}_a_ang={}_p
 )
 
 # Collect the second trajectory
-run_control_gen(output_folder, Tmax, v_max, w_max, a_lin, a_ang, period_lin, period_ang)
+run_control_gen(output_folder, Tmax, v_max, w_max, a_lin,
+                 a_ang, period_lin, period_ang)
 ResetPose() # teleport the rosbot to the origin
 
 # kill all ROS nodes

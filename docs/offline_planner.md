@@ -47,3 +47,10 @@ python3 create_graphs.py -folder_path /home/user/catkin_ws/src/logger/output_dat
 	
 * folder_path -  абсолютный путь к директории, содержащей директории с данными после проездов
 * group = True - флаг, означающий что строится график для группы траекторий
+
+Пример графиков
+
+![PSO_example_0](/docs/images/PSO_plot_example_0.png)
+
+
+![PSO_example_1](/docs/images/PSO_plot_example_1.png)

@@ -13,7 +13,7 @@ from geometry_msgs.msg import PoseStamped, Quaternion
 
 
 def IsValidTrajType(traj_type):
-    return 'sin' in traj_type or traj_type in ('-line', 'from_file', 'polygon') or 'spiral' in traj_type
+    return 'sin' in traj_type or traj_type in ('from_file', 'polygon') or 'spiral' in traj_type
 
 def parse_plan(file_name):
     edges = list()
