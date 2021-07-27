@@ -8,6 +8,10 @@ sys.path.append("..")
 
 class Controller:
     def __init__(self):
+        """ Class handle controlling robot (publishing velocities)
+
+        """
+
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=1)
         self.publish_time = 0.0
 

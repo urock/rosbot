@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 
 class MetricHandler():
     def __init__(self, metric):
+        """Helper class for handling metrics 
+
+        Args:
+            metric: metric function got reference trajectory and given path
+        """
         self.metric = metric
         self.path = np.zeros(shape=(0, 5))  # x, y, yaw, v, w
         self.controls = np.zeros(shape=(0, 2))  # v w

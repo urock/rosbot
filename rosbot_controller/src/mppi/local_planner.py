@@ -14,6 +14,18 @@ import numpy as np
 
 class LocalPlanner:
     def __init__(self, optimizer, odom, controller, goal_handler, path_handler, metric_handler):
+        """ Local planner class
+
+        Aggregate components for local planning
+
+        Args:
+            optimizer: py:class:MPPIOptimizer
+            odom: py:class:Odom
+            controller: py:class:Controller
+            goal_handler: py:class:GoalHandler
+            path_handler: py:class:PathHandler
+            metric_handler: py:class:MetricHandler
+        """
         self._get_params()
 
         self.optimizer = optimizer

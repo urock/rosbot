@@ -4,6 +4,10 @@ import numpy as np
 
 class GoalHandler:
     def __init__(self):
+        """Handles goal status (finished or not), current considered goal
+
+        """
+
         self._get_params()
 
         self.state = None
