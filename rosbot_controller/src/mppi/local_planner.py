@@ -44,7 +44,7 @@ class LocalPlanner:
         self._ref_visualizer = ReferenceVisualizer('/ref_trajs')
         self._obstacle_visualizer = ObstaclesVisualizer('/mppi_obstacles')
 
-        srv = Server(MPPIConfig, self.cfg_cb)
+        reconfigure_srv = Server(MPPIConfig, self.cfg_cb)
 
         rospy.sleep(1)
         self._obstacle_visualizer.visualize(self.optimizer.obstacles, Colors.red)
