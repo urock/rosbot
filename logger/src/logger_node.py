@@ -197,6 +197,7 @@ class Logger:
         """Builds and saves a graph from data,
           saves data to an output file """
         path = self.module_path + '/'
+        # print(path)
         write_to_file(path=path, data=data, file_name=name)
         if plot_type is not None: # [['x', 'y']]
             plt.figure(name)
@@ -230,16 +231,12 @@ class Logger:
         plt.rcParams['figure.figsize'] = (11.0, 8.0)
         plt.figure("trajectory and states")
 
-        plt.plot(x1, y1, color='b', label='robot state', linewidth=3)
-        plt.plot(x2, y2, color='r', label='kinetic model state', linewidth=3)
-        plt.plot(x3, y3, color='yellow', label='NN model state', linewidth=3)
+        plt.plot(x1, y1, color='b', label='ground truth', linewidth=3)
         plt.plot(x4, y4, color='g', label='trajectory', linewidth=3)
-
-        # base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
-        # model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
-        # plt.text(x=0, y=4, s='Base_link dev = {}, Model dev = {}'.format(base_link_deviation,
-        #                                                                  model_deviation),
-        #                                                                  fontsize=14)
+        if len(x2) > 0 and len(y2) > 0:
+            plt.plot(x2, y2, color='r', label='kinematic model', linewidth=3)
+        if len(x3) > 0 and len(y3) > 0:
+            plt.plot(x3, y3, color='yellow', label='NN model', linewidth=3)
 
         plt.xlabel('X')
         plt.ylabel('Y')
@@ -251,19 +248,23 @@ class Logger:
 
         fig, ax = plt.subplots(2)
         ax[0].set_ylabel('m/s')
-        ax[1].set_ylabel('m/s')
-        ax[1].set_xlabel('t, sec')
         ax[0].set_title("linear velocity and control")
         plot_xy_data(x=self.time['t'], y=self.robot_state['v'], ax=ax[0], plot_name="robot v")
-        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['v'], ax=ax[0], plot_name="kinematic model v")
-        plot_xy_data(x=self.time['t'], y=self.nn_model_state['v'], ax=ax[0], plot_name="NN model v")
         plot_xy_data(x=self.time['t'], y=self.control['x'], ax=ax[0], plot_name="u1")
+        if len(self.kinetic_model_state['v']):
+            plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['v'], ax=ax[0], plot_name="kinematic model v")
+        if len(self.nn_model_state['v']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.nn_model_state['v'], ax=ax[0], plot_name="NN model v")
 
+        ax[1].set_ylabel('m/s')
+        ax[1].set_xlabel('t, sec')
         ax[1].set_title("angular velocity and control")
         plot_xy_data(x=self.time['t'], y=self.robot_state['w'], ax=ax[1], plot_name="robot w")
-        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['w'], ax=ax[1], plot_name="kinematic model w")
-        plot_xy_data(x=self.time['t'], y=self.nn_model_state['w'], ax=ax[1], plot_name="NN model w")
         plot_xy_data(x=self.time['t'], y=self.control['yaw'], ax=ax[1], plot_name="u2")
+        if len(self.kinetic_model_state['w']):
+            plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['w'], ax=ax[1], plot_name="kinematic model w")
+        if len(self.nn_model_state['w']):
+            plot_xy_data(x=self.time['t'], y=self.nn_model_state['w'], ax=ax[1], plot_name="NN model w")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="velocities_and_control")
@@ -275,8 +276,10 @@ class Logger:
         ax3.set_ylabel('Rads')
         ax3.set_title("Yaw angle over time")
         plot_xy_data(x=self.time['t'], y=self.robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
-        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
-        plot_xy_data(x=self.time['t'], y=self.nn_model_state['yaw'], ax=ax3, plot_name="NN model yaw(t)")
+        if len(self.kinetic_model_state['yaw']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
+        if len(self.nn_model_state['yaw']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.nn_model_state['yaw'], ax=ax3, plot_name="NN model yaw(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="yaw_over_time")       
@@ -288,13 +291,18 @@ class Logger:
         ax2[1].set_xlabel('t, sec')    
         ax2[0].set_title("X coord over time")
         plot_xy_data(x=self.time['t'], y=self.robot_state['x'], ax=ax2[0], plot_name="robot x(t)")
-        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
-        plot_xy_data(x=self.time['t'], y=self.nn_model_state['x'], ax=ax2[0], plot_name="NN model x(t)")
+        if len(self.kinetic_model_state['x']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
+        if len(self.nn_model_state['x']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.nn_model_state['x'], ax=ax2[0], plot_name="NN model x(t)")
 
         ax2[1].set_title("Y coord over time")
         plot_xy_data(x=self.time['t'], y=self.robot_state['y'], ax=ax2[1], plot_name="robot y(t)")
-        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
-        plot_xy_data(x=self.time['t'], y=self.nn_model_state['y'], ax=ax2[1], plot_name="NN model y(t)")
+        if len(self.kinetic_model_state['y']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
+
+        if len(self.nn_model_state['y']) > 0:
+            plot_xy_data(x=self.time['t'], y=self.nn_model_state['y'], ax=ax2[1], plot_name="NN model y(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="XY over time")   
@@ -304,8 +312,10 @@ class Logger:
         ax4.set_ylabel('Y, m')
         ax4.set_title("XY trajectory")
         plot_xy_data(x=self.robot_state['x'], y=self.robot_state['y'], ax=ax4, plot_name="x_y")
-        plot_xy_data(x=self.kinetic_model_state['x'], y=self.kinetic_model_state['y'], ax=ax4, plot_name="kinematic model x_y")
-        plot_xy_data(x=self.nn_model_state['x'], y=self.nn_model_state['y'], ax=ax4, plot_name="NN model x_y")
+        if len(self.kinetic_model_state['y']) > 0:
+            plot_xy_data(x=self.kinetic_model_state['x'], y=self.kinetic_model_state['y'], ax=ax4, plot_name="kinematic model x_y")
+        if len(self.nn_model_state['y']) > 0:
+            plot_xy_data(x=self.nn_model_state['x'], y=self.nn_model_state['y'], ax=ax4, plot_name="NN model x_y")
 
         save_plot(path=path, name="Y over X ") 
 
@@ -324,7 +334,7 @@ class Logger:
         self.plot_yaw_over_time()
         self.plot_XY_over_time()
         self.plot_velocities_and_control()
-
+        # print(self.robot_state)
         self.process_collected_data(name='state', data=self.robot_state, plot_type=None)
         self.process_collected_data(name='kinetic_model_state', data=self.kinetic_model_state, plot_type=None)
         self.process_collected_data(name='nn_model_state', data=self.nn_model_state, plot_type=None)

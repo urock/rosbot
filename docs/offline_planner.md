@@ -3,7 +3,10 @@
 Расчет open loop управления методом PSO для следования в заданную точку с объездом препятвий, заданных в виде кругов на плоскости. 
 
 ```
-/offline_planner.py -it 150 -m ~/catkin_ws/src/rosbot_controller/nets/rosbot_gazebo9_2d_model.onnx -o ~/control1.txt
+docker start gazebo-control
+docker attach gazebo-control
+cd /home/user/catkin_ws/src/rosbot_controller/src/offline_planner
+python3 offline_planner.py -it 150 -m ~/catkin_ws/src/rosbot_controller/nets/rosbot_gazebo9_2d_model.onnx -o ~/control1.txt
 ```
 
 Аргументы:
@@ -44,3 +47,10 @@ python3 create_graphs.py -folder_path /home/user/catkin_ws/src/logger/output_dat
 	
 * folder_path -  абсолютный путь к директории, содержащей директории с данными после проездов
 * group = True - флаг, означающий что строится график для группы траекторий
+
+Пример графиков
+
+![PSO_example_0](/docs/images/PSO_plot_example_0.png)
+
+
+![PSO_example_1](/docs/images/PSO_plot_example_1.png)

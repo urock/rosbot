@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-import seaborn as sns
+# import seaborn as sns
 import pandas as pd
 import numpy as np
 import argparse
@@ -76,17 +76,18 @@ def plot_for_one_trajectory(args, folder_path):
     ax[1].set_xlabel('t, sec')
     ax[0].set_title("linear velocity and control")
     plot_xy_data(x=time['t'], y=robot_state['v'], ax=ax[0], plot_name="robot v")
-    plot_xy_data(x=time['t'], y=model_state['v'], ax=ax[0], plot_name="kinematic model v")
     plot_xy_data(x=time['t'], y=control['x'], ax=ax[0], plot_name="u1")
-    if nn_model_state is not None:
-        # print(nn_model_state['v'])
+    if len(model_state['v']) > 0:
+        plot_xy_data(x=time['t'], y=model_state['v'], ax=ax[0], plot_name="kinematic model v")
+    if nn_model_state is not None or len(nn_model_state['v']) >0:
         plot_xy_data(x=time['t'], y=nn_model_state['v'], ax=ax[0], plot_name="nn model v")
 
     ax[1].set_title("angular velocity and control")
     plot_xy_data(x=time['t'], y=robot_state['w'], ax=ax[1], plot_name="robot w")
-    plot_xy_data(x=time['t'], y=model_state['w'], ax=ax[1], plot_name="kinematic model w")
     plot_xy_data(x=time['t'], y=control['yaw'], ax=ax[1], plot_name="u2")
-    if nn_model_state is not None:
+    if len(model_state['w']) > 0:
+        plot_xy_data(x=time['t'], y=model_state['w'], ax=ax[1], plot_name="kinematic model w")
+    if nn_model_state is not None or len(nn_model_state['w']) > 0:
         plot_xy_data(x=time['t'], y=nn_model_state['w'], ax=ax[1], plot_name="nn model w")
 
 
@@ -131,10 +132,10 @@ def plot_for_one_trajectory(args, folder_path):
     ax4.set_xlabel('X, m')        
     ax4.set_ylabel('Y, m')
     ax4.set_title("XY trajectory")
-    plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="x_y")
-    plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model x_y")
+    plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="ground truth")
+    plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model")
     if nn_model_state is not None:
-        plot_xy_data(x=nn_model_state['x'], y=nn_model_state['y'], ax=ax4, plot_name="nn model x_y")
+        plot_xy_data(x=nn_model_state['x'], y=nn_model_state['y'], ax=ax4, plot_name="NN model")
     
     if args.output_folder != "":
         save_plot(path=args.output_folder, name="Y over X")        
@@ -162,24 +163,19 @@ def plot_for_group(args, folder_path):
 
     for traj in os.listdir(folder_path):
         traj_path = folder_path + '/' + traj
+        if not os.path.isdir(traj_path):
+            continue
         robot_state_, model_state_, control_, time_, nn_model_state_ = parse_one_trajectory(traj_path)
         robot_state_ = pd.DataFrame(robot_state_, columns=robot_state.keys())
         model_state_ = pd.DataFrame(model_state_, columns=robot_state.keys())
         nn_model_state_ = pd.DataFrame(nn_model_state_, columns=robot_state.keys())
-
-        #robot_state = pd.concat([robot_state, robot_state_], ignore_index=True)
-        #nn_model_state = pd.concat([nn_model_state, nn_model_state_], ignore_index=True)
-        #model_state = pd.concat([model_state, model_state_], ignore_index=True)
-        
+      
         robot_state_.plot(x='x', y='y', ax=ax, legend=False, c='b', alpha=0.2, kind='line')
-        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='r', alpha=0.2, kind='line')
+        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='orange', alpha=0.2, kind='line')
         nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.2, kind='line')
 
-    ax.legend(['Rosbot state', 'Kinematic model state', 'NN model state' ])
-    #grid_1 = sns.pairplot(robot_state, x_vars=['x'], y_vars=['y'],  plot_kws={'alpha':0.1})
-    #grid_2 = sns.pairplot(nn_model_state,x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
-    #grid_3 = sns.pairplot(model_state, x_vars=['x'], y_vars=['y'], plot_kws={'alpha':0.1})
-
+    ax.legend(['ground truth', 'kinematic model', 'NN model' ])
+    save_plot(folder_path, name="complex plot")
     plt.show()
 
 def main():
