@@ -14,6 +14,7 @@ def calc_softmax_seq(batch_costs: np.array, control_batch: np.ndarray, temperatu
     softmaxes = exponents / np.sum(exponents)  # -> shape = [batch_size]
 
     control = (control_batch * softmaxes[:, np.newaxis, np.newaxis]).sum(axis=0)
+
     return control
 
 

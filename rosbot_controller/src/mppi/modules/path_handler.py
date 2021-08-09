@@ -9,6 +9,7 @@ sys.path.append("..")
 
 class PathHandler():
     """Class for keeping and managing incoming trajectories
+
     """
 
     def __init__(self):
@@ -34,4 +35,4 @@ class PathHandler():
         self.path_intervals = np.linalg.norm(self._path[1:, :2] - self._path[:-1, :2], axis=1)
 
         self.has_path = True
-        self.path_come_time = rospy.Time.now() 
+        self.path_come_time = rospy.Time.now()

@@ -77,9 +77,9 @@ class MPPICGenerator():
         self.curr_control_seq = np.zeros(shape=(self.time_steps, 2))
 
     def _update_batch_of_seqs(self):
-        noises = self._generate_noises(int(self.time_steps / 2))
+        noises = self._generate_noises(int(self.time_steps))
 
-        noises = np.repeat(noises, 2, axis=1)
+        # noises = np.repeat(noises, 2, axis=1)
 
         self._batch_of_seqs[:, 0, 0] = self.state.v
         self._batch_of_seqs[:, 0, 1] = self.state.w

@@ -18,7 +18,7 @@ def triangle_cost(state, reference_trajectory, reference_intervals, obstacles, w
     """
 
 
-    costs = np.empty(shape=state.shape[0])
+    costs = np.zeros(shape=state.shape[0])
     obstacles_c = obstacles_cost(state, obstacles, eps=0.15,
                                  weight=weights['obstacle'],
                                  power=powers['obstacle'])
@@ -57,11 +57,14 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals, wei
     for i in range(dists.shape[0]):
         for j in range(dists.shape[1]):
             for k in range(len(reference_intervals)):
+
                 first_side = first_sides[i, j, k]
                 second_side = second_sides[i, j, k]
                 opposite_side = opposite_sides[k]
+
                 if is_angle_obtuse(first_side, second_side, opposite_side):
                     dists_to_segments[k] = first_side
+
                 elif is_angle_obtuse(second_side, first_side, opposite_side):
                     dists_to_segments[k] = second_side
                 else:
@@ -79,7 +82,6 @@ def triangle_cost_segments(state, reference_trajectory, reference_intervals, wei
 @njit
 def is_angle_obtuse(opposite_side, b, c):
     return opposite_side ** 2 > (b ** 2 + c ** 2)
-
 
 @njit
 def heron(opposite_side, b, c):
