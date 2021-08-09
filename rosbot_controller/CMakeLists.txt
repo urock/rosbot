@@ -7,12 +7,17 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   geometry_msgs
   nav_msgs
+  dynamic_reconfigure
 )
 
+generate_dynamic_reconfigure_options(
+    cfg/MPPI.cfg
+)
 
 catkin_package(
 
 )
+
 
 
 include_directories(

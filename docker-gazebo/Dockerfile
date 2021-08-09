@@ -7,7 +7,8 @@ FROM osrf/ros:melodic-desktop-full
 #############
 # CUDA Base #
 #############
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654 && \
+    apt-get update && apt-get install -y --no-install-recommends \
     gnupg2 curl ca-certificates && \
     curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub | apt-key add - && \
     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
@@ -96,7 +97,8 @@ RUN pip3 install --upgrade pip && \
 
 RUN pip3 install --upgrade pip && \
     pip3 install \
-	netifaces
+	netifaces \
+	numba
 
 RUN pip2 install --upgrade pip && \
     pip2 install \
