@@ -18,6 +18,9 @@ class State:
             self.x, self.y, self.yaw, self.v, self.w
         )
 
+    def size(self):
+        return 5
+
 
 class Control:
     def __init__(self, v=0.0, w=0.0):

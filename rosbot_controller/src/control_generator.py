@@ -31,21 +31,39 @@ class ControlGenerator():
         self.node_name = node_name
         rospy.init_node(self.node_name, anonymous=True)
         self.mode = rospy.get_param('~control_mode')
+        self.desired_number_of_subs = int(rospy.get_param('~desired_number_of_subs', 1))
 
         self.cmd_pub = rospy.Publisher("/cmd_vel", Twist, queue_size=5)
 
-        self.dt = 0.033
+        self.dt = 0.03
         self.v = []
         self.w = []
         self.t = []
+        self.index = 0
+        self.wait_for_subscribers()
+
         rospy.on_shutdown(self.on_shutdown)
+
+    def wait_for_subscribers(self):
+        """
+
+        """
+        num_of_subs = self.cmd_pub.get_num_connections()
+        while num_of_subs < self.desired_number_of_subs:
+            num_of_subs = self.cmd_pub.get_num_connections()
+            rospy.loginfo("Wait for subscribers, current num of subscribers = {} / {}".format(num_of_subs, self.desired_number_of_subs))
+            rospy.sleep(1)
+        rospy.sleep(2)
+
+        
 
     def run(self):
 
-        if self.mode == "from file": 
+        if self.mode == "from_file": 
             self.file_path = rospy.get_param('~file_path')
 
             self.read_control_from_file()
+            # rospy.Timer(rospy.Duration(self.dt), self.timer_callback)
 
         elif self.mode == "periodic":
             self.Nt = int(((float)(rospy.get_param('~Tmax'))/self.dt))
@@ -59,10 +77,20 @@ class ControlGenerator():
             self.a_w = rospy.get_param('~a_ang')    # angular acceleration       
 
             self.generate_periodic_control()
-
-        # self.build_graph(self.t, self.v, self.w)
         self.publish_control_sequence()
+            # self.build_graph(self.t, self.v, self.w)
+            # self.publish_control_sequence()
 
+    # def timer_callback(self, timer_event):
+    #     """
+    #     """
+    #     # print(time.time())
+    #     twist_cmd = Twist()
+    #     if self.index < len(self.v):
+    #         twist_cmd.linear.x = self.v[self.index]
+    #         twist_cmd.angular.z = self.w[self.index]
+    #         self.index = self.index + 1
+    #     self.cmd_pub.publish(twist_cmd)
 
     def read_control_from_file(self):
 
@@ -72,7 +100,7 @@ class ControlGenerator():
             for i in range(len(lines[0:-1])):
                 # print(lines[i].split(" "))
                 cur_t, v, w = lines[i].rstrip().split(" ")
-                cur_t, v, w = float(cur_t), float(v), float(z)
+                cur_t, v, w = float(cur_t), float(v), float(w)
                 self.t.append(cur_t)    
                 self.v.append(v)
                 self.w.append(w) 
@@ -83,7 +111,6 @@ class ControlGenerator():
         for i, t in enumerate(self.t):
             twist_cmd.linear.x = self.v[i]
             twist_cmd.angular.z = self.w[i]
-
             self.cmd_pub.publish(twist_cmd)
             rospy.sleep(self.dt)
 
@@ -114,39 +141,63 @@ class ControlGenerator():
     def periodic_sequence_v(self):
         v = 0
         yield v
-        for i in range(int(self.Tv/(2*self.dt))):
-            if v < self.v_max:
+        for _ in range(int(self.Tv/(2*self.dt))):
+            if self.a_l > 0 and v < self.v_max:
+                v += self.a_l * self.dt         
+
+            if self.a_l < 0 and abs(v) < self.v_max:
                 v += self.a_l * self.dt
-            yield v            
+
+            yield v             
 
         while True:
-            for i in range(int(self.Tv/(2*self.dt))):
-                if v > self.v_min:
+            for _ in range(int(self.Tv/(2*self.dt))):
+                if self.a_l > 0 and v > self.v_min:
                     v -= self.a_l * self.dt
+
+                if self.a_l < 0 and v < self.v_min:
+                    v -= self.a_l * self.dt
+
                 yield v
-            for i in range(int(self.Tv/(2*self.dt))):
-                if v < self.v_max:
+            for _ in range(int(self.Tv/(2*self.dt))):
+                if self.a_l > 0 and v < self.v_max:
+                    v += self.a_l * self.dt         
+
+                if self.a_l < 0 and abs(v) < self.v_max:
                     v += self.a_l * self.dt
-                yield v
+                    
+                yield v  
         
 
     def periodic_sequence_w(self):
         w = 0
         yield w
-        for i in range(int(self.Tw/(2*self.dt))):
-            if w < self.w_max:
+        for _ in range(int(self.Tw/(2*self.dt))):
+            if self.a_w > 0 and w < self.w_max:
+                w += self.a_w * self.dt         
+
+            if self.a_w < 0 and abs(w) < self.w_max:
                 w += self.a_w * self.dt
-            yield w            
+
+            yield w           
 
         while True:
-            for i in range(int(self.Tw/(2*self.dt))):
-                if w > self.w_min:
+            for _ in range(int(self.Tw/(2*self.dt))):
+                if self.a_w > 0 and w > self.w_min:
                     w -= self.a_w * self.dt
+
+                if self.a_w < 0 and w < self.w_min:
+                    w -= self.a_w * self.dt
+
                 yield w
-            for i in range(int(self.Tw/(2*self.dt))):
-                if w < self.w_max:
+            for _ in range(int(self.Tw/(2*self.dt))):
+                if self.a_w > 0 and w < self.w_max:
+                    w += self.a_w * self.dt         
+
+                if self.a_w < 0 and abs(w) < self.w_max:
                     w += self.a_w * self.dt
-                yield w
+                    
+                yield w   
 
     def build_graph(self, t, v, w):
 
@@ -174,6 +225,11 @@ class ControlGenerator():
 def main():
     control_gen = ControlGenerator('control_generator')
     control_gen.run()
+    # try:
+    #     control_gen.run()
+    #     rospy.spin()
+    # except:
+    #     pass
 
 if __name__ == '__main__':
     main()

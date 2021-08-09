@@ -1,20 +1,25 @@
 <launch>
 
-    <arg name="Tmax"              default="10" />
-    <arg name="period_lin"        default="3" />
-    <arg name="period_ang"        default="3" />
-    <arg name="v_min"             default="0.0" />
-    <arg name="v_max"             default="2.0" />
-    <arg name="w_min"             default="0.0" />
-    <arg name="w_max"             default="0.0" />
-    <arg name="a_lin"             default="0.5" />
-    <arg name="a_ang"             default="0.5" />
+    <arg name="control_mode"            default="periodic" />
+    <arg name="desired_number_of_subs"  default="1" />
+    <arg name="file_path"               default="" />
+    <arg name="Tmax"                    default="10" />
+    <arg name="period_lin"              default="3" />
+    <arg name="period_ang"              default="3" />
+    <arg name="v_min"                   default="0.0" />
+    <arg name="v_max"                   default="2.0" />
+    <arg name="w_min"                   default="0.0" />
+    <arg name="w_max"                   default="0.0" />
+    <arg name="a_lin"                   default="0.5" />
+    <arg name="a_ang"                   default="0.5" />
 
-    <arg name="launch_logger"     default="true" />
-    <arg name="output_folder"     default="_1" />
+    <arg name="launch_logger"           default="true" />
+    <arg name="output_folder"           default="_1" />
 
     <node pkg="rosbot_controller" type="control_generator.py" name="control_generator" output="screen">
-        <param name="control_mode"      value="periodic" />
+        <param name="control_mode"      value="$(arg control_mode)" />
+        <param name="desired_number_of_subs"      value="$(arg desired_number_of_subs)" />
+        <param name="file_path"         value="$(arg file_path)" />
         <param name="Tmax"              value="$(arg Tmax)" />
         <param name="period_lin"        value="$(arg period_lin)" />
         <param name="period_ang"        value="$(arg period_ang)" />

@@ -38,6 +38,7 @@ class Logger:
         self.parent_frame = rospy.get_param("~parent_frame", 'odom')
         self.robot_frame = rospy.get_param("~robot_frame", 'base_link')
         self.kinetic_model_frame = rospy.get_param("~kinetic_model_frame", 'model_link')
+        self.nn_model_frame = rospy.get_param("~nn_model_frame", 'nn_model_link')
 
         self.timeout = int(rospy.get_param("~timeout", 0))
 
@@ -62,8 +63,10 @@ class Logger:
         self.control = {'x': [], 'yaw': []}
         # container for robot state
         self.robot_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
-        # container for model state
-        self.model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+        # container for kinetic model state
+        self.kinetic_model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
+        # container for nn model state
+        self.nn_model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
         # time spent running the simulator (for automated tests)
         self.delta_time = {'dt': []}
         self.time = {'t': []}
@@ -80,17 +83,6 @@ class Logger:
         # set the function that will be executed when shutdown
         rospy.on_shutdown(self.on_shutdown)
 
-    # def timer_callback(self, timer_event):
-    #     if len(self.current_control) > 0:
-    #         current_time = time_.time()
-    #         # print("Cuuret time = {}".format(current_time))
-    #         self.delta_time['dt'].append(current_time - self.prev_time)
-    #         self.control['x'].append(self.current_control[0])
-    #         self.control['yaw'].append(self.current_control[1])
-    #         #self.get_states()
-    #         self.fill_state(dst_frame='base_link', state=self.robot_state)
-    #         self.prev_time = current_time
-
     def tf_callback(self, msg):
         for item in msg.transforms:
             if (
@@ -103,7 +95,7 @@ class Logger:
                 self.time['t'].append(current_time - self.init_time)
                 # To calculate speed, but not for predict in the NN model
                 self.delta_time['dt'].append(current_time - self.prev_time) 
-                # print(self.delta_time['dt'][-1])
+                # print(self.delta_time['dt'])
                 self.control['x'].append(self.current_control[0])
                 self.control['yaw'].append(self.current_control[1])
 
@@ -144,7 +136,8 @@ class Logger:
         # if it is the first callback set init time
         # s = time_.time()
         self.fill_state(dst_frame=self.robot_frame, state=self.robot_state, src_frame=self.parent_frame)
-        self.fill_state(dst_frame=self.kinetic_model_frame, state=self.model_state, src_frame=self.parent_frame)
+        self.fill_state(dst_frame=self.kinetic_model_frame, state=self.kinetic_model_state, src_frame=self.parent_frame)
+        self.fill_state(dst_frame=self.nn_model_frame, state=self.nn_model_state, src_frame=self.parent_frame)
         # print("EXECUTION TIME  = {}".format(time_.time() - s))
 
     def fill_state(self, dst_frame, state, src_frame='odom'):
@@ -161,35 +154,39 @@ class Logger:
             state['y'].append(trans_vec.y)
             state['yaw'].append(yaw)
 
-            if len(state['x'])==1:
-                v, w = 0, 0
-                state['v'].append(v)
-                state['w'].append(w)
-                self.fisrt_fill_state = False
+            if dst_frame is self.kinetic_model_frame:
+                state['v'].append(self.current_control[0])
+                state['w'].append(self.current_control[1])
             else:
-                dt = self.delta_time['dt'][-1]
-                x_new = trans_vec.x
-                y_new = trans_vec.y
-                yaw_new = yaw
-                x_prev = state['x'][-2]
-                y_prev = state['y'][-2]
-                yaw_prev = state['yaw'][-2]
-                # print(dt, x_new, y_new, yaw_new, x_prev, y_prev, yaw_prev)
+                if len(state['x'])==1:
+                    v, w = 0, 0
+                    state['v'].append(v)
+                    state['w'].append(w)
+                    self.fisrt_fill_state = False
+                else:
+                    dt = self.delta_time['dt'][-1]
+                    x_new = trans_vec.x
+                    y_new = trans_vec.y
+                    yaw_new = yaw
+                    x_prev = state['x'][-2]
+                    y_prev = state['y'][-2]
+                    yaw_prev = state['yaw'][-2]
+                    # print(dt, x_new, y_new, yaw_new, x_prev, y_prev, yaw_prev)
 
-                d_yaw = yaw_new - yaw_prev
-                d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
-                w = d_yaw / dt
+                    d_yaw = yaw_new - yaw_prev
+                    d_yaw = (d_yaw + math.pi) % (2 * math.pi) - math.pi
+                    w = d_yaw / dt
 
-                vx = (x_new - x_prev) / dt
-                vy = (y_new - y_prev) / dt
-                v = math.sqrt(vx**2 + vy**2)
+                    vx = (x_new - x_prev) / dt
+                    vy = (y_new - y_prev) / dt
+                    v = math.sqrt(vx**2 + vy**2)
 
-                alpha = math.atan2(vy,vx)
-                v = v * math.cos(alpha - yaw_new)
-                # print("___________")
-                # print(v, w)
-                state['v'].append(v)
-                state['w'].append(w)
+                    alpha = math.atan2(vy,vx)
+                    v = v * math.cos(alpha - yaw_new)
+                    # print("___________")
+                    # print(v, w)
+                    state['v'].append(v)
+                    state['w'].append(w)
 
             
 
@@ -227,14 +224,16 @@ class Logger:
         x1, y1 = np.array(data[0]['x']), np.array(data[0]['y'])
         x2, y2 = np.array(data[1]['x']), np.array(data[1]['y'])
         x3, y3 = np.array(data[2]['x']), np.array(data[2]['y'])
+        x4, y4 = np.array(data[3]['x']), np.array(data[3]['y'])
 
         plt.rcParams.update({'font.size': 14})  # font size
         plt.rcParams['figure.figsize'] = (11.0, 8.0)
         plt.figure("trajectory and states")
 
         plt.plot(x1, y1, color='b', label='robot state', linewidth=3)
-        plt.plot(x2, y2, color='r', label='model state', linewidth=3)
-        plt.plot(x3, y3, color='g', label='trajectory', linewidth=3)
+        plt.plot(x2, y2, color='r', label='kinetic model state', linewidth=3)
+        plt.plot(x3, y3, color='yellow', label='NN model state', linewidth=3)
+        plt.plot(x4, y4, color='g', label='trajectory', linewidth=3)
 
         # base_link_deviation = str(round(rospy.get_param("/base_link_deviation", 0), 5))
         # model_deviation = str(round(rospy.get_param("/model_deviation", 0), 5))
@@ -256,12 +255,14 @@ class Logger:
         ax[1].set_xlabel('t, sec')
         ax[0].set_title("linear velocity and control")
         plot_xy_data(x=self.time['t'], y=self.robot_state['v'], ax=ax[0], plot_name="robot v")
-        plot_xy_data(x=self.time['t'], y=self.model_state['v'], ax=ax[0], plot_name="kinematic model v")
+        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['v'], ax=ax[0], plot_name="kinematic model v")
+        plot_xy_data(x=self.time['t'], y=self.nn_model_state['v'], ax=ax[0], plot_name="NN model v")
         plot_xy_data(x=self.time['t'], y=self.control['x'], ax=ax[0], plot_name="u1")
 
         ax[1].set_title("angular velocity and control")
         plot_xy_data(x=self.time['t'], y=self.robot_state['w'], ax=ax[1], plot_name="robot w")
-        plot_xy_data(x=self.time['t'], y=self.model_state['w'], ax=ax[1], plot_name="kinematic model w")
+        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['w'], ax=ax[1], plot_name="kinematic model w")
+        plot_xy_data(x=self.time['t'], y=self.nn_model_state['w'], ax=ax[1], plot_name="NN model w")
         plot_xy_data(x=self.time['t'], y=self.control['yaw'], ax=ax[1], plot_name="u2")
 
         path = self.module_path + '/pictures'
@@ -274,7 +275,8 @@ class Logger:
         ax3.set_ylabel('Rads')
         ax3.set_title("Yaw angle over time")
         plot_xy_data(x=self.time['t'], y=self.robot_state['yaw'], ax=ax3, plot_name="yaw(t)")
-        plot_xy_data(x=self.time['t'], y=self.model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
+        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['yaw'], ax=ax3, plot_name="kinematic model yaw(t)")
+        plot_xy_data(x=self.time['t'], y=self.nn_model_state['yaw'], ax=ax3, plot_name="NN model yaw(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="yaw_over_time")       
@@ -286,11 +288,13 @@ class Logger:
         ax2[1].set_xlabel('t, sec')    
         ax2[0].set_title("X coord over time")
         plot_xy_data(x=self.time['t'], y=self.robot_state['x'], ax=ax2[0], plot_name="robot x(t)")
-        plot_xy_data(x=self.time['t'], y=self.model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
-        
+        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['x'], ax=ax2[0], plot_name="kinematic model x(t)")
+        plot_xy_data(x=self.time['t'], y=self.nn_model_state['x'], ax=ax2[0], plot_name="NN model x(t)")
+
         ax2[1].set_title("Y coord over time")
         plot_xy_data(x=self.time['t'], y=self.robot_state['y'], ax=ax2[1], plot_name="robot y(t)")
-        plot_xy_data(x=self.time['t'], y=self.model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
+        plot_xy_data(x=self.time['t'], y=self.kinetic_model_state['y'], ax=ax2[1], plot_name="kinematic model y(t)")
+        plot_xy_data(x=self.time['t'], y=self.nn_model_state['y'], ax=ax2[1], plot_name="NN model y(t)")
 
         path = self.module_path + '/pictures'
         save_plot(path=path, name="XY over time")   
@@ -300,7 +304,8 @@ class Logger:
         ax4.set_ylabel('Y, m')
         ax4.set_title("XY trajectory")
         plot_xy_data(x=self.robot_state['x'], y=self.robot_state['y'], ax=ax4, plot_name="x_y")
-        plot_xy_data(x=self.model_state['x'], y=self.model_state['y'], ax=ax4, plot_name="kinematic model x_y")
+        plot_xy_data(x=self.kinetic_model_state['x'], y=self.kinetic_model_state['y'], ax=ax4, plot_name="kinematic model x_y")
+        plot_xy_data(x=self.nn_model_state['x'], y=self.nn_model_state['y'], ax=ax4, plot_name="NN model x_y")
 
         save_plot(path=path, name="Y over X ") 
 
@@ -312,7 +317,7 @@ class Logger:
         """
         self.tf_sub.unregister()
         self.control_sub.unregister()
-        data = [self.robot_state, self.model_state, self.trajectory]
+        data = [self.robot_state, self.kinetic_model_state, self.nn_model_state, self.trajectory]
         self.build_general_graph(data, '/pictures')
         # self.timer_.shutdown()
 
@@ -321,13 +326,10 @@ class Logger:
         self.plot_velocities_and_control()
 
         self.process_collected_data(name='state', data=self.robot_state, plot_type=None)
-        self.process_collected_data(name='kinetic_model_state', data=self.model_state, plot_type=None)
+        self.process_collected_data(name='kinetic_model_state', data=self.kinetic_model_state, plot_type=None)
+        self.process_collected_data(name='nn_model_state', data=self.nn_model_state, plot_type=None)
         self.process_collected_data(name='time', data=self.time, plot_type=None)
-        # self.process_collected_data(name='control', data=self.control, plot_type=[['x'], ['yaw']], plot_names=["U_V", "U_W"])
         self.process_collected_data(name='control', data=self.control, plot_type=None)
-
-        # self.process_collected_data(name='model_state', data=self.model_state)
-
 
         rospy.logwarn("Logger: output data folder - {}".format(self.module_path))
 
