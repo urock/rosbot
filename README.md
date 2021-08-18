@@ -11,7 +11,7 @@
 	* [Генератор периодических последовательноcтей управления](/docs/control_gen.md)
 	* [Open loop контроллер (публикация управления из файла)](/docs/open_loop.md) 
 	* [Closed loop path follower контроллер следования по траектории](/docs/path_follower.md)
-	* [Closed loop MPPI контроллер](/docs/mppi.md)
+	* [Closed loop MPPI контроллер](/rosbot_controller/src/mppi/README.md)
 2. [Логирование состояния робота и управления](/docs/logger.md)
 	* Визуализация моделей - кинематическая и нейросетевая 
 3. [Утилиты построения графиков после проезда](/docs/create_graphs.md)

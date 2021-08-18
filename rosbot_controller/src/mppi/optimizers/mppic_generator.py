@@ -1,12 +1,8 @@
-from utils.geometry import quaternion_to_euler
 from utils.dtypes import State, Control
 
 import rospy
 import numpy as np
 import sys
-
-
-from scipy import interpolate
 
 sys.path.append("..")
 
