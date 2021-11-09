@@ -1,0 +1,20 @@
+<launch>
+    <arg name="gui"             default="false" />
+    <arg name="rviz"            default="true" />
+
+    <group if="$(arg rviz)">
+        <node pkg="rviz" type="rviz" name="rviz" args="-d $(find rosbot_controller)/rviz/mppi.rviz"/>
+    </group>
+
+    <include file="$(find rosbot2_gazebo)/launch/bringup.launch">
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+
+
+    <node pkg="rosbot_controller" type="local_planner_node.py" name="mppic" output="screen">
+        <rosparam command="load" file="$(find rosbot_controller)/config/mppi.yaml" subst_value="true" />
+    </node>
+
+    <include file="$(find rosbot_controller)/launch/path_publisher.launch"/>
+
+</launch>

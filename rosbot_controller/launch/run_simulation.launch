@@ -1,5 +1,4 @@
 <launch>
-    
 
     <!-- parameters for gui/rviz visualization  -->
     <arg name="gui"             default="false" />

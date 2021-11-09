@@ -14,5 +14,4 @@ venv
 **/.history
 tests/report.txt
 .ipynb_checkpoints
-logger/output_data/*
-
+rosbot_controller/nets/*
