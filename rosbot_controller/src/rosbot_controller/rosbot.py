@@ -5,17 +5,43 @@ import math
 import numpy as np
 import rospy
 import time
+from pydantic import BaseModel, Field
 
 class RobotState():
+    x: float = 0.0
+    y: float = Field(..., description='y coord', gt=0.1)
+    yaw: float
 
     def __init__(self, x=0.0, y=0.0, yaw=0.0, vx=0.0, vy=0.0, w=0.0):
         self.x = x
         self.y = y
         self.yaw = yaw
 
+    @validator('x')
+    def check_x(cls, v):
+        if type(x) is not float:
+            raise ValueError()
+
+        return v
+
     def to_str(self):
         return "x -> {:.2f}, y -> {:.2f}, yaw -> {:.2f}".format(self.x, self.y, self.yaw)
 
+rs = RobotState(x=0, y=1, yaw=99)
+
+rs2 = RobotState(**{'y': 1, 'yaw': 88})
+
+rs.dict()
+
+rs.json()
+
+rs_orm = ...
+
+rs.from_orm(rs_orm)
+
+x, y, yaw = input()
+
+rs = RobotState(x=x, y=y, yaw=yaw)
 
 class RobotControl:
 
