@@ -130,6 +130,7 @@ RUN apt-get update && \
         neovim && \
         rm -rf /var/lib/apt/lists/*
 
+RUN apt-get install python3-tk
 
 # Create User
 ENV ROSUSER="user"
