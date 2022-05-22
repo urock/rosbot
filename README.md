@@ -43,7 +43,9 @@ docker attach gazebo-control
 ## Компиляция и запуск симуляции
 
 ```
-docker attach $container_name
+cd ~/work/nav/rosbot/docker-gazebo
+./run.sh
+docker attach gazebo-control
 cd catkin_ws
 catkin build
 source devel/setup.zsh  # необходимо делать только во время первого запуска контейнера
