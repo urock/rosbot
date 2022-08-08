@@ -74,14 +74,14 @@ int main(int argc, char **argv) {
     // on_new_goal = false;
     // }
 
-    // if (rosbot_state.dist(rosbot_goal) > epsterm) {
+    if (rosbot_state.dist(rosbot_goal) > epsterm) {
       u = nop_controller.calcControl(rosbot_state);
       cmd_vel.linear.x = k * 0.5 * (u.left + u.right);
       cmd_vel.angular.z = k * (u.left - u.right) / b;
-    // } else {
-      // cmd_vel.linear.x = 0;
-      // cmd_vel.angular.z = 0;
-    // }
+    } else {
+      cmd_vel.linear.x = 0;
+      cmd_vel.angular.z = 0;
+    }
     cmd_vel_pub.publish(cmd_vel);
 
     ROS_INFO("U: %lf %lf\n", u.left, u.right);

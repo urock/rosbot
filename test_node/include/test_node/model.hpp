@@ -31,11 +31,11 @@ public:
       return State{this->x + state.x, this->y + state.y, this->yaw + state.yaw};
     }
     State operator-(const State &state) const {
-      // const float &yaw2=this->yaw;
-      // const float &yaw1=state.yaw;
-      // float dyaw = atan2f(sinf(yaw1 - yaw2), cosf(yaw1 - yaw2));
-      // return State{this->x - state.x, this->y - state.y, dyaw};
-      return State{this->x - state.x, this->y - state.y, this->yaw - state.yaw};
+      const float &yaw1=this->yaw;
+      const float &yaw2=state.yaw;
+      float dyaw = atan2f(sinf(yaw1 - yaw2), cosf(yaw1 - yaw2));
+      return State{this->x - state.x, this->y - state.y, dyaw};
+      // return State{this->x - state.x, this->y - state.y, this->yaw - state.yaw};
 
     }
     State operator*(float val) const {
