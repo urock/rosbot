@@ -1,0 +1,32 @@
+name: tgnop
+root: ~/path/to/rosbot
+pre_window: export TPNAME="tgnop" && zsh
+startup_window: git
+windows:
+  - niu: #empty
+  - git: clear && git pull && git status
+  - docker:
+      layout: main-vertical
+      panes:
+        - main:
+            - sudo systemctl start docker.service
+            - docker start <container_name>
+            - sleep 3
+            - clear
+            - docker exec -it <container_name> zsh
+            - cd catkin_ws
+            - catkin_make
+            - source devel/setup.zsh
+            - roslaunch rosbot_controller run_simulation.launch rviz:=true gui:=false use_nn_model:=false
+        - test:
+            - sleep 7
+            - clear
+            - docker exec -it pheh zsh
+            - cd catkin_ws
+            - source devel/setup.zsh
+            - rosrun test_node test_node
+
+  - niu: #empty
+  - niu: #empty
+
+on_project_stop: docker stop <container_name> && export TPNAME=
