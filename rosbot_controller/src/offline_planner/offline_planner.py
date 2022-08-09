@@ -68,7 +68,8 @@ class OfflinePlanner:
 
         batch_pso = self.optimizer.init_control_batch()
         batch_x = self._propagate_control_to_states(current_state, batch_pso)
-        idx_min, batch_costs = self._calculate_costs(batch_x, goal, obstacles)
+        idx_min, t_min, dist_min, trajectory_length = self._calculate_costs(batch_x, goal, obstacles)
+        batch_costs = t_min + dist_min + trajectory_length
         
         self.optimizer.update_bests(batch_costs)
 
@@ -82,21 +83,27 @@ class OfflinePlanner:
 
             batch_pso = self.optimizer.gen_next_control_batch()            
             batch_x = self._propagate_control_to_states(current_state, batch_pso)
-            idx_min, batch_costs = self._calculate_costs(batch_x, goal, obstacles)
+
+            idx_min, t_min, dist_min, trajectory_length = self._calculate_costs(batch_x, goal, obstacles)
+            batch_costs = t_min + dist_min + trajectory_length
+
             self.optimizer.update_bests(batch_costs)
 
             t = perf_counter() 
           
             best_pso, best_cost = self.optimizer.get_best_control() 
+            best_x = self._propagate_control_to_states(current_state, best_pso[None])
+            idx_min, t_min, dist_min, trajectory_length = self._calculate_costs(best_x, goal, obstacles)
 
-            print("Run: {} iterartions done. dt = {:.3f} s. Best Global Cost = {:.10f}. Best Batch Cost = {:.10f}".
-                        format(it, t - start, best_cost, np.min(batch_costs)))            
+            print("Run: {} its done. dt = {:.3f} s. Best Cost = {:.10f}. t_min = {:.2f} dist_min = {:.2f} trajectory_length = {:.2f}".
+                        format(it, t - start, best_cost, t_min[0], dist_min[0], trajectory_length[0]))            
 
             
         best_pso, best_cost = self.optimizer.get_best_control() 
         best_x = self._propagate_control_to_states(current_state, best_pso[None])
         best_u = self._expand_control(best_pso[None])
-        idx_min, batch_costs = self._calculate_costs(best_x, goal, obstacles)
+
+        idx_min, t_min, dist_min, trajectory_length = self._calculate_costs(best_x, goal, obstacles)
 
         reaching_goal_idx = idx_min[0]
 
@@ -112,6 +119,7 @@ class OfflinePlanner:
         final_trajectory = best_x[0][:reaching_goal_idx + 1]   
 
         self._plot_graphs(pso_control, final_control, final_trajectory, obstacles)
+        # self._plot_graphs(pso_control, best_u[0], best_x[0], obstacles)
 
         if self.output_path is not None:
             self.save_control_to_csv(final_control, self.output_path)
@@ -308,20 +316,21 @@ class OfflinePlanner:
             idx_min: batch of indexes at which goal has been reached
             batch_costs: batch of times reaching the goal np.array of shape (batch_size)
         """
+        t_min = np.empty(batch_x.shape[0])
+        idx_min = np.empty(batch_x.shape[0], int)
+        dist_min = np.empty(batch_x.shape[0])
 
+
+        # calc dist to goal
         x = batch_x[:, :, 0]    # take every point
         y = batch_x[:, :, 1]
 
-        L2 = (x-goal[0])**2 + (y-goal[1])**2
-
-        t_min = np.empty(L2.shape[0])
-        idx_min = np.empty(L2.shape[0], int)
-        dist_min = np.empty(L2.shape[0])
+        L2 = (x-goal[0])**2 + (y-goal[1])**2)
 
         # check if goal is reached in Tmax time
         # if reached - save reaching time
         for i in range(L2.shape[0]):    # batch index loop
-            closest_to_goal_points = np.argwhere(L2[i] < self.goal_tolerance)
+            closest_to_goal_points = np.argwhere(L2[i] < self.goal_tolerance) # [T]
             if closest_to_goal_points.shape[0] != 0:
                 idx_min[i] = int(closest_to_goal_points[0])
                 t_min[i] = self.dt*idx_min[i]
@@ -334,25 +343,35 @@ class OfflinePlanner:
             # find min distance to goal 
             dist_min[i] = np.min(L2[i,:idx_min[i] + 1])
 
+        # 
+
         # calc trajectory_length
         dx = x[:,1:] - x[:,:-1] 
         dy = y[:,1:] - y[:,:-1] 
-        dr2 = (dx)**2 + (dy)**2
+        dr2 = np.sqrt((dx)**2 + (dy)**2) # [B, T]
+        time_idx = np.arange(dr2.shape[1])[None].repeat(dr2.shape[0], 0) # [B, T]
+        mask = time_idx <= idx_min[:, None] # [B, T]
+    
         trajectory_length = np.sum(dr2, axis=1)
+        trajectory_length_m = np.sum(dr2 * mask, axis=1)
+
+        print("{:.4f}, {:.4f}".
+                format(trajectory_length[0], trajectory_length_m[0]))
 
         # cost for obstacles
         obstacle_cost = np.zeros(L2.shape[0])
-        for obstacle in obstacles:
-            center_x, center_y = obstacle[0], obstacle[1]
-            radius = obstacle[2]
+        # for obstacle in obstacles:
+        #     center_x, center_y = obstacle[0], obstacle[1]
+        #     radius = obstacle[2]
             
-            obstacle_dist2 = (x - center_x)**2 + (y - center_y)**2      # shape = (batch_size, time_steps)
+        #     obstacle_dist2 = (x - center_x)**2 + (y - center_y)**2      # shape = (batch_size, time_steps)
 
-            obstacle_mask = np.min(obstacle_dist2,axis=1) < radius**2   # shape = (batch_size)
+        #     obstacle_mask = np.min(obstacle_dist2,axis=1) < radius**2   # shape = (batch_size)
 
-            obstacle_cost[obstacle_mask] += 100
+        #     obstacle_cost[obstacle_mask] += 100
         
-        return idx_min, t_min + dist_min + trajectory_length + obstacle_cost
+        # return idx_min, t_min + dist_min + trajectory_length + obstacle_cost
+        return idx_min, t_min, dist_min, trajectory_length_m
         
     def save_control_to_csv(self, control_seq, output_path):
         """
@@ -391,7 +410,7 @@ def main():
     args = parser.parse_args()
 
     current_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])   # (x, y, yaw, v, w)
-    goal = [2.0, 2.0]                                     # (x, y)
+    goal = [2.0, 5.0]                                     # (x, y)
 
     # center x, center y, radius
     obstacles = [(0.5, 0.5, 0.45), (1.6, 1.2, 0.45)]           
