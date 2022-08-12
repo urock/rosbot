@@ -10,8 +10,16 @@ Controller::Controller(const Model::State &goal_, NetOper &netOper):mGoal(goal_)
 
 Model::Control Controller::calcControl(const Model::State& currState)
 {
-	Model::State d = mGoal - currState;
 
+	Model::State d; 
+
+	d.x = sqrtf((mGoal.x - currState.x)*(mGoal.x - currState.x) + (mGoal.y - currState.y)*(mGoal.y - currState.y));
+	d.y = 0;
+
+	d.yaw = mGoal.yaw - currState.yaw;
+
+	d.yaw = (d.yaw < -M_PI)? d.yaw + 2*M_PI : d.yaw;
+	d.yaw = (d.yaw >  M_PI)? d.yaw - 2*M_PI : d.yaw; 
 
 	std::vector<float> u(2, 0);
 

@@ -24,7 +24,12 @@ void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg) {
   rosbot_goal.yaw =
       atan2(rosbot_goal.y - rosbot_state.y, rosbot_goal.x - rosbot_state.x);
   on_new_goal = true;
-  ROS_INFO("New target: %lf %lf\n", rosbot_goal.x, rosbot_goal.y);
+
+  ROS_INFO("State: %lf %lf %lf\n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw*(180. / pi));
+
+  ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw*(180. / pi));
+
+
 }
 
 void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
@@ -84,9 +89,11 @@ int main(int argc, char **argv) {
     }
     cmd_vel_pub.publish(cmd_vel);
 
-    ROS_INFO("U: %lf %lf\n", u.left, u.right);
-    double yaw_deg = rosbot_state.yaw * (180. / pi);
-    ROS_INFO("yaw: %lf\n", yaw_deg);
+    // ROS_INFO("U: %lf %lf\n", u.left, u.right);
+    // double yaw_deg = rosbot_state.yaw * (180. / pi);
+    // ROS_INFO("yaw: %lf\n", yaw_deg);
+
+    // ROS_INFO("State: %lf %lf %lf\n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw*(180. / pi));
 
     loop_rate.sleep();
   }
