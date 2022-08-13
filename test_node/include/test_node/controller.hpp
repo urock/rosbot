@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "model.hpp"
-#include "nop.hpp"
+#include "nop/include/nop.hpp"
 
 
 // class network operator

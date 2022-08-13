@@ -79,6 +79,8 @@ int main(int argc, char **argv) {
     // on_new_goal = false;
     // }
 
+    std::cout<<rosbot_goal.x<<" "<<rosbot_goal.y<<"\n";
+
     if (rosbot_state.dist(rosbot_goal) > epsterm) {
       u = nop_controller.calcControl(rosbot_state);
       cmd_vel.linear.x = k * 0.5 * (u.left + u.right);
