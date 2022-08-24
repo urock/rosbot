@@ -12,7 +12,6 @@ constexpr float dt = 0.1;
 constexpr float epsterm = 0.15;
 constexpr float k = 0.01;
 constexpr float b = 0.21 * 2;
-// constexpr double pi = 3.141592653589793238463;
 
 Model::State rosbot_state{};
 Model::State rosbot_goal{};
@@ -74,18 +73,15 @@ int main(int argc, char **argv) {
   while (ros::ok()) {
     ros::spinOnce();
 
-    // if (on_new_goal) {
-    // nop_controller.setGoal(rosbot_goal);
-    // on_new_goal = false;
-    // }
-
-    std::cout<<rosbot_goal.x<<" "<<rosbot_goal.y<<"\n";
+    nop_controller.setGoal(rosbot_goal);
 
     if (rosbot_state.dist(rosbot_goal) > epsterm) {
       u = nop_controller.calcControl(rosbot_state);
       cmd_vel.linear.x = k * 0.5 * (u.left + u.right);
       cmd_vel.angular.z = k * (u.left - u.right) / b;
-    } else {
+    } 
+    else 
+    {
       cmd_vel.linear.x = 0;
       cmd_vel.angular.z = 0;
     }
