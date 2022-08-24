@@ -2,7 +2,7 @@
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Twist.h"
 #include "ros/ros.h"
-#include "test_node/controller.hpp"
+#include "controller.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -12,7 +12,7 @@ constexpr float dt = 0.1;
 constexpr float epsterm = 0.15;
 constexpr float k = 0.01;
 constexpr float b = 0.21 * 2;
-constexpr double pi = 3.141592653589793238463;
+// constexpr double pi = 3.141592653589793238463;
 
 Model::State rosbot_state{};
 Model::State rosbot_goal{};
@@ -25,9 +25,9 @@ void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg) {
       atan2(rosbot_goal.y - rosbot_state.y, rosbot_goal.x - rosbot_state.x);
   on_new_goal = true;
 
-  ROS_INFO("State: %lf %lf %lf\n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw*(180. / pi));
+  ROS_INFO("State: %lf %lf %lf\n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw*(180. / M_PI));
 
-  ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw*(180. / pi));
+  ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw*(180. / M_PI));
 
 
 }
@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     ros::spinOnce();
 
     // if (on_new_goal) {
-    nop_controller.setGoal(rosbot_goal);
+    // nop_controller.setGoal(rosbot_goal);
     // on_new_goal = false;
     // }
 
