@@ -2,7 +2,7 @@
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Twist.h"
 #include "ros/ros.h"
-#include "controller.hpp"
+#include "rosbot_controller.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -17,7 +17,8 @@ Model::State rosbot_state{};
 Model::State rosbot_goal{};
 bool on_new_goal = false;
 
-void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg) {
+void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg) 
+{
   rosbot_goal.x = msg->point.x;
   rosbot_goal.y = msg->point.y;
   rosbot_goal.yaw =
@@ -44,7 +45,8 @@ void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
   rosbot_state.yaw = yaw;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv) 
+{
 
   NetOper netOp;
   netOp.setNodesForVars({0, 1, 2});   // Pnum

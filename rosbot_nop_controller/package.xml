@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>test_node</name>
+  <name>rosbot_nop_controller</name>
   <version>0.0.0</version>
-  <description>The test_node package</description>
+  <description>The rosbot_nop_controller package</description>
 
   <maintainer email="user@todo.todo">user</maintainer>
   <license>TODO</license>

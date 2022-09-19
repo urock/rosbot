@@ -1,7 +1,6 @@
 [submodule "rosbot2"]
 	path = rosbot2
 	url = https://github.com/FastSense/rosbot2.git
-[submodule "test_node/include/network_operator"]
-	path = test_node/include/network_operator
+[submodule "rosbot_nop_controller/include/network_operator"]
+	path = rosbot_nop_controller/include/network_operator
 	url = https://github.com/urock/
-	branch = kostya_devel

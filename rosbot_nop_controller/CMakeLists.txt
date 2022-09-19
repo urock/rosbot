@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(test_node)
+
+set(This rosbot_nop_controller)
+
+# set(CMAKE_CXX_STANDARD 14)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3")
+
+project(${This} C CXX)
 
 find_package(
   catkin REQUIRED COMPONENTS 
@@ -29,18 +35,20 @@ add_subdirectory(
 )
 
 add_executable(
-  test_node 
-  src/test_node.cpp
+  ${This} 
+  src/rosbot_model.cpp
+  src/rosbot_controller.cpp
+  src/rosbot_controller_runner.cpp
 )
 
 target_link_libraries(
-  test_node 
+  ${This} 
   ${catkin_LIBRARIES} 
   nop_cpp
 )
 
 install(
-  TARGETS test_node
+  TARGETS ${This}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
