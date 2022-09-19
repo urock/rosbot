@@ -1,5 +1,4 @@
 #include "rosbot_model.hpp"
-#include <cmath>
 
 Model::State operator*(float val, const Model::State st) 
 { 

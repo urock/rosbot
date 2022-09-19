@@ -1,14 +1,10 @@
 #pragma once
 
-#include <iostream>
-#include <map>
-#include <set>
-#include <string>
+#include <cmath>
 #include <vector>
 
 #include "rosbot_model.hpp"
 #include "nop.hpp"
-
 
 // class network operator
 class Controller {
