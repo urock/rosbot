@@ -1,8 +1,10 @@
+#include "rosbot_controller.hpp"
+
 #include "gazebo_msgs/ModelStates.h"
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Twist.h"
 #include "ros/ros.h"
-#include "rosbot_controller.hpp"
+
 #include <cmath>
 #include <iostream>
 
@@ -59,7 +61,7 @@ int main(int argc, char **argv)
 
   Controller nop_controller(rosbot_goal, netOp);
 
-  ros::init(argc, argv, "test_node");
+  ros::init(argc, argv, "rosbot_nop_controller");
 
   ros::NodeHandle n;
   ros::Rate loop_rate(1. / dt);
