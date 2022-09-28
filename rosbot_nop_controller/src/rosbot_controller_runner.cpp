@@ -7,6 +7,8 @@
 
 #include <cmath>
 #include <iostream>
+#include <fstream>
+#include <chrono>
 
 constexpr size_t ground_model_id = 0;
 constexpr size_t rosbot_model_id = 1;
@@ -74,6 +76,24 @@ int main(int argc, char **argv)
 
   ros::Publisher cmd_vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 5);
 
+  std::string path_ = "/home/user/catkin_ws/src/rosbot_nop_controller/state.txt";
+  std::ofstream out;                          
+  out.open(path_, std::ios::in | std::ios::out);
+  
+  if(out.bad()==true) 
+  {
+    std::cout<<"file is not present \n"; 
+  }
+  else
+  {
+    std::cout<<"file is present \n";
+  }
+
+  out << "t x y yaw" << std::endl;
+  auto start = std::chrono::system_clock::now();
+
+  bool foo = true;
+
   while (ros::ok()) {
     ros::spinOnce();
 
@@ -92,12 +112,24 @@ int main(int argc, char **argv)
     cmd_vel_pub.publish(cmd_vel);
 
     // ROS_INFO("U: %lf %lf\n", u.left, u.right);
-    // double yaw_deg = rosbot_state.yaw * (180. / pi);
+    double yaw_deg = rosbot_state.yaw * (180. / M_PI);
     // ROS_INFO("yaw: %lf\n", yaw_deg);
 
     // ROS_INFO("State: %lf %lf %lf\n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw*(180. / pi));
 
+    if (foo)
+    {
+      foo = false;
+      start = std::chrono::system_clock::now();
+    }
+
+    auto end = std::chrono::system_clock::now();
+    std::chrono::duration<double> elapsed_seconds = end-start;
+
+    out << std::setprecision(3) <<elapsed_seconds.count()<<" "<<rosbot_state.x <<" "<<rosbot_state.y<<" "<<yaw_deg<<std::endl;
+    
     loop_rate.sleep();
+
   }
 
   return 0;
