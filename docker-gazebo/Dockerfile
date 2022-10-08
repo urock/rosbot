@@ -7,10 +7,18 @@ FROM osrf/ros:melodic-desktop-full
 #############
 # CUDA Base #
 #############
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654 && \
-    apt-get update && apt-get install -y --no-install-recommends \
+
+
+# RUN rm /etc/apt/sources.list.d/cuda.list
+# RUN rm /etc/apt/sources.list.d/nvidia-ml.list
+RUN apt-key del 7fa2af80
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64/7fa2af80.pub
+
+# RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654 && \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg2 curl ca-certificates && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub | apt-key add - && \
+    # curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub | apt-key add - && \
     echo "deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/cuda.list && \
     echo "deb https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu1804/x86_64 /" > /etc/apt/sources.list.d/nvidia-ml.list \
     && rm -rf /var/lib/apt/lists/*
@@ -82,7 +90,7 @@ RUN apt-get update && \
 
 RUN pip3 install --upgrade pip && \
     pip3 install \
-       torch 
+       torch
 
 RUN pip3 install --upgrade pip && \
     pip3 install \
@@ -95,7 +103,7 @@ RUN pip3 install --upgrade pip && \
         tqdm \
         yaml-1.3 \
         nnio \
-        onnxruntime-gpu 
+        onnxruntime-gpu
 
 RUN pip3 install --upgrade pip && \
     pip3 install \
@@ -121,7 +129,7 @@ RUN apt-get update && \
         rm -rf /var/lib/apt/lists/*
 
 
-# Utils 
+# Utils
 RUN apt-get update && \
     apt-get install -y \
         tmux \
