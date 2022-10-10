@@ -13,7 +13,7 @@
 constexpr size_t ground_model_id = 0;
 constexpr size_t rosbot_model_id = 1;
 constexpr float dt = 0.1;
-constexpr float epsterm = 0.15;
+constexpr float epsterm = 0.05;
 constexpr float k = 0.01;
 constexpr float b = 0.21 * 2;
 
@@ -61,7 +61,7 @@ int main(int argc, char **argv)
 
   Model::Control u{};
 
-  Controller nop_controller(rosbot_goal, netOp);
+  Controller nop_controller(rosbot_goal, rosbot_state, netOp);
 
   ros::init(argc, argv, "rosbot_nop_controller");
 
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
   while (ros::ok()) {
     ros::spinOnce();
 
-    nop_controller.setGoal(rosbot_goal);
+    nop_controller.setGoal(rosbot_goal, rosbot_state);
 
     if (rosbot_state.dist(rosbot_goal) > epsterm) {
       u = nop_controller.calcControl(rosbot_state);
