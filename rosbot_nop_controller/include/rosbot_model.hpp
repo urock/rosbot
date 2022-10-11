@@ -1,6 +1,5 @@
 #pragma once
 
-#include <iostream>
 #include <cmath>
 
 class Model 
@@ -66,9 +65,9 @@ public:
 
   };
 
-  Model(const State &, float);
+  Model(const Model::State& state, float dt);
 
-  void setState(const State &);
+  void setState(const State& newState);
   void setState(const Control &);
   const State &getState();
 
@@ -78,8 +77,7 @@ public:
   State calcState(const State &);
 
 private:
-  float k = 0.5f;
-
-  State mCurrentState;
+  float k = 0.5f; // what is it
+  State m_currentState;
   float dt;
 };
