@@ -21,10 +21,14 @@ Model::State rosbot_goal{};
 
 void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg) 
 {
+
   rosbot_goal.x = msg->point.x;
   rosbot_goal.y = msg->point.y;
   rosbot_goal.yaw =
       atan2(rosbot_goal.y - rosbot_state.y, rosbot_goal.x - rosbot_state.x);
+
+
+  ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
 }
 
 void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
@@ -72,7 +76,7 @@ int main(int argc, char **argv)
     if (rosbot_state.dist(rosbot_goal) > epsterm) 
     {
       // get control with NOP
-      const Model::Control& u = nop_controller.calcControl(rosbot_state);
+      const Model::Control& u = nop_controller.calcNOPControl(rosbot_state);
       ctrl.linear.x = k * 0.5 * (u.left + u.right);
       ctrl.angular.z = k * (u.left - u.right) / b;
 
@@ -84,8 +88,8 @@ int main(int argc, char **argv)
     control_pub.publish(ctrl);
 
     ROS_INFO("State: %lf %lf %lf \n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw);
-    ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
-    ROS_INFO("Control [cmd_vel]: %lf %lf\n", ctrl.linear.x, ctrl.angular.z);
+    // ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
+    // ROS_INFO("Control [cmd_vel]: %lf %lf\n", ctrl.linear.x, ctrl.angular.z);
 
     rate.sleep();
 

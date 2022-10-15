@@ -23,6 +23,6 @@ public:
 
 private:
   Model::State m_goal;
-  Model::State m_initialState;
+  Model::State m_prevState;
   NetOper m_netOper;
 };
