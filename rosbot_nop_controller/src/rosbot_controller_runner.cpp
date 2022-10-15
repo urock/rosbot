@@ -71,9 +71,15 @@ int main(int argc, char **argv)
     geometry_msgs::Twist ctrl;
     if (rosbot_state.dist(rosbot_goal) > epsterm) 
     {
+      // get control with NOP
       const Model::Control& u = nop_controller.calcControl(rosbot_state);
       ctrl.linear.x = k * 0.5 * (u.left + u.right);
       ctrl.angular.z = k * (u.left - u.right) / b;
+
+      // get control from proportional controller
+      // const Model::Control& u = nop_controller.calcPropControl(rosbot_state);
+      // ctrl.linear.x = u.left;
+      // ctrl.angular.z = u.right;
     }
     control_pub.publish(ctrl);
 

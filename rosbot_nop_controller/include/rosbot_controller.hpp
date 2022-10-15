@@ -12,7 +12,9 @@ public:
   Controller(const NetOper& netOper, const Model::State& startingState, const Model::State& goal);
 
   /// RP from pascal version
-  Model::Control calcControl(const Model::State& currState);
+  Model::Control calcNOPControl(const Model::State& currState);
+
+  Model::Control calcPropControl(const Model::State& currState);
 
   void setGoal(const Model::State& startingState, const Model::State& goal);
 

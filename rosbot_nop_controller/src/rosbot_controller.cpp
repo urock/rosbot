@@ -6,7 +6,7 @@ Controller::Controller(const NetOper& netOper, const Model::State& startingState
 	m_goal(goal)
 	{}
 
-Model::Control Controller::calcControl(const Model::State& currState)
+Model::Control Controller::calcNOPControl(const Model::State& currState)
 {
 	Model::State delta; 
 	delta.x = sqrtf((m_goal.x - currState.x)*(m_goal.x - currState.x) + (m_goal.y - currState.y)*(m_goal.y - currState.y));
@@ -25,6 +25,27 @@ Model::Control Controller::calcControl(const Model::State& currState)
 	ctrl[1] = std::min(std::max(ctrl[1], -10.0f), 10.0f);
 
 	return {ctrl[0], ctrl[1]};
+}
+
+Model::Control Controller::calcPropControl(const Model::State& currState)
+{
+	double r = sqrtf((m_goal.x - currState.x)*(m_goal.x - currState.x) + (m_goal.y - currState.y)*(m_goal.y - currState.y));
+
+	double azim_goal = std::atan2((m_goal.y - currState.y), (m_goal.x - currState.x));
+
+	double alpha = azim_goal - currState.yaw;
+
+	alpha = (alpha < -M_PI)? alpha + 2 * M_PI : alpha;
+	alpha = (alpha >  M_PI)? alpha - 2 * M_PI : alpha; 
+
+	float v = 1.0 * tanh(r) * cos(alpha);
+	float w;
+	if(r > 0.1)
+		w = 1.0 * alpha + tanh(r) * sin(alpha) * cos(alpha) /  r;
+	else
+		w = 1.0 * alpha;
+
+	return {v,w};
 }
 
 void Controller::setGoal(const Model::State& startingState, const Model::State& goal)
