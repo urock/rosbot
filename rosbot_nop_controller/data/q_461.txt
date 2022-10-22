@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <grid version="3">
+    <saveoptions create="False" position="False" content="True"/>
+    <content>
+      <cells cellcount="6">
+        <cell1 column="0" row="0" text="q[0]"/>
+        <cell2 column="0" row="1" text="q[1]"/>
+        <cell3 column="0" row="2" text="q[2]"/>
+        <cell4 column="1" row="0" text="12.86841"/>
+        <cell5 column="1" row="1" text="3.82666"/>
+        <cell6 column="1" row="2" text="6.94312"/>
+      </cells>
+    </content>
+  </grid>
+</CONFIG>
