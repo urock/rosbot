@@ -1,5 +1,6 @@
 #include "rosbot_controller.hpp"
 
+
 #include "gazebo_msgs/ModelStates.h"
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Twist.h"
@@ -31,6 +32,12 @@ void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg)
   ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
 }
 
+void update_target_yaw()
+{
+  rosbot_goal.yaw =
+      atan2(rosbot_goal.y - rosbot_state.y, rosbot_goal.x - rosbot_state.x);
+}
+
 void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
 
   const auto &q = msg->pose[rosbot_model_id].orientation;
@@ -51,7 +58,9 @@ int main(int argc, char **argv)
   netOp.setNodesForVars({0, 1, 2});   // Pnum
   netOp.setNodesForParams({3, 4, 5}); // Rnum
   netOp.setNodesForOutput({22, 23});  // Dnum
+  // NOPMatrixReader("/home/user/catkin_ws/src/rosbot_nop_controller/data/24_NOP_461", "/home/user/catkin_ws/src/rosbot_nop_controller/data/q_461.txt");
   netOp.setCs(qc);                    // set Cs
+  // NOPMatrixReader("/home/user/catkin_ws/src/rosbot_nop_controller/data/24_NOP_461", "/home/user/catkin_ws/src/rosbot_nop_controller/data/q_461.txt")
   netOp.setPsi(NopPsiN);
 
   Controller nop_controller(netOp, rosbot_goal, rosbot_state);
@@ -70,6 +79,7 @@ int main(int argc, char **argv)
   while (ros::ok()) {
     ros::spinOnce();
 
+    update_target_yaw();
     nop_controller.setGoal(rosbot_state, rosbot_goal);
 
     geometry_msgs::Twist ctrl;
