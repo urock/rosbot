@@ -70,7 +70,7 @@ int main(int argc, char **argv)
   netOp.setCs(reader.getParams());
   netOp.setPsi(reader.getMatrix());
 
-  Controller nop_controller(netOp, rosbot_goal, rosbot_state);
+  RosbotNOPController nop_controller(rosbot_goal, netOp);
 
   ros::init(argc, argv, "rosbot_nop_controller");
   ros::NodeHandle node;
@@ -87,20 +87,16 @@ int main(int argc, char **argv)
     ros::spinOnce();
 
     update_target_yaw();
-    nop_controller.setGoal(rosbot_state, rosbot_goal);
+    nop_controller.setGoal(rosbot_goal);
 
     geometry_msgs::Twist ctrl;
-    if (rosbot_state.dist(rosbot_goal) > epsterm) 
+    if (rosbot_state.distXY(rosbot_goal) > epsterm) 
     {
       // get control with NOP
       const Model::Control& u = nop_controller.calcNOPControl(rosbot_state);
       ctrl.linear.x = k * 0.5 * (u.left + u.right);
       ctrl.angular.z = k * (u.left - u.right) / b;
 
-      // get control from proportional controller
-      // const Model::Control& u = nop_controller.calcPropControl(rosbot_state);
-      // ctrl.linear.x = u.left;
-      // ctrl.angular.z = u.right;
     }
     control_pub.publish(ctrl);
 

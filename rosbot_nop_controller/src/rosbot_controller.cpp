@@ -1,12 +1,10 @@
 #include "rosbot_controller.hpp"
 
-Controller::Controller(const NetOper& netOper, const Model::State& startingState, const Model::State& goal):
-	m_netOper(netOper),
-	m_prevState(startingState),
-	m_goal(goal)
-	{}
+RosbotNOPController::RosbotNOPController(const Model::State& goal, NetOper& netOper):
+	Controller(goal, netOper)
+	{ }
 
-Model::Control Controller::calcNOPControl(const Model::State& currState)
+Model::Control RosbotNOPController::calcNOPControl(const Model::State& currState)
 {
 	Model::State delta; 
 	delta.x = sqrtf((m_goal.x - currState.x)*(m_goal.x - currState.x) + (m_goal.y - currState.y)*(m_goal.y - currState.y));
@@ -28,7 +26,7 @@ Model::Control Controller::calcNOPControl(const Model::State& currState)
 	return {ctrl[0], ctrl[1]};
 }
 
-Model::Control Controller::calcPropControl(const Model::State& currState)
+Model::Control RosbotNOPController::calcPropControl(const Model::State& currState)
 {
 	double r = sqrtf((m_goal.x - currState.x)*(m_goal.x - currState.x) + (m_goal.y - currState.y)*(m_goal.y - currState.y));
 
@@ -47,16 +45,4 @@ Model::Control Controller::calcPropControl(const Model::State& currState)
 		w = 1.0 * alpha;
 
 	return {v,w};
-}
-
-void Controller::setGoal(const Model::State& startingState, const Model::State& goal)
-{
-	if(m_goal == goal) return;
-	// m_initialState = startingState;
-	m_goal = goal;
-}
-
-NetOper& Controller::netOper()
-{
-	return m_netOper;
 }
