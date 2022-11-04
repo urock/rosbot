@@ -1,17 +1,16 @@
 #include "rosbot_controller.hpp"
 
-Controller::Controller(const Model::State &goal_, NetOper &netOper):mGoal(goal_)
-	,m_netOper(netOper)
-{}
+RosbotNOPController::RosbotNOPController(const Model::State& goal, NetOper& netOper):
+	Controller(goal, netOper)
+	{ }
 
-Model::Control Controller::calcControl(const Model::State& currState)
+Model::Control RosbotNOPController::calcNOPControl(const Model::State& currState)
 {
 	Model::State delta; 
+	delta.x = sqrtf((m_goal.x - currState.x)*(m_goal.x - currState.x) + (m_goal.y - currState.y)*(m_goal.y - currState.y));
+	delta.y = (currState.x - m_prevState.x) * (m_goal.y - m_prevState.y) - (currState.y - m_prevState.y) * (m_goal.x - m_prevState.x);
 
-	delta.x = sqrtf((mGoal.x - currState.x)*(mGoal.x - currState.x) + (mGoal.y - currState.y)*(mGoal.y - currState.y));
-	delta.y = 0;
-
-	delta.yaw = mGoal.yaw - currState.yaw;
+	delta.yaw = m_goal.yaw - currState.yaw;
 
 	delta.yaw = (delta.yaw < -M_PI)? delta.yaw + 2 * M_PI : delta.yaw;
 	delta.yaw = (delta.yaw >  M_PI)? delta.yaw - 2 * M_PI : delta.yaw; 
@@ -20,18 +19,30 @@ Model::Control Controller::calcControl(const Model::State& currState)
 
 	m_netOper.calcResult({delta.x, delta.y, delta.yaw}, ctrl);
 
-	ctrl[0] = std::min(std::max(ctrl[0], -100.0f), 100.0f);
-	ctrl[1] = std::min(std::max(ctrl[1], -100.0f), 100.0f);
+	ctrl[0] = std::min(std::max(ctrl[0], -10.0f), 10.0f);
+	ctrl[1] = std::min(std::max(ctrl[1], -10.0f), 10.0f);
 
+	m_prevState = currState;
 	return {ctrl[0], ctrl[1]};
 }
 
-void Controller::setGoal(Model::State newGoal)
+Model::Control RosbotNOPController::calcPropControl(const Model::State& currState)
 {
-	mGoal = newGoal;
-}
+	double r = sqrtf((m_goal.x - currState.x)*(m_goal.x - currState.x) + (m_goal.y - currState.y)*(m_goal.y - currState.y));
 
-NetOper& Controller::netOper()
-{
-	return m_netOper;
+	double azim_goal = std::atan2((m_goal.y - currState.y), (m_goal.x - currState.x));
+
+	double alpha = azim_goal - currState.yaw;
+
+	alpha = (alpha < -M_PI)? alpha + 2 * M_PI : alpha;
+	alpha = (alpha >  M_PI)? alpha - 2 * M_PI : alpha; 
+
+	float v = 1.0 * tanh(r) * cos(alpha);
+	float w;
+	if(r > 0.1)
+		w = 1.0 * alpha + tanh(r) * sin(alpha) * cos(alpha) /  r;
+	else
+		w = 1.0 * alpha;
+
+	return {v,w};
 }

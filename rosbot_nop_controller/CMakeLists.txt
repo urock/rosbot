@@ -35,7 +35,6 @@ add_subdirectory(
 
 add_executable(
   ${This} 
-  src/rosbot_model.cpp
   src/rosbot_controller.cpp
   src/rosbot_controller_runner.cpp
 )

@@ -1,30 +1,17 @@
 #pragma once
 
-#include <cmath>
-#include <vector>
+#include "controller.hpp"
 
-#include "rosbot_model.hpp"
-#include "nop.hpp"
-
-// class network operator
-class Controller {
+class RosbotNOPController: public Controller
+{
 
 public:
-  Controller(const Model::State &goalState, NetOper &netOper);
+  RosbotNOPController(const Model::State& goal, NetOper& netOper);
 
-  /// RP from pascal version
-  Model::Control calcControl(const Model::State &currState);
+  Model::Control calcNOPControl(const Model::State& currState);
 
-  // /// NormdistBetweenStateAndGoal
-  // float distToGoal(const Model::State &currState);
-  /// set new goal state
-  void setGoal(Model::State newGoal);
-
-  /// returns nnetwork operator
-  NetOper &netOper();
+  Model::Control calcPropControl(const Model::State& currState);
 
 private:
-  Model::State mGoal;
-  NetOper m_netOper;
-  const float Eps = 0.1; // [m]
+  Model::State m_prevState = Model::State();
 };
