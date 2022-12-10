@@ -39,11 +39,23 @@ add_executable(
   src/rosbot_controller_runner.cpp
 )
 
+add_executable(
+  Follower 
+  src/follower.cpp
+)
+
 target_link_libraries(
   ${This} 
   ${catkin_LIBRARIES} 
   nop_cpp
 )
+
+target_link_libraries(
+  Follower 
+  ${catkin_LIBRARIES} 
+  nop_cpp
+)
+
 
 install(
   TARGETS ${This}
@@ -51,3 +63,12 @@ install(
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
+
+install(
+  TARGETS Follower
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
+

@@ -1,6 +1,5 @@
 #include "rosbot_controller.hpp"
 
-
 #include "gazebo_msgs/ModelStates.h"
 #include "geometry_msgs/PointStamped.h"
 #include "geometry_msgs/Twist.h"
@@ -9,7 +8,6 @@
 #include <cmath>
 #include <iostream>
 
-constexpr size_t ground_model_id = 0;
 constexpr size_t rosbot_model_id = 1;
 constexpr float dt = 0.1;
 constexpr float epsterm = 0.05;
@@ -100,7 +98,7 @@ int main(int argc, char **argv)
     }
     control_pub.publish(ctrl);
 
-    ROS_INFO("State: %lf %lf %lf \n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw);
+    // ROS_INFO("State: %lf %lf %lf \n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw);
     // ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
     // ROS_INFO("Control [cmd_vel]: %lf %lf\n", ctrl.linear.x, ctrl.angular.z);
 

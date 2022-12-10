@@ -12,6 +12,10 @@ public:
 
   Model::Control calcPropControl(const Model::State& currState);
 
+  // void run();
+
+
+
 private:
   Model::State m_prevState = Model::State();
 };
