@@ -61,10 +61,6 @@ int main(int argc, char **argv)
   netOp.setNodesForVars({0, 1, 2});   // Pnum
   netOp.setNodesForParams({3, 4, 5}); // Rnum
   netOp.setNodesForOutput({22, 23});  // Dnum
-  // NOPMatrixReader("/home/user/catkin_ws/src/rosbot_nop_controller/data/24_NOP_461", "/home/user/catkin_ws/src/rosbot_nop_controller/data/q_461.txt");
-  //netOp.setCs(qc);                    // set Cs
-  // NOPMatrixReader("/home/user/catkin_ws/src/rosbot_nop_controller/data/24_NOP_461", "/home/user/catkin_ws/src/rosbot_nop_controller/data/q_461.txt")
-  //netOp.setPsi(NopPsiN);
   netOp.setCs(reader.getParams());
   netOp.setPsi(reader.getMatrix());
 

@@ -9,6 +9,9 @@ project(${This} C CXX)
 find_package(
   catkin REQUIRED COMPONENTS 
   roscpp
+  nav_core
+  # pluginlib
+  std_msgs
 )
 
 catkin_package(
@@ -33,6 +36,8 @@ add_subdirectory(
   include/network_operator
 )
 
+add_library(astar_planner src/AStarPlanner.cpp)
+
 add_executable(
   ${This} 
   src/rosbot_controller.cpp
@@ -54,6 +59,7 @@ target_link_libraries(
   Follower 
   ${catkin_LIBRARIES} 
   nop_cpp
+  astar_planner
 )
 
 
