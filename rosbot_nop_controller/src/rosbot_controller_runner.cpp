@@ -11,8 +11,6 @@
 constexpr size_t rosbot_model_id = 1;
 constexpr float dt = 0.1;
 constexpr float epsterm = 0.05;
-constexpr float k = 0.025;
-constexpr float b = 0.21 * 2;
 
 Model::State rosbot_state{};
 Model::State rosbot_goal{};
@@ -25,7 +23,6 @@ void target_sub_cb(const geometry_msgs::PointStamped::ConstPtr &msg)
   rosbot_goal.y = msg->point.y;
   rosbot_goal.yaw =
       atan2(rosbot_goal.y - rosbot_state.y, rosbot_goal.x - rosbot_state.x);
-
 
   ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
 }
@@ -86,10 +83,9 @@ int main(int argc, char **argv)
     geometry_msgs::Twist ctrl;
     if (rosbot_state.distXY(rosbot_goal) > epsterm) 
     {
-      // get control with NOP
-      const Model::Control& u = nop_controller.calcNOPControl(rosbot_state);
-      ctrl.linear.x = k * 0.5 * (u.left + u.right);
-      ctrl.angular.z = k * (u.left - u.right) / b;
+      const Model::Control& u = nop_controller.calcControl(rosbot_state);
+      ctrl.linear.x = u.left;
+      ctrl.angular.z = u.right;
 
     }
     control_pub.publish(ctrl);

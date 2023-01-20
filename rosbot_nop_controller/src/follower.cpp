@@ -46,25 +46,6 @@ int main(int argc, char **argv)
 	GOAL.pose.position.x = 0.5;
 	GOAL.pose.position.y = 1.;
 
-	// std::vector<geometry_msgs::PointStamped> refPoints;
-	// geometry_msgs::PointStamped point;
-	// point.point.x = 1;
-	// point.point.y = 0.;
-	// refPoints.push_back(point);
-	// point.point.x = 1.5;
-	// point.point.y = 0.5;
-	// refPoints.push_back(point);
-	// point.point.x = 2.0;
-	// point.point.y = 1;
-	// refPoints.push_back(point);
-	// point.point.x = -2.0;
-	// point.point.y = 1;
-	// refPoints.push_back(point);
-	// point.point.x = -2.0;
-	// point.point.y = -2.0;
-	// refPoints.push_back(point);
-	// std::cout<< refPoints.size() << std::endl;
-
 	// rosparam set /follower/costmap/global_frame "odom"
 	ros::init(argc, argv, "follower");
 	
@@ -82,7 +63,6 @@ int main(int argc, char **argv)
 	
 	astar_plugin::AStarPlanner planner = astar_plugin::AStarPlanner("AStar", &costmap);
 
-	// std::cout<<"START GOAL:"<<refPoints[index].point.x << " " << refPoints[index].point.y << std::endl;
 
 	std::vector<geometry_msgs::PoseStamped> path;
 	GOAL.header.frame_id = "odom";

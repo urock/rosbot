@@ -1,8 +1,18 @@
 #include "rosbot_controller.hpp"
 
+
 RosbotNOPController::RosbotNOPController(const Model::State& goal, NetOper& netOper):
 	Controller(goal, netOper)
 	{ }
+
+Model::Control RosbotNOPController::calcControl(const Model::State& currState)
+{
+	if(m_mode == Mode::Proportional)
+		return calcPropControl(currState);
+
+	return calcNOPControl(currState);
+}
+
 
 Model::Control RosbotNOPController::calcNOPControl(const Model::State& currState)
 {
@@ -19,11 +29,13 @@ Model::Control RosbotNOPController::calcNOPControl(const Model::State& currState
 
 	m_netOper.calcResult({delta.x, delta.y, delta.yaw}, ctrl);
 
-	ctrl[0] = std::min(std::max(ctrl[0], -10.0f), 10.0f);
-	ctrl[1] = std::min(std::max(ctrl[1], -10.0f), 10.0f);
+	ctrl[0] = std::min(std::max(ctrl[0], -Umax), Umax);
+	ctrl[1] = std::min(std::max(ctrl[1], -Umax), Umax);
 
 	m_prevState = currState;
-	return {ctrl[0], ctrl[1]};
+    float x = k * 0.5 * (ctrl[0] + ctrl[1]);
+	float z = k * (ctrl[0] - ctrl[1]) / b;
+	return {x, z};
 }
 
 Model::Control RosbotNOPController::calcPropControl(const Model::State& currState)
@@ -45,4 +57,10 @@ Model::Control RosbotNOPController::calcPropControl(const Model::State& currStat
 		w = 1.0 * alpha;
 
 	return {v,w};
+}
+
+void RosbotNOPController::setMode(Mode newMode)
+{
+	if(m_mode == newMode) return;
+	m_mode = newMode;
 }
