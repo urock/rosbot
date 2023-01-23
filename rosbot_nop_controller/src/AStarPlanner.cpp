@@ -194,14 +194,14 @@ bool AStarPlanner::makePlan(const geometry_msgs::PoseStamped &start, const geome
 
     else
     {
-      ROS_WARN("The planner failed to find a path, choose other goal position");
+      // ROS_WARN("The planner failed to find a path, choose other goal position");
       return false;
     }
   }
 
   else
   {
-    ROS_WARN("Not valid start or goal");
+    // ROS_WARN("Not valid start or goal");
     return false;
   }
 }

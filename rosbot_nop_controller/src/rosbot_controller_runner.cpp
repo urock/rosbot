@@ -10,7 +10,7 @@
 
 constexpr size_t rosbot_model_id = 1;
 constexpr float dt = 0.1;
-constexpr float epsterm = 0.05;
+constexpr float epsterm = 0.01;
 
 Model::State rosbot_state{};
 Model::State rosbot_goal{};
