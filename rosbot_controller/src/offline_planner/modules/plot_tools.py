@@ -10,8 +10,9 @@ def visualize_trajectory(x, ax):
     """
     ax.set_xlabel('X, m')        
     ax.set_ylabel('Y, m')
-    ax.set_title("Best XY trajectory")
-    plot_xy_data(x=x[:,0], y=x[:,1], ax=ax, plot_name="x_y")
+    # ax.set_title("Best XY trajectory")
+    ax.set_aspect(1)
+    plot_xy_data(x=x[:,0], y=x[:,1], ax=ax, plot_name="Optimal trajectory")
 
     # plt.show()
 
@@ -33,7 +34,7 @@ def visualize_control(u, dt, ax1, ax2, plot_name):
         Args:
             u: np.array of shape (time_steps, control_size)
     """
-    ax1.set_title("Control graph")
+    # ax1.set_title("Control graph")
     ax1.set_xlabel('t, s')        
     ax1.set_ylabel('linear velocity')
     ax2.set_ylabel('angular velocity')

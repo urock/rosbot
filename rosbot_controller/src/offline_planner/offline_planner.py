@@ -32,21 +32,21 @@ class OfflinePlanner:
      
     def __init__(self, n_iters, model_path, output_path):
 
-        self.batch_size = 1000
+        self.batch_size = 20000
 
         # self.dt = 0.033          # sec
         self.dt = 0.03          # sec
         self.pso_dt = 1         # sec. PSO outputs control with pso_dt interval between samples 
-        self.total_time = 10    # sec 
+        self.total_time = 15    # sec 
         self.pso_steps              = int(self.total_time/ self.pso_dt) + 1
         self.time_steps             = int(self.total_time / self.dt)
         self.num_dt_for_pso_step    = int(self.pso_dt/ self.dt)
 
-        self.v_max, self.w_max = 1.0, 1.0 
+        self.v_max, self.w_max = 1, 1 
         self.v_min = 0.0
 
         self.goal_tolerance = 0.01
-        self.Tmax = 10.0
+        self.Tmax = 15.0
 
         self.n_iters = n_iters
         self.output_path = output_path
@@ -69,7 +69,7 @@ class OfflinePlanner:
         batch_pso = self.optimizer.init_control_batch()
         batch_x = self._propagate_control_to_states(current_state, batch_pso)
         idx_min, t_min, dist_min, trajectory_length = self._calculate_costs(batch_x, goal, obstacles)
-        batch_costs = t_min + dist_min + trajectory_length
+        batch_costs = t_min + dist_min + trajectory_length # добавить веса
         
         self.optimizer.update_bests(batch_costs)
 
@@ -150,7 +150,7 @@ class OfflinePlanner:
         plot_xy_data(x=t, y=final_trajectory[:, 0], ax=ax3[0], plot_name="X")
         plot_xy_data(x=t, y=final_trajectory[:, 1], ax=ax3[1], plot_name="Y")        
         plot_xy_data(x=t, y=final_trajectory[:, 2], ax=ax3[2], plot_name="Yaw")        
-
+        
         plt.show()
         
 
@@ -325,7 +325,7 @@ class OfflinePlanner:
         x = batch_x[:, :, 0]    # take every point
         y = batch_x[:, :, 1]
 
-        L2 = (x-goal[0])**2 + (y-goal[1])**2)
+        L2 = ((x-goal[0])**2 + (y-goal[1])**2) * 50
 
         # check if goal is reached in Tmax time
         # if reached - save reaching time
@@ -360,18 +360,18 @@ class OfflinePlanner:
 
         # cost for obstacles
         obstacle_cost = np.zeros(L2.shape[0])
-        # for obstacle in obstacles:
-        #     center_x, center_y = obstacle[0], obstacle[1]
-        #     radius = obstacle[2]
+        for obstacle in obstacles:
+            center_x, center_y = obstacle[0], obstacle[1]
+            radius = obstacle[2]
             
-        #     obstacle_dist2 = (x - center_x)**2 + (y - center_y)**2      # shape = (batch_size, time_steps)
+            obstacle_dist2 = (x - center_x)**2 + (y - center_y)**2      # shape = (batch_size, time_steps)
 
-        #     obstacle_mask = np.min(obstacle_dist2,axis=1) < radius**2   # shape = (batch_size)
+            obstacle_mask = np.min(obstacle_dist2,axis=1) < radius**2   # shape = (batch_size)
 
-        #     obstacle_cost[obstacle_mask] += 100
-        
+            obstacle_cost[obstacle_mask] += 100
+        return idx_min, t_min, dist_min, trajectory_length + obstacle_cost
         # return idx_min, t_min + dist_min + trajectory_length + obstacle_cost
-        return idx_min, t_min, dist_min, trajectory_length_m
+        # return idx_min, t_min, dist_min, trajectory_length_m
         
     def save_control_to_csv(self, control_seq, output_path):
         """
@@ -399,6 +399,20 @@ class OfflinePlanner:
 
 
 def main():
+
+
+    SMALL_SIZE = 8
+    MEDIUM_SIZE = 10
+    BIGGER_SIZE = 20
+
+    plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+    plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+    plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+    plt.rc('legend', fontsize=MEDIUM_SIZE)    # legend fontsize
+    plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', '--model_path', type=str, required=False,
                         help='Path to nn onnx model')
@@ -410,10 +424,10 @@ def main():
     args = parser.parse_args()
 
     current_state = np.array([0.0, 0.0, 0.0, 0.0, 0.0])   # (x, y, yaw, v, w)
-    goal = [2.0, 5.0]                                     # (x, y)
+    goal = [2.0, 4.0]                                     # (x, y)
 
     # center x, center y, radius
-    obstacles = [(0.5, 0.5, 0.45), (1.6, 1.2, 0.45)]           
+    obstacles = [(0.5, 0.5, 0.35), (2.0, 2.0, 0.35), (2.0, 3.5, 0.35), (0.4, 2, 0.35), (0, 3, 0.35)]           
 
     planner = OfflinePlanner(args.n_iters, args.model_path, args.output_path)
     control = planner.run(current_state, goal, obstacles)

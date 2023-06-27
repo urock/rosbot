@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# coding=utf-8
+# vim:fileencoding=utf-8
 import os
 # import seaborn as sns
 import pandas as pd
@@ -6,6 +9,7 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 from logger.logger_tools import plot_xy_data, save_plot
+
 
 """
 python3 
@@ -64,7 +68,7 @@ def parse_one_trajectory(folder_path):
     return robot_state, model_state, control, time, nn_model_state
 
 
-def plot_for_one_trajectory(args, folder_path):
+def plot_for_one_trajectory(args, obstacles, folder_path):
 
     robot_state, model_state, control, time, nn_model_state = parse_one_trajectory(folder_path)
 
@@ -134,6 +138,12 @@ def plot_for_one_trajectory(args, folder_path):
     ax4.set_title("XY trajectory")
     plot_xy_data(x=robot_state['x'], y=robot_state['y'], ax=ax4, plot_name="ground truth")
     plot_xy_data(x=model_state['x'], y=model_state['y'], ax=ax4, plot_name="kinematic model")
+
+    for obstacle in obstacles:
+        circle1 = plt.Circle((obstacle[0], obstacle[1]), obstacle[2], color='r')
+        ax4.add_patch(circle1)
+
+
     if nn_model_state is not None:
         plot_xy_data(x=nn_model_state['x'], y=nn_model_state['y'], ax=ax4, plot_name="NN model")
     
@@ -142,14 +152,14 @@ def plot_for_one_trajectory(args, folder_path):
 
     plt.show()
 
-def plot_for_group(args, folder_path):
+def plot_for_group(args, obstacles, folder_path):
     """
     # FOR PSO planner
     """
     fig, ax = plt.subplots(1)
     ax.set_xlabel('X, m')        
     ax.set_ylabel('Y, m')
-    ax.set_title("XY trajectory")
+    # ax.set_title("Trajectory")
 
     robot_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
     nn_model_state = {'x': [], 'y': [], 'yaw': [], 'v': [], 'w': []}
@@ -160,7 +170,10 @@ def plot_for_group(args, folder_path):
     robot_state = pd.DataFrame(robot_state, columns=robot_state.keys())
     model_state = pd.DataFrame(model_state, columns=robot_state.keys())
     nn_model_state = pd.DataFrame(nn_model_state, columns=robot_state.keys())
-
+    jopa = True
+    for obstacle in obstacles:
+        circle1 = plt.Circle((obstacle[0], obstacle[1]), obstacle[2], color='r')
+        ax.add_patch(circle1)
     for traj in os.listdir(folder_path):
         traj_path = folder_path + '/' + traj
         if not os.path.isdir(traj_path):
@@ -170,18 +183,44 @@ def plot_for_group(args, folder_path):
         model_state_ = pd.DataFrame(model_state_, columns=robot_state.keys())
         nn_model_state_ = pd.DataFrame(nn_model_state_, columns=robot_state.keys())
       
-        robot_state_.plot(x='x', y='y', ax=ax, legend=False, c='b', alpha=0.2, kind='line')
-        model_state_.plot(x='x', y='y', ax=ax, legend=False, c='orange', alpha=0.2, kind='line')
-        nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.2, kind='line')
+        robot_state_.plot(x='x', y='y', ax=ax, legend=False, c='b', alpha=0.4, kind='line', style="--")
+        # model_state_.plot(x='x', y='y', ax=ax, legend=False, c='orange', alpha=0.2, kind='line')
+        if jopa:
+            jopa = False
+            # model_state_.plot(x='x', y='y', ax=ax, legend=False, c='orange', alpha=1, kind='line', style='*')
+            nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=1, kind='line')
+            model_state_.plot(x='x', y='y', ax=ax, legend=False, c='orange', alpha=1, kind='line', style='*')
 
-    ax.legend(['ground truth', 'kinematic model', 'NN model' ])
+
+    # nn_model_state_.plot(x='x', y='y', ax=ax, grid=True, legend=False, c='g', alpha=0.5, kind='line')            
+    ax.legend(["Робот", "Нейросетевая модель", "Кинетическая модель"])
+    plt.xlim (-1, 3)
+    ax.set_xlabel('X, м')        
+    ax.set_ylabel('Y, м')
+    ax.set_aspect(1)
+    ax.set_autoscale_on(True)
+    
+
     save_plot(folder_path, name="complex plot")
     plt.show()
 
 def main():
     """ """
 
-    plt.rcParams['font.size'] = '12'
+    # plt.rcParams['font.size'] = '12'
+
+    SMALL_SIZE = 8
+    MEDIUM_SIZE = 10
+    BIGGER_SIZE = 20
+
+    plt.rc('font', size=BIGGER_SIZE)          # controls default text sizes
+    plt.rc('axes', titlesize=BIGGER_SIZE)     # fontsize of the axes title
+    plt.rc('axes', labelsize=BIGGER_SIZE)    # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+    plt.rc('ytick', labelsize=BIGGER_SIZE)    # fontsize of the tick labels
+    plt.rc('legend', fontsize=14)    # legend fontsize
+    plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
 
     parser = argparse.ArgumentParser()
 
@@ -197,10 +236,13 @@ def main():
     args = parser.parse_args()
     folder_path = args.folder_path
 
+    obstacles = [(0.5, 0.5, 0.35), (2.0, 2.0, 0.35), (2.0, 3.5, 0.35), (0.4, 2, 0.35), (0, 3, 0.35)]           
+
+
     if not args.group:
-        plot_for_one_trajectory(args, folder_path)
+        plot_for_one_trajectory(args, obstacles, folder_path)
     else:
-        plot_for_group(args, folder_path)
+        plot_for_group(args, obstacles,folder_path)
     
 
 

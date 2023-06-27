@@ -29,14 +29,37 @@ int main(int argc, char **argv)
 	ros::param::set("/parking_node/costmap/global_frame", "odom");
 	// ros::param::set("/parking_node/costmap/observation_sources", "camera/depth/image_raw");
   
-  tf2_ros::Buffer tfBuffer;
-  tf2_ros::TransformListener tfListener(tfBuffer);
-  costmap_2d::Costmap2DROS costmap("costmap", tfBuffer);
+    tf2_ros::Buffer tfBuffer;
+    tf2_ros::TransformListener tfListener(tfBuffer);
+    costmap_2d::Costmap2DROS costmap("costmap", tfBuffer);
 
 	ros::NodeHandle node;
 	ros::Subscriber models_sub = node.subscribe("gazebo/model_states", 5, model_state_cb);
 	ros::Publisher target_pub = node.advertise<geometry_msgs::PointStamped>("/clicked_point", 5);	
+	
+	
+	costmap.start();
+	costmap_2d::Costmap2D* map = costmap.getCostmap(); 
+	
+
+	// 
+	// 
+	double res = map->getResolution();
+
+	for(double i = -0.45; i < 0.6; i=+res)
+	{
+		unsigned int mx, my;
+		map->worldToMap (i, 0.2, mx, my);
+		map->setCost (mx, my, 255);
+	}
+	// worldToMap (double wx, double wy, unsigned int &mx, unsigned int &my) const 
+	// mapToWorld (unsigned int mx, unsigned int my, double &wx, double &wy)
+	// setCost (unsigned int mx, unsigned int my, unsigned char cost)
+
+
+
 	astar_plugin::AStarPlanner planner = astar_plugin::AStarPlanner("AStar", &costmap);
+	
 
 	ros::Rate rate(1. / 1.);
 	while (ros::ok()) {

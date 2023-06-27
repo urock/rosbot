@@ -49,6 +49,17 @@ add_executable(
   src/follower.cpp
 )
 
+add_executable(
+  PSO 
+  src/test.cpp
+  src/rosbot_controller.cpp
+)
+
+# add_executable(
+#   OptimalFollower 
+#   src/optimal_follower.cpp
+# )
+
 target_link_libraries(
   ${This} 
   ${catkin_LIBRARIES} 
@@ -62,6 +73,18 @@ target_link_libraries(
   astar_planner
 )
 
+target_link_libraries(
+  PSO 
+  ${catkin_LIBRARIES} 
+  nop_cpp
+)
+
+
+# target_link_libraries(
+#   OptimalFollower
+#   ${catkin_LIBRARIES} 
+#   nop_cpp
+# )
 
 install(
   TARGETS ${This}
@@ -77,4 +100,17 @@ install(
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
+install(
+  TARGETS PSO
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
+# install(
+#   TARGETS OptimalFollower
+#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+# )
 
