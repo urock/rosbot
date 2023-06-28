@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 
-set(This rosbot_nop_controller)
+set(This rosbot_nop_stabilization)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -O3")
 
@@ -10,7 +10,6 @@ find_package(
   catkin REQUIRED COMPONENTS 
   roscpp
   nav_core
-  # pluginlib
   std_msgs
 )
 
@@ -36,29 +35,17 @@ add_subdirectory(
   include/network_operator
 )
 
-add_library(astar_planner src/AStarPlanner.cpp)
-
 add_executable(
   ${This} 
   src/rosbot_controller.cpp
-  src/rosbot_controller_runner.cpp
-)
-
-add_executable(
-  Follower 
-  src/follower.cpp
+  src/rosbot_nop_stabilization.cpp
 )
 
 add_executable(
   PSO 
-  src/test.cpp
+  src/PSO.cpp
   src/rosbot_controller.cpp
 )
-
-# add_executable(
-#   OptimalFollower 
-#   src/optimal_follower.cpp
-# )
 
 target_link_libraries(
   ${This} 
@@ -67,34 +54,13 @@ target_link_libraries(
 )
 
 target_link_libraries(
-  Follower 
-  ${catkin_LIBRARIES} 
-  nop_cpp
-  astar_planner
-)
-
-target_link_libraries(
   PSO 
   ${catkin_LIBRARIES} 
   nop_cpp
 )
-
-
-# target_link_libraries(
-#   OptimalFollower
-#   ${catkin_LIBRARIES} 
-#   nop_cpp
-# )
 
 install(
   TARGETS ${This}
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-)
-
-install(
-  TARGETS Follower
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
@@ -106,11 +72,3 @@ install(
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
-
-# install(
-#   TARGETS OptimalFollower
-#   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-#   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-#   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-# )
-

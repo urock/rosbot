@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>rosbot_nop_controller</name>
+  <name>rosbot_nop_stabilization</name>
   <version>0.0.0</version>
-  <description>The rosbot_nop_controller package</description>
+  <description>The rosbot_nop_stabilization package</description>
 
   <maintainer email="user@todo.todo">user</maintainer>
   <license>TODO</license>

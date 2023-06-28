@@ -13,6 +13,8 @@ public:
     Proportional
   };
 
+  RosbotNOPController();
+  
   RosbotNOPController(const Model::State& goal, NetOper& netOper);
 
   Model::Control calcControl(const Model::State& currState) override;
