@@ -24,7 +24,7 @@ class RosbotNOPStabilization
     Model::State rosbot_goal{};
 
     const size_t rosbot_model_id = 1;
-    const float dt = 0.1; // [sec]
+    const float dt = 0.1;  // [sec]
     const float eps = 0.1; // [m]
 
     void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg);
