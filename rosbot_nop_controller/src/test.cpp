@@ -10,8 +10,6 @@
 #include "runner.hpp"
 
 
-Model::State rosbot_main_goal = {1, 1, 1.};
-
 // void run_to_goal(Model::State& currState, const Model::State& Goal)
 // {
 //     std::string output;
@@ -199,17 +197,13 @@ Model::State rosbot_main_goal = {1, 1, 1.};
 
 // };
 
-
-void run_to_goal(Model::State& currState, const Model::State& Goal)
+void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float time_step)
 {
-    // std::string output;
     bool stopInGoal = true;
-    float maxTime = 5;
     std::string pathToMatrix = "/home/user/catkin_ws/src/rosbot_nop_controller/data/24_NOP_461";
     std::string pathToParams = "/home/user/catkin_ws/src/rosbot_nop_controller/data/q_461.txt";
 
-    //////////////
-    constexpr float dt = 0.01;      
+    //////////////     
     constexpr float eps = 0.05; 
 
     //std::cout<<"START\n";
@@ -250,7 +244,7 @@ void run_to_goal(Model::State& currState, const Model::State& Goal)
 
     float time = 0.;                 
 
-    while (time < maxTime) 
+    while (time < time_step) 
     {
         currState = runner.makeStep();
         // currState.print();
@@ -259,22 +253,22 @@ void run_to_goal(Model::State& currState, const Model::State& Goal)
         if (stopInGoal && currState.dist(Goal) < eps)
             break; 
     }
-    std::cout<<"State ";
-    currState.print();
-    std::cout<<"Goal state = "<<Goal.x<<" "<<Goal.y<<" "<<Goal.yaw<<"\n";
-    std::cout<<"spend time: " << time <<" (s)\n";
-    std::cout<<"END\n";
+    // std::cout<<"State ";
+    // currState.print();
+    // std::cout<<"Goal state = "<<Goal.x<<" "<<Goal.y<<" "<<Goal.yaw<<"\n";
+    // std::cout<<"spend time: " << time <<" (s)\n";
+    // std::cout<<"END\n";
 }
 
 
-float CostFunction(std::vector<float> points)
+float CostFunction(std::vector<float> points, const float Tmax, const float time_step, const float dt)
 {
     Model::State currState = {0., 0., 0.};
-    Model::State MainGoal = {1.,1.,1.};
+    Model::State MainGoal = {1.,0.,0.};
     for(size_t i = 0; i < points.size(); i = i + 3)
     {
         Model::State Goal = {points[i], points[i+1], points[i+2]};
-        run_to_goal(currState, Goal);
+        run_to_goal(currState, Goal, dt, time_step);
     }
     
     return std::sqrt(currState.dist(MainGoal) * currState.dist(MainGoal)); 
@@ -290,16 +284,18 @@ public:
     float curr_error = std::numeric_limits<float>::max();
     float best_error = std::numeric_limits<float>::max();
     size_t N = 0; // number of state dimenstions
-
+    float Tmax = 0.;
+    float time_step = 0.;
+    float dt = 0.;
     Particle() = default;
 
-    Particle(const std::vector<float>& initial_state)
+    Particle(const std::vector<float>& initial_state, const float Tmax, const float time_step, const float dt):
+    Tmax(Tmax), time_step(time_step), dt(dt)
     {
         // set random velocities
         N = initial_state.size();
         curr_state = initial_state;
         best_state = initial_state;
-
         velocities.resize(N);
 
         for(auto& v : velocities)
@@ -310,7 +306,7 @@ public:
 
     void evaluate()
     {
-        curr_error = CostFunction(curr_state);
+        curr_error = CostFunction(curr_state, Tmax, time_step, dt);
         if (curr_error <= best_error)
         {
             best_state = curr_state;
@@ -351,17 +347,21 @@ public:
     std::vector<Particle> swarm;
     size_t maxIter;
     float best_global_error = std::numeric_limits<float>::max();
-    float time_step;
+    float dt = 0.;
+    float Tmax = 0.;
+    float time_step = 0.;
 
-    PSO(std::vector<float> initial_state, size_t numParticles, size_t maxIter, float time_step): 
+    PSO(std::vector<float> initial_state, size_t numParticles, size_t maxIter, float Tmax, float time_step, float dt): 
         maxIter(maxIter)
-        ,time_step(time_step)
+        , dt(dt)
+        , time_step(time_step)
+        , Tmax(Tmax)
     {   
         best_global_state = initial_state;
         // init particles swarm
         swarm.resize(numParticles);
         for(size_t i = 0; i < swarm.size(); ++i)
-            swarm[i] = Particle(initial_state);
+            swarm[i] = Particle(initial_state, Tmax, time_step, dt);
 
         fit();
     }
@@ -370,7 +370,7 @@ public:
     {
         for(size_t i = 0; i < maxIter; ++i)
         {  
-            std::cout<<i<<" "<<best_global_error<<std::endl;
+            // std::cout<<i<<" "<<best_global_error<<std::endl;
             for (auto& p : swarm)
             {
                 p.evaluate();
@@ -394,17 +394,15 @@ std::vector<float> runPSO()
 {
 
 	std::cout<<"PSO START"<<std::endl;
-    float Tmax = 5; // sec, 
-    float delta_t = 0.5; // sec
-    float time_step = 0.1; // sec
-    size_t N = static_cast<size_t>(Tmax / delta_t); // number of points to be optimized
-    std::vector<float> q = {0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0., 0.,0.,0.,}; // vector to be optimized (a.k.a initial state vector)
-    size_t numParticles = 75;
-    size_t maxIter = 10;
-    auto pso = PSO(q, numParticles, maxIter, time_step);
+    float Tmax = 6; // sec, 
+    float time_step = 2; // sec
+    float dt = 0.01; // sec
+    std::vector<float> q = {0.,0.,0., 0.,0.,0., 0.,0.,0.}; // vector to be optimized (a.k.a initial state vector)
 
-    
-    std::cout<< N <<std::endl;
+    size_t numParticles = 100;
+    size_t maxIter = 50;
+    auto pso = PSO(q, numParticles, maxIter, Tmax, time_step, dt);
+
     std::cout<<"q: ";
     for(auto i : q)
         std::cout<<i<<" ";
@@ -413,11 +411,14 @@ std::vector<float> runPSO()
         std::cout<<i<<" ";
     std::cout<<std::endl;
 
+
+
     Model::State currState = {0., 0., 0.};
+    std::cout<<"SIZE: "<<pso.best_global_state.size()<<std::endl;
     for(size_t i = 0; i < pso.best_global_state.size(); i = i + 3)
     {
         Model::State Goal = {pso.best_global_state[i], pso.best_global_state[i+1], pso.best_global_state[i+2]};
-        run_to_goal(currState, Goal);
+        run_to_goal(currState, Goal, dt, time_step);
     }
     std::cout<< "RESULT POSITION: " <<std::endl;
     std::cout<<currState.x<<" "<<currState.y<<" "<<currState.yaw<<" "<<std::endl;
@@ -440,7 +441,7 @@ std::vector<float> runPSO()
 #include <iostream>
 
 constexpr size_t rosbot_model_id = 1;
-constexpr float dt = 0.1;
+constexpr float dt = 0.01;
 constexpr float epsterm = 0.1;
 
 Model::State rosbot_state{};
@@ -495,27 +496,30 @@ int main(int argc, char **argv)
   ros::Publisher control_pub = node.advertise<geometry_msgs::Twist>("cmd_vel", 5);
 
 
-  std::vector<float> q = runPSO();
+  const std::vector<float> q = runPSO();
 
   // main loop
   size_t i = 0;
   float time = 0.;
   float initial_start_time = ros::Time::now().toSec();
   float start_time = ros::Time::now().toSec();
+  std::cout<<q[i]<<" "<<q[i+1]<<" "<<q[i+2]<<std::endl;
   ros::Rate rate(1. / dt);
   while (ros::ok()) {
     ros::spinOnce();
-    if (time >= 0.5)
+    if (time >= 2)
     {
         time = 0.;
         i = i + 3;
-        // std::cout<<"update goal"<<std::endl;
+        std::cout<<"update goal"<<std::endl;
+        std::cout<<q[i]<<" "<<q[i+1]<<" "<<q[i+2]<<std::endl;
     }
     rosbot_goal = {q[i], q[i+1], q[i+2]};
-    update_target_yaw();
+    // update_target_yaw();
     nop_controller.setGoal(rosbot_goal);
 
     geometry_msgs::Twist ctrl;
+    Model::State rosbot_main_goal = {1, 0, 0.};
     if (rosbot_state.distXY(rosbot_main_goal) > epsterm) 
     {
       const Model::Control& u = nop_controller.calcControl(rosbot_state);
@@ -528,12 +532,12 @@ int main(int argc, char **argv)
     // ROS_INFO("State: %lf %lf %lf \n", rosbot_state.x, rosbot_state.y, rosbot_state.yaw);
     // ROS_INFO("Target: %lf %lf %lf\n", rosbot_goal.x, rosbot_goal.y, rosbot_goal.yaw);
     // ROS_INFO("Control [cmd_vel]: %lf %lf\n", ctrl.linear.x, ctrl.angular.z);
-    time = time + ros::Time::now().toSec() - start_time;
+    time = time + ros::Time::now().toSec() - start_time; // time spend
     start_time = ros::Time::now().toSec();
-    // std::cout<<"time: "<<time<<std::endl;
-    std::cout<<q[i]<<" "<<q[i+1]<<" "<<q[i+2]<<std::endl;
+    //std::cout<<"time: "<<time<<std::endl;
+    //std::cout<<q[i]<<" "<<q[i+1]<<" "<<q[i+2]<<std::endl;
 
-    if (ros::Time::now().toSec() - initial_start_time > 10)
+    if (ros::Time::now().toSec() - initial_start_time > 6)
     {return 0;}
 
     rate.sleep();

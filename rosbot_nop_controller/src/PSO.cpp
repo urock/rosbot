@@ -205,8 +205,6 @@ public:
 
 int main()
 {
-
-    // V COST FUNCTION NUZHNO PEREDAVAT DRUGOI MAX TIME, KOTORII delta_t tipa vremya vezdu tochkami
 	std::cout<<"PSO START"<<std::endl;
     float Tmax = 6; // sec, 
     float time_step = 2; // sec
@@ -217,8 +215,6 @@ int main()
     size_t maxIter = 50;
     auto pso = PSO(q, numParticles, maxIter, Tmax, time_step, dt);
 
-    
-    // std::cout<< N <<std::endl;
     std::cout<<"q: ";
     for(auto i : q)
         std::cout<<i<<" ";
@@ -230,7 +226,6 @@ int main()
 
 
     Model::State currState = {0., 0., 0.};
-    // Model::State MainGoal = {1.,1.,1.};
     std::cout<<"SIZE: "<<pso.best_global_state.size()<<std::endl;
     for(size_t i = 0; i < pso.best_global_state.size(); i = i + 3)
     {
