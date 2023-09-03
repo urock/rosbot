@@ -1,17 +1,8 @@
-#include <iostream>
-#include <vector>
-#include <limits>
-#include <float.h>
-#include <random>
-
-#include "nop.hpp"
-#include "model.hpp"
-#include "controller.hpp"
-#include "runner.hpp"
+#include "PSO.hpp"
 
 
 
-void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float time_step)
+void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time)
 {
     bool stopInGoal = true;
     std::string pathToMatrix = "/home/user/catkin_ws/src/rosbot_nop_controller/data/24_NOP_461";
@@ -26,27 +17,7 @@ void run_to_goal(Model::State& currState, const Model::State& Goal, const float 
     
     // create network operator and set prarams
     NetOper nop = NetOper();
-    nop.setNodesForVars({0, 1, 2});      // Pnum
-    nop.setNodesForParams({3, 4, 5});    // Rnum
-    nop.setNodesForOutput({22, 23});     // Dnum
-    nop.setCs(qc);                       // set Cs
-    nop.setPsi(NopPsiN);                 // set matrix
-
-    // u can read params with reader
-    if(pathToMatrix.size() > 0)
-    {
-        // std::cout<<"Matrix path "<<pathToMatrix<<std::endl;
-        NOPMatrixReader& reader = nop.getReader();
-        reader.readMatrix(pathToMatrix);
-        nop.setPsi(reader.getMatrix());
-    }
-    if(pathToParams.size() > 0)
-    {
-        // std::cout<<"Matrix parameters "<<pathToParams<<std::endl;
-        NOPMatrixReader& reader = nop.getReader();
-        reader.readParams(pathToParams);
-        nop.setCs(reader.getParams());
-    }
+    nop.setLocalTestsParameters();
 
     Model model(currState, dt);
 
@@ -58,7 +29,7 @@ void run_to_goal(Model::State& currState, const Model::State& Goal, const float 
 
     float time = 0.;                 
 
-    while (time < time_step) 
+    while (time < max_time) 
     {
         currState = runner.makeStep();
         // currState.print();
@@ -211,8 +182,8 @@ int main()
     float dt = 0.01; // sec
     std::vector<float> q = {0.,0.,0., 0.,0.,0., 0.,0.,0.}; // vector to be optimized (a.k.a initial state vector)
 
-    size_t numParticles = 100;
-    size_t maxIter = 50;
+    size_t numParticles = 50;
+    size_t maxIter = 10;
     auto pso = PSO(q, numParticles, maxIter, Tmax, time_step, dt);
 
     std::cout<<"q: ";
