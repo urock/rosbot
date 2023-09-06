@@ -43,6 +43,7 @@ add_executable(
 
 add_executable(
   PSO 
+  src/test.cpp
   src/PSO.cpp
   src/rosbot_controller.cpp
 )
