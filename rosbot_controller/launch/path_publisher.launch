@@ -1,5 +1,12 @@
 <launch>
-    <node pkg="rosbot_controller" type="path_publisher_node.py" name="path_pub" output="screen">
-        <rosparam command="load" file="$(find rosbot_controller)/config/paths.yaml" subst_value="true" />
+
+    <!-- parameters for publish_path node -->
+    <arg name="traj_type"       default="1.0sin1.0"/>
+    <arg name="move_plan"       default="~"/>
+
+    <node pkg="rosbot_controller" type="path_publisher.py" name="path_pub" output="screen">
+        <param name="traj_type"       value="$(arg traj_type)" />
+        <param name="move_plan"         value="$(arg move_plan)" />
     </node>
+
 </launch>

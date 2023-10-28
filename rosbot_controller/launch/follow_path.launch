@@ -1,11 +1,11 @@
 <launch>
 
     <!-- parameters for publish_path node -->
-    <arg name="traj_type"       default="sin"/>
+    <arg name="traj_type"       default="1.0sin1.0"/>
     <arg name="move_plan"       default="~"/>
 
     <!-- publish path -->
-    <include file="$(find rosbot_controller)/launch/publish_path.launch">
+    <include file="$(find rosbot_controller)/launch/path_publisher.launch">
         <arg name="traj_type"   value="$(arg traj_type)" />
         <arg name="move_plan"   value="$(arg move_plan)" />
     </include>
