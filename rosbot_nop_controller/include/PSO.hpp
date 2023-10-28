@@ -11,10 +11,13 @@
 #include "controller.hpp"
 #include "runner.hpp"
 
+namespace pso
+{
+
 constexpr float EPS = 0.05;
 constexpr float EPS_MED = 0.15; 
 
-void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time);
+void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time, float& time_spent);
 
 class Particle
 {
@@ -54,5 +57,7 @@ public:
     
     PSO(std::vector<float> initial_state, size_t numParticles, size_t maxIter, Model::State main_goal, float time_step, float dt);
     std::vector<float> fit();
+
+};
 
 };

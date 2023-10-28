@@ -14,29 +14,28 @@
 #include "rosbot_controller.hpp"
 
 
-
-std::vector<float> runPSO(Model::State main_goal)
+std::vector<float> runPSO(Model::State main_goal, float max_time, float time_step)
 {
-    float time_step = 2; // sec
-    float dt = 0.01; // sec
-    size_t numParticles = 20;
-    size_t maxIter = 10;
-    std::vector<float> q = {0.,0.,0., 0.,0.,0., 0.,0.,0.}; // vector to be optimized (a.k.a initial state vector)
-    
-    auto pso = PSO(q, numParticles, maxIter, main_goal, time_step, dt);
+    float dt = 0.01; // dt for control 
+    size_t numParticles = 100;
+    size_t maxIter = 50;
+    size_t state_size = 3;
+    size_t vector_size = static_cast<size_t>(max_time / time_step) * state_size;
 
-    Model::State currState = {0., 0., 0.};
-    for(size_t i = 0; i < pso.best_global_state.size(); i = i + 3)
+    std::vector<float> q(vector_size, 0.); 
+    auto pso_result = pso::PSO(q, numParticles, maxIter, main_goal, time_step, dt);
+
+    Model::State currState{0., 0., 0.};
+    float time_spent;
+    for(size_t i = 0; i < pso_result.best_global_state.size(); i = i + 3)
     {
-        Model::State Goal = {pso.best_global_state[i], pso.best_global_state[i+1], pso.best_global_state[i+2]};
-        run_to_goal(currState, Goal, dt, time_step);
+        Model::State Goal = {pso_result.best_global_state[i], pso_result.best_global_state[i+1], pso_result.best_global_state[i+2]};
+        pso::run_to_goal(currState, Goal, dt, time_step, time_spent);
     }
-	return pso.best_global_state;
-
+	return pso_result.best_global_state;
 }
 
 ////// PSO OPTIMIZATION
-
 
 
 constexpr size_t rosbot_model_id = 1;
@@ -66,12 +65,13 @@ void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
 }
 
 
+// Добавить визуализацию RVIZ
 
 int main(int argc, char **argv) 
 {
 
-    constexpr float  MAX_TIME = 6.;
-    constexpr float TIME_STEP = 2.;
+    constexpr float  MAX_TIME = 3.; // T+
+    constexpr float TIME_STEP = 1.;
     
     NetOper nop = NetOper();
     nop.setLocalTestsParameters();
@@ -80,12 +80,11 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "rosbot_nop_controller");
     ros::NodeHandle node;
-
     ros::Subscriber models_sub = node.subscribe("gazebo/model_states", 5, model_state_cb);
     ros::Publisher control_pub = node.advertise<geometry_msgs::Twist>("cmd_vel", 5);
 
-    Model::State rosbot_main_goal = {1. ,0. ,0.};
-    const std::vector<float> q = runPSO(rosbot_main_goal);
+    Model::State rosbot_main_goal = {2. ,1. ,0.};
+    const std::vector<float> q = runPSO(rosbot_main_goal, MAX_TIME, TIME_STEP);
 
     // main loop
     size_t i = 0;
@@ -101,10 +100,13 @@ int main(int argc, char **argv)
     
     // control msg
     geometry_msgs::Twist ctrl;
+    float time_spent = 0.;
     while (ros::ok()) {
         ros::spinOnce();
-        if (time >= TIME_STEP && !(ros::Time::now().toSec() - initial_start_time > MAX_TIME))
+        if ((time >= TIME_STEP || rosbot_state.distXY(rosbot_goal) < pso::EPS) && !(ros::Time::now().toSec() - initial_start_time > MAX_TIME))
         {
+            time_spent += time;
+            std::cout<<time_spent<<std::endl;
             time = 0.;
             i = i + 3;
             rosbot_goal = {q[i], q[i+1], q[i+2]};
@@ -112,7 +114,7 @@ int main(int argc, char **argv)
             nop_controller.setGoal(rosbot_goal);
         }
 
-        if (rosbot_state.distXY(rosbot_main_goal) < EPS_MED) 
+        if (rosbot_state.distXY(rosbot_main_goal) < pso::EPS) 
         {
             ctrl.linear.x = 0.;
             ctrl.angular.z = 0.;
@@ -120,7 +122,7 @@ int main(int argc, char **argv)
             time = time + ros::Time::now().toSec() - start_time; // time spend
             start_time = ros::Time::now().toSec();
             rate.sleep();  
-            continue;
+            break;
         }
         const Model::Control& u = nop_controller.calcControl(rosbot_state);
         ctrl.linear.x = u.left;

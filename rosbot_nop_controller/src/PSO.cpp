@@ -1,7 +1,9 @@
 #include "PSO.hpp"
 
+namespace pso
+{
 
-void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time)
+void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time, float& time_spent)
 {
     NetOper nop = NetOper();
     nop.setLocalTestsParameters();
@@ -21,20 +23,21 @@ void run_to_goal(Model::State& currState, const Model::State& Goal, const float 
         if (currState.dist(Goal) < EPS)
             break; 
     }
+    // time_spent += time;
 }
 
-
+// TODO добавить время
 float CostFunction(std::vector<float> points,  Model::State MainGoal, const float time_step, const float dt)
 {
     Model::State currState = {0., 0., 0.}; // start position
+    float time_spent = 0.;
     for(size_t i = 0; i < points.size(); i = i + 3)
     {
         Model::State Goal = {points[i], points[i+1], points[i+2]};
-        run_to_goal(currState, Goal, dt, time_step);
+        run_to_goal(currState, Goal, dt, time_step, time_spent);
     }
-    return std::sqrt(currState.dist(MainGoal) * currState.dist(MainGoal)); 
+    return std::sqrt(currState.dist(MainGoal) * currState.dist(MainGoal)) + time_spent; 
 }
-
 
 
 Particle::Particle(const std::vector<float>& initial_state, Model::State main_goal, const float time_step, const float dt):
@@ -69,7 +72,6 @@ void Particle::update_velocities(std::vector<float> best_global_state)
     float c1=1;    // cognative constant
     float c2=2;    // social constant
     
-
     for(size_t i = 0; i < N; ++i){
         float r1 = (float)rand() / ((float)RAND_MAX + 1);
         float r2 = (float)rand() / ((float)RAND_MAX + 1);
@@ -125,7 +127,7 @@ std::vector<float> PSO::fit()
     return best_global_state;
 }
 
-
+};
 // int main()
 // {
 // 	std::cout<<"PSO START"<<std::endl;
