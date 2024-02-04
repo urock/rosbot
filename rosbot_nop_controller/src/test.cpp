@@ -18,7 +18,7 @@ std::vector<float> runPSO(Model::State main_goal, float max_time, float time_ste
 {
     float dt = 0.01; // dt for control 
     size_t numParticles = 100;
-    size_t maxIter = 50;
+    size_t maxIter = 200;
     size_t state_size = 3;
     size_t vector_size = static_cast<size_t>(max_time / time_step) * state_size;
 
@@ -27,7 +27,7 @@ std::vector<float> runPSO(Model::State main_goal, float max_time, float time_ste
 
     Model::State currState{0., 0., 0.};
     float time_spent;
-    for(size_t i = 0; i < pso_result.best_global_state.size(); i = i + 3)
+    for(size_t i = 0; i < pso_result.best_global_state.size(); i = i + state_size)
     {
         Model::State Goal = {pso_result.best_global_state[i], pso_result.best_global_state[i+1], pso_result.best_global_state[i+2]};
         pso::run_to_goal(currState, Goal, dt, time_step, time_spent);
@@ -70,7 +70,7 @@ void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
 int main(int argc, char **argv) 
 {
 
-    constexpr float  MAX_TIME = 3.; // T+
+    constexpr float  MAX_TIME = 10.; // T+
     constexpr float TIME_STEP = 1.;
     
     NetOper nop = NetOper();
@@ -82,6 +82,7 @@ int main(int argc, char **argv)
     ros::NodeHandle node;
     ros::Subscriber models_sub = node.subscribe("gazebo/model_states", 5, model_state_cb);
     ros::Publisher control_pub = node.advertise<geometry_msgs::Twist>("cmd_vel", 5);
+    ros::Publisher point_pub = node.advertise<geometry_msgs::PointStamped>("/clicked_point", 5);
 
     Model::State rosbot_main_goal = {2. ,1. ,0.};
     const std::vector<float> q = runPSO(rosbot_main_goal, MAX_TIME, TIME_STEP);
@@ -103,7 +104,7 @@ int main(int argc, char **argv)
     float time_spent = 0.;
     while (ros::ok()) {
         ros::spinOnce();
-        if ((time >= TIME_STEP || rosbot_state.distXY(rosbot_goal) < pso::EPS) && !(ros::Time::now().toSec() - initial_start_time > MAX_TIME))
+        if ((time >= TIME_STEP || rosbot_state.distXY(rosbot_goal) < pso::EPS_MED) && !(time_spent > MAX_TIME))
         {
             time_spent += time;
             std::cout<<time_spent<<std::endl;
@@ -111,26 +112,28 @@ int main(int argc, char **argv)
             i = i + 3;
             rosbot_goal = {q[i], q[i+1], q[i+2]};
             rosbot_goal.print();
-            nop_controller.setGoal(rosbot_goal);
+            // geometry_msgs::PointStamped test{};
+            // test.point.x = q[i];
+            // test.point.y = q[i+1];
+            // point_pub.publish(test);
         }
 
-        if (rosbot_state.distXY(rosbot_main_goal) < pso::EPS) 
+        if (rosbot_state.distXY(rosbot_main_goal) < pso::EPS_MED) 
         {
-            ctrl.linear.x = 0.;
-            ctrl.angular.z = 0.;
-            control_pub.publish(ctrl);
+            std::cout<<"!!!!!!!!!!!!!!!!!!!"<<std::endl;
             time = time + ros::Time::now().toSec() - start_time; // time spend
             start_time = ros::Time::now().toSec();
             rate.sleep();  
             break;
         }
+        // update_target_yaw();
+        nop_controller.setGoal(rosbot_goal);
         const Model::Control& u = nop_controller.calcControl(rosbot_state);
         ctrl.linear.x = u.left;
         ctrl.angular.z = u.right;
-
-        
+   
         control_pub.publish(ctrl);
-
+        
         time = time + ros::Time::now().toSec() - start_time; // time spend
         start_time = ros::Time::now().toSec();
 

@@ -30,14 +30,14 @@ public:
     float best_error = std::numeric_limits<float>::max();
     size_t N = 0; // number of state dimenstions
     float Tmax = 0.;
-    float time_step = 0.;
+    float step_time = 0.;
     float dt = 0.;
     Model::State main_goal;
     Particle() = default;
-    Particle(const std::vector<float>& initial_state, Model::State main_goal, const float time_step, const float dt);
+    Particle(const std::vector<float>& initial_state, Model::State main_goal, const float step_time, const float dt);
 
     void update_state();
-    void update_velocities(std::vector<float> best_global_state);
+    void update_velocities(std::vector<float> best_global_state, int iteration, int max_iterations);
     void evaluate();
 
 };
@@ -51,11 +51,10 @@ public:
     size_t maxIter;
     float best_global_error = std::numeric_limits<float>::max();
     float dt = 0.;
-    float Tmax = 0.;
-    float time_step = 0.;
+    float step_time = 0.;
     Model::State main_goal;
     
-    PSO(std::vector<float> initial_state, size_t numParticles, size_t maxIter, Model::State main_goal, float time_step, float dt);
+    PSO(std::vector<float> initial_state, size_t numParticles, size_t maxIter, Model::State main_goal, float step_time, float dt);
     std::vector<float> fit();
 
 };
