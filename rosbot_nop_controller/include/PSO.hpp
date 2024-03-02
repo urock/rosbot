@@ -15,7 +15,7 @@ namespace pso
 {
 
 constexpr float EPS = 0.05;
-constexpr float EPS_MED = 0.15; 
+constexpr float EPS_MED = 0.05; 
 
 void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time, float& time_spent);
 
@@ -37,6 +37,7 @@ public:
     Particle(const std::vector<float>& initial_state, Model::State main_goal, const float step_time, const float dt);
 
     void update_state();
+    void mutate(float mutation_rate, const std::vector<float>& min_bounds, const std::vector<float>& max_bounds);
     void update_velocities(std::vector<float> best_global_state, int iteration, int max_iterations);
     void evaluate();
 

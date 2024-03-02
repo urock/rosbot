@@ -1,5 +1,14 @@
 #include "PSO.hpp"
 
+
+// обрезать точки незя
+// в каждый момент времени должен быть атрактор
+// расстоения между точками от 1 до 2 не больше 1,5 метров
+// график для модели, и точки куда едут которые найды в PSO
+// график что едем из всех точек
+// когда располагаем управляющие точки посмотреть где они
+// 
+
 namespace pso
 {
 
@@ -35,7 +44,7 @@ float CostFunction(std::vector<float> points, Model::State MainGoal, const float
     for(size_t i = 0; i < points.size(); i = i + 3)
     {
         Model::State Goal = {points[i], points[i+1], points[i+2]};
-        Goal.print();
+        // Goal.print();
         run_to_goal(currState, Goal, dt, step_time, time_spent);
     }
 
@@ -74,12 +83,34 @@ void Particle::evaluate()
     
 }
 
+void Particle::mutate(float mutation_rate, const std::vector<float>& min_bounds, const std::vector<float>& max_bounds) {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_real_distribution<> dis(0, 1);
+        
+        for (size_t i = 0; i < N; ++i) 
+        {
+            if (dis(gen) < mutation_rate) // Проверяем, произойдет ли мутация
+            { 
+                std::uniform_real_distribution<> dis_pos(min_bounds[i], max_bounds[i]);
+                curr_state[i] = dis_pos(gen); // Присваиваем новое случайное значение из допустимого диапазона
+            }
+        }
+    }
+
 void Particle::update_velocities(std::vector<float> best_global_state, int iteration, int max_iterations)
 {
     // Динамическая адаптация весов
-    float w = 1 - (0.1 * iteration / max_iterations); // Линейно уменьшаем инерцию со временем
-    float c1 = 1 - (0.2 * iteration / max_iterations); // Уменьшаем когнитивный компонент
-    float c2 = 1 + (0.1 * iteration / max_iterations); // Увеличиваем социальный компонент
+    float w_end = 0.4;
+    float w_start = 0.9;
+    float w = w_end + (w_start - w_end) * (max_iterations - iteration) / max_iterations; // Линейно уменьшаем инерцию со временем
+
+    float c1_start = 2.5, c1_end = 0.5;
+    float c1 = c1_end + (c1_start - c1_end) * (max_iterations - iteration) / max_iterations;  // Уменьшаем когнитивный компонент
+
+    float c2_start = 0.5, c2_end = 2.5;
+    float c2 = c2_end + (c2_start - c2_end) * (max_iterations - iteration) / max_iterations; // Увеличиваем социальный компонент
+
 
     // Ограничения скорости
     float max_velocity = 0.1; // Максимальная скорость
@@ -103,9 +134,21 @@ void Particle::update_state()
 {
     for (size_t i = 0; i < N; ++i)
     {
-        std::cout<<"state was "<<curr_state[i];
+        // std::cout<<"state was "<<curr_state[i];
+        
         curr_state[i]=curr_state[i] + velocities[i];
-        std::cout<<" state became "<<curr_state[i]<<std::endl;
+        
+        if (curr_state[i] < -3.0)
+        {
+            curr_state[i] = -3.0;
+        }
+        
+        if (curr_state[i] > 3.0 )
+        {
+            curr_state[i] = 3.0;
+        }
+        
+        //std::cout<<" state became "<<curr_state[i]<<std::endl;
     }
 }
 
@@ -131,11 +174,12 @@ std::vector<float> PSO::fit()
     {  
         for (auto& p : swarm)
         {
+            p.mutate(0.7, {-3.0, -3.0, -3.0}, {3.0, 3.0, 3.0});
             p.evaluate();
-            std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
+            //std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
             if (p.curr_error <= best_global_error)
             {
-                std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
+                //std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
                 best_global_state=p.curr_state;
                 best_global_error=p.curr_error;
             }
@@ -147,13 +191,13 @@ std::vector<float> PSO::fit()
 
     for (auto& p : swarm)
     {
-        std::cout<<"FINAL"<<std::endl;
+        // std::cout<<"FINAL"<<std::endl;
         p.evaluate();
 
-        std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
+        // std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
         if (p.curr_error <= best_global_error)
         {
-            std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
+            // std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
             best_global_state=p.curr_state;
             best_global_error=p.curr_error;
         }
