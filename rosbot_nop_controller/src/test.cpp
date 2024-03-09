@@ -18,8 +18,8 @@ static constexpr float dt = 0.01;
 
 std::vector<float> runPSO(Model::State main_goal, float max_time, float time_step)
 {
-    size_t numParticles = 100;
-    size_t maxIter = 300;
+    size_t numParticles = 50;
+    size_t maxIter = 500;
     size_t state_size = 3;
     size_t vector_size = static_cast<size_t>(max_time / time_step) * state_size;
 
@@ -69,8 +69,8 @@ void model_state_cb(const gazebo_msgs::ModelStates::ConstPtr &msg) {
 int main(int argc, char **argv) 
 {
 
-    constexpr float  MAX_TIME = 4.; // T+
-    constexpr float TIME_STEP = 1.;
+    constexpr float  MAX_TIME = 9.0; // T+
+    constexpr float TIME_STEP = 9.0;
     
     NetOper nop = NetOper();
     nop.setLocalTestsParameters();
@@ -83,8 +83,12 @@ int main(int argc, char **argv)
     ros::Publisher control_pub = node.advertise<geometry_msgs::Twist>("cmd_vel", 5);
     ros::Publisher point_pub = node.advertise<geometry_msgs::PointStamped>("/clicked_point", 5);
 
-    Model::State rosbot_main_goal = {2. ,1. ,0.};
+    Model::State rosbot_main_goal = {2. ,2. ,0.};
     std::vector<float> q = runPSO(rosbot_main_goal, MAX_TIME, TIME_STEP);
+    for (float i : q)
+        std::cout<<i<<" ";
+    std::cout<<std::endl;
+    
     std::cout<<q.size()<<std::endl;
     q.shrink_to_fit();
     int q_size = q.size();
@@ -93,6 +97,7 @@ int main(int argc, char **argv)
     float time = 0.;
     // float initial_start_time = ros::Time::now().toSec();
     float start_time = ros::Time::now().toSec();
+    float init_time = ros::Time::now().toSec();
     ros::Rate rate(1. / dt);
     
     // set first target point
@@ -106,15 +111,16 @@ int main(int argc, char **argv)
     while (ros::ok()) {
         ros::spinOnce();
         // if ( i + 2 < q_size -1 && (time >= TIME_STEP || rosbot_state.distXY(rosbot_goal) < pso::EPS_MED) && !(time_spent > MAX_TIME))
-        if ( i + 2 < q_size -1 && (time >= TIME_STEP) && !(time_spent > MAX_TIME))
+        if ( i + 2 < q_size -1 && (time >= TIME_STEP) && (time_spent < MAX_TIME))
         {
             time_spent += time;
             std::cout<<"time_spent "<<time_spent<<std::endl;
-            time = 0.;
             std::cout<<"time now = "<<time<<std::endl;
+            time = 0.;
             // TEST
             start_time = ros::Time::now().toSec();
             i = i + 3;
+
             rosbot_goal = {q[i], q[i+1], q[i+2]};
             std::cout<<"I = "<<i<<" "<<i+1<<" "<<i+2<<std::endl;
             rosbot_goal.print();
@@ -122,23 +128,24 @@ int main(int argc, char **argv)
 
         if (rosbot_state.distXY(rosbot_main_goal) < pso::EPS_MED) 
         {
-            // std::cout<<"!!!!!!!!!!!!!!!!!!!"<<std::endl;
             time = time + ros::Time::now().toSec() - start_time; // time spend
             start_time = ros::Time::now().toSec();
             rate.sleep();  
             break;
         }
-        // update_target_yaw();
+        update_target_yaw();
         nop_controller.setGoal(rosbot_goal);
         const Model::Control& u = nop_controller.calcControl(rosbot_state);
-        ctrl.linear.x = u.left;
-        ctrl.angular.z = u.right;
+        ctrl.linear.x = u.left * 2;
+        ctrl.angular.z = u.right * 2;
    
         control_pub.publish(ctrl);
         
         time = time + ros::Time::now().toSec() - start_time; // time spend
         start_time = ros::Time::now().toSec();
         // std::cout<<"single iter time = "<<time<<std::endl;
+        // if (ros::Time::now().toSec() - init_time > MAX_TIME) 
+        //     break;
         rate.sleep();
 
     }

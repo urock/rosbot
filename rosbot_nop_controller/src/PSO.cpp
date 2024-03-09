@@ -12,6 +12,12 @@
 namespace pso
 {
 
+constexpr double EPSILON = 1e-6;
+constexpr double MIN_BOUND = -3.0;
+constexpr double MAX_BOUND = 3.0;
+constexpr double MAX_VELOCITY = 1.0;
+constexpr double MIN_VELOCITY = -1.0;
+
 void run_to_goal(Model::State& currState, const Model::State& Goal, const float dt, const float max_time, float& time_spent)
 {
     // std::cout<<"run_to_goal dt"<<dt<<" max_time "<<max_time<<std::endl;
@@ -25,10 +31,9 @@ void run_to_goal(Model::State& currState, const Model::State& Goal, const float 
     runner.init(currState);
     runner.setGoal(Goal);
 
-    float time = 0.;                 
-    while ((time < max_time) && (currState.dist(Goal) > EPS)) 
+    float time = 0.0;                 
+    while ((time < max_time)) 
     {
-        // std::cout<<"run_to_goal inside time"<<time<<" max_time "<<max_time<<"currState.dist(Goal)"<<currState.dist(Goal)<<std::endl;
         currState = runner.makeStep();
         time += dt;
     }
@@ -44,7 +49,6 @@ float CostFunction(std::vector<float> points, Model::State MainGoal, const float
     for(size_t i = 0; i < points.size(); i = i + 3)
     {
         Model::State Goal = {points[i], points[i+1], points[i+2]};
-        // Goal.print();
         run_to_goal(currState, Goal, dt, step_time, time_spent);
     }
 
@@ -53,22 +57,24 @@ float CostFunction(std::vector<float> points, Model::State MainGoal, const float
     float time_penalty = time_spent * time_penalty_factor;
 
     // Расчет общей стоимости с учетом штрафа за время
-    return std::sqrt(currState.dist(MainGoal) * currState.dist(MainGoal)) + time_penalty; 
+    return std::sqrt(currState.distXY(MainGoal) * currState.distXY(MainGoal)) + time_penalty; 
 }
 
 
 Particle::Particle(const std::vector<float>& initial_state, Model::State main_goal, const float step_time, const float dt):
 main_goal(main_goal), step_time(step_time), dt(dt)
 {
-    // set random velocities
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(MIN_BOUND, MAX_BOUND);
+    
     N = initial_state.size();
     curr_state = initial_state;
     best_state = initial_state;
     velocities.resize(N);
 
-    for(auto& v : velocities)
-    {
-        v = (float)rand() / ((float)RAND_MAX + 1);
+    for (auto& v : velocities) {
+        v = dis(gen);
     }
 }
 
@@ -83,38 +89,39 @@ void Particle::evaluate()
     
 }
 
-void Particle::mutate(float mutation_rate, const std::vector<float>& min_bounds, const std::vector<float>& max_bounds) {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_real_distribution<> dis(0, 1);
-        
-        for (size_t i = 0; i < N; ++i) 
-        {
-            if (dis(gen) < mutation_rate) // Проверяем, произойдет ли мутация
-            { 
-                std::uniform_real_distribution<> dis_pos(min_bounds[i], max_bounds[i]);
-                curr_state[i] = dis_pos(gen); // Присваиваем новое случайное значение из допустимого диапазона
-            }
+void Particle::mutate(float mutation_rate, const std::vector<float>& min_bounds, const std::vector<float>& max_bounds) 
+{
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0, 1);
+    
+    for (size_t i = 0; i < N; ++i) 
+    {
+        if (dis(gen) < mutation_rate) // Проверяем, произойдет ли мутация
+        { 
+            std::uniform_real_distribution<> dis_pos(min_bounds[i], max_bounds[i]);
+            curr_state[i] = dis_pos(gen); // Присваиваем новое случайное значение из допустимого диапазона
         }
     }
+}
 
 void Particle::update_velocities(std::vector<float> best_global_state, int iteration, int max_iterations)
 {
     // Динамическая адаптация весов
-    float w_end = 0.4;
+    float w_end = 0.;
     float w_start = 0.9;
     float w = w_end + (w_start - w_end) * (max_iterations - iteration) / max_iterations; // Линейно уменьшаем инерцию со временем
 
-    float c1_start = 2.5, c1_end = 0.5;
+    float c1_start = 3.5, c1_end = 0.1;
     float c1 = c1_end + (c1_start - c1_end) * (max_iterations - iteration) / max_iterations;  // Уменьшаем когнитивный компонент
 
-    float c2_start = 0.5, c2_end = 2.5;
+    float c2_start = 0.1, c2_end = 5.0;
     float c2 = c2_end + (c2_start - c2_end) * (max_iterations - iteration) / max_iterations; // Увеличиваем социальный компонент
 
 
     // Ограничения скорости
-    float max_velocity = 0.1; // Максимальная скорость
-    float min_velocity = -0.1; // Минимальная скорость
+    float max_velocity = 1; // Максимальная скорость
+    float min_velocity = -1; // Минимальная скорость
 
     for(size_t i = 0; i < N; ++i){
         float r1 = static_cast<float>(rand()) / static_cast<float>(RAND_MAX);
@@ -134,21 +141,7 @@ void Particle::update_state()
 {
     for (size_t i = 0; i < N; ++i)
     {
-        // std::cout<<"state was "<<curr_state[i];
-        
         curr_state[i]=curr_state[i] + velocities[i];
-        
-        if (curr_state[i] < -3.0)
-        {
-            curr_state[i] = -3.0;
-        }
-        
-        if (curr_state[i] > 3.0 )
-        {
-            curr_state[i] = 3.0;
-        }
-        
-        //std::cout<<" state became "<<curr_state[i]<<std::endl;
     }
 }
 
@@ -163,7 +156,7 @@ PSO::PSO(std::vector<float> initial_state, size_t numParticles, size_t maxIter, 
     swarm.resize(numParticles);
     for(size_t i = 0; i < swarm.size(); ++i)
         swarm[i] = Particle(initial_state, main_goal, step_time, dt);
-
+    
     fit();
 }
 
@@ -172,34 +165,23 @@ std::vector<float> PSO::fit()
 {
     for(size_t i = 0; i < maxIter; ++i)
     {  
-        for (auto& p : swarm)
-        {
-            p.mutate(0.7, {-3.0, -3.0, -3.0}, {3.0, 3.0, 3.0});
-            p.evaluate();
-            //std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
-            if (p.curr_error <= best_global_error)
-            {
-                //std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
-                best_global_state=p.curr_state;
-                best_global_error=p.curr_error;
+        for (auto& particle : swarm) {
+            particle.mutate(0.7, {MIN_BOUND, MIN_BOUND, MIN_BOUND}, {MAX_BOUND, MAX_BOUND, MAX_BOUND});
+            particle.evaluate();
+            if (particle.curr_error <= best_global_error) {
+                best_global_state = particle.curr_state;
+                best_global_error = particle.curr_error;
             }
-
-            p.update_velocities(best_global_state, i, maxIter);
-            p.update_state();
+            particle.update_velocities(best_global_state, i, maxIter);
+            particle.update_state();
         }
     }
 
-    for (auto& p : swarm)
-    {
-        // std::cout<<"FINAL"<<std::endl;
-        p.evaluate();
-
-        // std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
-        if (p.curr_error <= best_global_error)
-        {
-            // std::cout<<"!!! best global state update p.best_error " << p.best_error << " best_global_error " <<best_global_error<<std::endl;
-            best_global_state=p.curr_state;
-            best_global_error=p.curr_error;
+    for (auto& particle : swarm) {
+        particle.evaluate();
+        if (particle.curr_error <= best_global_error) {
+            best_global_state = particle.curr_state;
+            best_global_error = particle.curr_error;
         }
     }
 
