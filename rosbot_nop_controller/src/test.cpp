@@ -13,6 +13,10 @@
 #include "PSO.hpp"
 #include "rosbot_controller.hpp"
 
+// #include <matplotlibcpp.h>
+
+// namespace plt = matplotlibcpp;
+
 constexpr size_t rosbot_model_id = 1;
 static constexpr float dt = 0.01;
 
@@ -108,8 +112,24 @@ int main(int argc, char **argv)
     // control msg
     geometry_msgs::Twist ctrl;
     float time_spent = 0.;
+
+
+    // PLOTS
+    // Сохранение пути робота и целевых точек для построения графика
+    std::vector<double> path_x;
+    std::vector<double> path_y;
+    std::vector<double> goal_x;
+    std::vector<double> goal_y;
+
+    ///
+
+    goal_x.push_back(rosbot_goal.x);
+    goal_y.push_back(rosbot_goal.y);
+    path_x.push_back(rosbot_state.x);
+    path_y.push_back(rosbot_state.y);
     while (ros::ok()) {
         ros::spinOnce();
+
         // if ( i + 2 < q_size -1 && (time >= TIME_STEP || rosbot_state.distXY(rosbot_goal) < pso::EPS_MED) && !(time_spent > MAX_TIME))
         if ( i + 2 < q_size -1 && (time >= TIME_STEP) && (time_spent < MAX_TIME))
         {
@@ -124,6 +144,8 @@ int main(int argc, char **argv)
             rosbot_goal = {q[i], q[i+1], q[i+2]};
             std::cout<<"I = "<<i<<" "<<i+1<<" "<<i+2<<std::endl;
             rosbot_goal.print();
+            goal_x.push_back(rosbot_goal.x);
+            goal_y.push_back(rosbot_goal.y);
         }
 
         if (rosbot_state.distXY(rosbot_main_goal) < pso::EPS_MED) 
@@ -149,7 +171,16 @@ int main(int argc, char **argv)
         rate.sleep();
 
     }
+    
     control_pub.publish(geometry_msgs::Twist{});
+
+
+    // plt::plot(path_x, path_y);
+    // plt::scatter(goal_x, goal_y, 20, "red"); // Отмечаем целевые точки
+    // plt::title("Robot Path");
+    // plt::xlabel("X position");
+    // plt::ylabel("Y position");
+    // plt::show();
     return 0;
 
 

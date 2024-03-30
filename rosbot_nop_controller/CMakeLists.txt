@@ -18,6 +18,10 @@ catkin_package(
   CATKIN_DEPENDS geometry_msgs std_msgs gazebo_msgs
 )
 
+find_package(PythonLibs REQUIRED)
+include_directories(${PYTHON_INCLUDE_DIRS})
+
+
 link_directories(
   ${catkin_LIBRARY_DIRS}
 )
@@ -58,6 +62,7 @@ target_link_libraries(
   PSO 
   ${catkin_LIBRARIES} 
   nop_cpp
+  ${PYTHON_LIBRARIES}
 )
 
 install(

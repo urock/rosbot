@@ -42,7 +42,7 @@ class ControlGenerator():
         self.index = 0
         self.wait_for_subscribers()
 
-        rospy.on_shutdown(self.on_shutdown)
+        # rospy.on_shutdown(self.on_shutdown)
 
     def wait_for_subscribers(self):
         """
@@ -78,19 +78,7 @@ class ControlGenerator():
 
             self.generate_periodic_control()
         self.publish_control_sequence()
-            # self.build_graph(self.t, self.v, self.w)
-            # self.publish_control_sequence()
 
-    # def timer_callback(self, timer_event):
-    #     """
-    #     """
-    #     # print(time.time())
-    #     twist_cmd = Twist()
-    #     if self.index < len(self.v):
-    #         twist_cmd.linear.x = self.v[self.index]
-    #         twist_cmd.angular.z = self.w[self.index]
-    #         self.index = self.index + 1
-    #     self.cmd_pub.publish(twist_cmd)
 
     def read_control_from_file(self):
 
